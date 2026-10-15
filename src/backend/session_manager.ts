@@ -116,6 +116,21 @@ export class SessionManager {
     }
   }
 
+  static generateRandomCodename(): string {
+    const prefixes = [
+      "星轨", "微光", "深空", "虚空", "极境", "无界", "辰极",
+      "暗曜", "灵知", "破晓", "幻海", "以太", "云渊", "苍穹", "终焉"
+    ];
+    const suffixes = [
+      "领航员", "漫游者", "探索家", "执剑人", "观测者",
+      "寻迹者", "破壁人", "行者", "游侠", "先驱", "守夜人"
+    ];
+    const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+    const num = String(Math.floor(Math.random() * 99) + 1).padStart(2, "0");
+    return `${p}${s} · ${num}`;
+  }
+
   createSession(params: {
     sessionId?: string;
     subjectName?: string;
@@ -126,7 +141,7 @@ export class SessionManager {
     seed?: number;
   }): SessionState {
     const sid = params.sessionId || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const sName = params.subjectName?.trim() || `受测者_${sid.slice(-4)}`;
+    const sName = params.subjectName?.trim() || SessionManager.generateRandomCodename();
     const subjectType = params.subjectType || SubjectType.HUMAN;
     const totalTrials = params.totalTrials ?? 30;
     const warmupTrials = params.warmupTrials ?? 10;

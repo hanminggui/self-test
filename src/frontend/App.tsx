@@ -13,7 +13,23 @@ import {
   Crown,
   Stars,
   Feather,
+  Dices,
 } from "lucide-react";
+
+const generateRandomCodename = () => {
+  const prefixes = [
+    "星轨", "微光", "深空", "虚空", "极境", "无界", "辰极",
+    "暗曜", "灵知", "破晓", "幻海", "以太", "云渊", "苍穹", "终焉"
+  ];
+  const suffixes = [
+    "领航员", "漫游者", "探索家", "执剑人", "观测者",
+    "寻迹者", "破壁人", "行者", "游侠", "先驱", "守夜人"
+  ];
+  const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+  const num = String(Math.floor(Math.random() * 99) + 1).padStart(2, "0");
+  return `${p}${s} · ${num}`;
+};
 
 interface TrialPayload {
   stimulus_id: string;
@@ -68,18 +84,19 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState("");
 
   // Report state
-  const [report, setReport] = useState<ReportData | null>(null);
+  const [placeholderCodename, setPlaceholderCodename] = useState(() => generateRandomCodename());
 
   // Start a new exploration session
   const startSession = async () => {
     setLoading(true);
     setErrorMsg("");
+    const finalName = subjectName.trim() || placeholderCodename;
     try {
       const res = await fetch("/api/sessions/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject_name: subjectName || "尊贵探索者",
+          subject_name: finalName,
           total_trials: totalTrials,
           warmup_trials: Math.max(5, Math.floor(totalTrials / 3)),
         }),
@@ -252,16 +269,44 @@ export default function App() {
 
             <div className="space-y-4 max-w-sm mx-auto text-left mb-8">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Feather className="w-3.5 h-3.5 text-amber-400" /> 尊贵探索者昵称（可留空使用代号）
+                <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Feather className="w-3.5 h-3.5 text-amber-400" /> 探索者称谓（留空自动随机分配代号）
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = generateRandomCodename();
+                      setPlaceholderCodename(next);
+                      setSubjectName(next);
+                    }}
+                    className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition-colors"
+                    title="点击随机掷一个专属代号"
+                  >
+                    <Dices className="w-3.5 h-3.5" /> 随机代号
+                  </button>
                 </label>
-                <input
-                  type="text"
-                  placeholder="输入您喜欢的称谓..."
-                  value={subjectName}
-                  onChange={(e) => setSubjectName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-900/80 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50 text-sm transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={`留空自动唤醒：${placeholderCodename}`}
+                    value={subjectName}
+                    onChange={(e) => setSubjectName(e.target.value)}
+                    className="w-full pl-4 pr-10 py-3 rounded-xl bg-slate-900/80 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50 text-sm transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = generateRandomCodename();
+                      setPlaceholderCodename(next);
+                      setSubjectName(next);
+                    }}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-amber-300 cursor-pointer transition-colors"
+                    title="换一个随机代号"
+                  >
+                    <Dices className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -275,11 +320,10 @@ export default function App() {
                       key={opt.val}
                       type="button"
                       onClick={() => setTotalTrials(opt.val)}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
-                        totalTrials === opt.val
-                          ? "bg-amber-500/20 border-amber-400 text-amber-200 ring-1 ring-amber-400/30"
-                          : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/20"
-                      }`}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${totalTrials === opt.val
+                        ? "bg-amber-500/20 border-amber-400 text-amber-200 ring-1 ring-amber-400/30"
+                        : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/20"
+                        }`}
                     >
                       {opt.label}
                     </button>
@@ -354,18 +398,16 @@ export default function App() {
                     key={key}
                     type="button"
                     onClick={() => setSelectedOption(key)}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 flex items-start gap-3.5 cursor-pointer relative ${
-                      isSelected
-                        ? "glass-card border-amber-400 bg-amber-500/15 ring-2 ring-amber-400/30"
-                        : "glass-card border-white/5 hover:border-white/20 hover:bg-white/[0.03]"
-                    }`}
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 flex items-start gap-3.5 cursor-pointer relative ${isSelected
+                      ? "glass-card border-amber-400 bg-amber-500/15 ring-2 ring-amber-400/30"
+                      : "glass-card border-white/5 hover:border-white/20 hover:bg-white/[0.03]"
+                      }`}
                   >
                     <span
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs font-mono shrink-0 transition-colors ${
-                        isSelected
-                          ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/40"
-                          : "bg-slate-800 text-slate-400 border border-white/10"
-                      }`}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs font-mono shrink-0 transition-colors ${isSelected
+                        ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/40"
+                        : "bg-slate-800 text-slate-400 border border-white/10"
+                        }`}
                     >
                       {key}
                     </span>
@@ -388,11 +430,10 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setSelectedAction("HIGH_BET")}
-                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    selectedAction === "HIGH_BET"
-                      ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-400 text-amber-200 ring-2 ring-amber-400/25"
-                      : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
-                  }`}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${selectedAction === "HIGH_BET"
+                    ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-400 text-amber-200 ring-2 ring-amber-400/25"
+                    : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-xs md:text-sm flex items-center gap-1.5 text-amber-300">
@@ -409,11 +450,10 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setSelectedAction("SAFE_BET")}
-                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    selectedAction === "SAFE_BET"
-                      ? "bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-cyan-400 text-cyan-200 ring-2 ring-cyan-400/25"
-                      : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
-                  }`}
+                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${selectedAction === "SAFE_BET"
+                    ? "bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-cyan-400 text-cyan-200 ring-2 ring-cyan-400/25"
+                    : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-xs md:text-sm flex items-center gap-1.5 text-cyan-300">
@@ -433,11 +473,10 @@ export default function App() {
                 type="button"
                 onClick={handleSubmitTrial}
                 disabled={!selectedOption || loading}
-                className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  selectedOption && !loading
-                    ? "bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white shadow-lg shadow-amber-500/20"
-                    : "bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5"
-                }`}
+                className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${selectedOption && !loading
+                  ? "bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white shadow-lg shadow-amber-500/20"
+                  : "bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5"
+                  }`}
               >
                 {loading ? "正在记录感应..." : "确认，下一题 ↵"}
               </button>
@@ -456,7 +495,7 @@ export default function App() {
           </div>
         )}
 
-        {/* 3. 最终结果展示页面：零量化数据、神级尊贵名片、放下一切防备 */}
+        {/* 3. 最终结果展示页面：零量化数据、神级名片、放下一切防备 */}
         {stage === "REPORT" && report && (
           <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-700 pb-12">
             {/* 专属本命神级名片卡 */}
@@ -481,7 +520,7 @@ export default function App() {
                 “{report.diagnostic_profile.praise_tagline}”
               </p>
 
-              {/* 尊贵高光标签 */}
+              {/* 高光标签 */}
               <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mx-auto mb-8">
                 {report.diagnostic_profile.strength_tags.map((tag, idx) => (
                   <span
