@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
 import {
+  Compass,
   Sparkles,
-  Brain,
   HelpCircle,
   Flame,
   Shield,
   ArrowRight,
   RotateCcw,
   Download,
-  CheckCircle2,
-  Lock,
-  Layers,
-  Award,
-  TrendingUp,
+  Share2,
+  Crown,
+  Stars,
+  Feather,
 } from "lucide-react";
 
 interface TrialPayload {
@@ -43,20 +42,6 @@ interface SkillItem {
 interface ReportData {
   session_id: string;
   subject_name: string;
-  summary: {
-    total_trials: number;
-    first_order_accuracy: number;
-    final_score: number;
-    reversals_count: number;
-  };
-  metacognitive_metrics: {
-    d_prime: number;
-    meta_d_prime: number;
-    m_ratio: number;
-    calibration_bias: number;
-    brier_score: number;
-    info_buying_efficiency: number;
-  };
   diagnostic_profile: {
     role_title: string;
     quadrant_code: string;
@@ -64,7 +49,6 @@ interface ReportData {
     strength_tags: string[];
     empowering_feedback: string;
     growth_advice: string;
-    coachability_index: number;
     skills: SkillItem[];
   };
 }
@@ -79,7 +63,6 @@ export default function App() {
   const [trialData, setTrialData] = useState<TrialRequest | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [selectedAction, setSelectedAction] = useState<"HIGH_BET" | "SAFE_BET">("HIGH_BET");
-  const [currentScore, setCurrentScore] = useState(0);
   const [hintText, setHintText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -87,7 +70,7 @@ export default function App() {
   // Report state
   const [report, setReport] = useState<ReportData | null>(null);
 
-  // Start a new session
+  // Start a new exploration session
   const startSession = async () => {
     setLoading(true);
     setErrorMsg("");
@@ -96,22 +79,21 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject_name: subjectName || "匿名探索者",
+          subject_name: subjectName || "尊贵探索者",
           total_trials: totalTrials,
           warmup_trials: Math.max(5, Math.floor(totalTrials / 3)),
         }),
       });
-      if (!res.ok) throw new Error("启动测试失败");
+      if (!res.ok) throw new Error("旅程启程准备中，请稍候重试");
       const data: TrialRequest = await res.json();
       setSessionId(data.session_id);
       setTrialData(data);
-      setCurrentScore(0);
       setSelectedOption(null);
       setSelectedAction("HIGH_BET");
       setHintText(null);
       setStage("TESTING");
     } catch (e: any) {
-      setErrorMsg(e.message || "网络请求异常");
+      setErrorMsg(e.message || "网络连接微澜，请稍后刷新");
     } finally {
       setLoading(false);
     }
@@ -123,7 +105,7 @@ export default function App() {
     setLoading(true);
     try {
       const res = await fetch(`/api/sessions/${sessionId}/hint`, { method: "POST" });
-      if (!res.ok) throw new Error("获取线索失败");
+      if (!res.ok) throw new Error("获取灵感启示失败");
       const data = await res.json();
       setHintText(data.hint);
     } catch (e: any) {
@@ -146,7 +128,7 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ choice: selectedOption }),
       });
-      if (!p1Res.ok) throw new Error("提交答案失败");
+      if (!p1Res.ok) throw new Error("记录选择中出现微澜");
 
       // 2. Submit Phase 2
       const actionToSubmit = hintText ? "BUY_HINT" : selectedAction;
@@ -159,19 +141,22 @@ export default function App() {
           revised_choice: selectedOption,
         }),
       });
-      if (!p2Res.ok) throw new Error("提交决策失败");
+      if (!p2Res.ok) throw new Error("确认决策中出现微澜");
       const p2Data = await p2Res.json();
-
-      setCurrentScore(p2Data.current_score);
 
       if (p2Data.is_completed) {
         // Fetch Report
         const repRes = await fetch(`/api/sessions/${sessionId}/report`);
-        if (!repRes.ok) throw new Error("获取报告失败");
+        if (!repRes.ok) throw new Error("生成特质名片失败");
         const repData = await repRes.json();
         setReport(repData);
         setStage("REPORT");
-        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+        confetti({
+          particleCount: 150,
+          spread: 90,
+          origin: { y: 0.55 },
+          colors: ["#f59e0b", "#6366f1", "#a855f7", "#38bdf8"],
+        });
       } else {
         // Fetch next trial
         const nextReqRes = await fetch(`/api/sessions/${sessionId}/trial`);
@@ -182,7 +167,7 @@ export default function App() {
         setHintText(null);
       }
     } catch (e: any) {
-      setErrorMsg(e.message || "请求失败");
+      setErrorMsg(e.message || "请求出现微澜");
     } finally {
       setLoading(false);
     }
@@ -193,7 +178,6 @@ export default function App() {
     if (stage !== "TESTING") return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       const key = e.key.toUpperCase();
@@ -219,84 +203,81 @@ export default function App() {
   }, [stage, trialData, selectedOption, selectedAction, loading, handleSubmitTrial]);
 
   return (
-    <div className="min-h-screen flex flex-col justify-between p-4 md:p-8 max-w-5xl mx-auto">
-      {/* 顶部极简导航栏 */}
+    <div className="min-h-screen flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto selection:bg-amber-500/20 selection:text-amber-200">
+      {/* 顶部极简静谧标头 */}
       <header className="flex items-center justify-between py-4 border-b border-white/5 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Brain className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500/30 via-indigo-500/30 to-purple-500/30 border border-white/10 flex items-center justify-center shadow-lg shadow-indigo-950/40">
+            <Compass className="w-5 h-5 text-amber-300" />
           </div>
           <div>
-            <h1 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
-              认知潜能与元认知决断力测评
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                Bun Fullstack v2.0
-              </span>
+            <h1 className="text-sm md:text-base font-bold tracking-wide text-white flex items-center gap-2">
+              思维星图 · 专属特质探索
             </h1>
-            <p className="text-xs text-slate-400">解耦一元解题能力 · 测定二元知行自洽度</p>
+            <p className="text-[11px] text-slate-400">跟随直觉与决断，映射独一无二的深层特质</p>
           </div>
         </div>
 
-        {stage === "TESTING" && (
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-[11px] uppercase tracking-wider text-slate-400">当前战绩得分</div>
-              <div className={`text-lg font-bold font-mono ${currentScore >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                {currentScore > 0 ? `+${currentScore}` : currentScore}
-              </div>
-            </div>
+        {stage === "TESTING" && trialData && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-400">探索航程</span>
+            <span className="font-mono text-amber-300 font-bold text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+              {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
+            </span>
           </div>
         )}
       </header>
 
       {/* 主体区域 */}
       <main className="flex-1 flex flex-col justify-center">
-        {/* 1. 欢迎启动阶段 */}
+        {/* 1. 欢迎探索阶段：极致温暖、毫无防备、尊崇体验 */}
         {stage === "WELCOME" && (
-          <div className="glass-panel rounded-3xl p-8 md:p-12 text-center max-w-2xl mx-auto w-full shadow-2xl relative overflow-hidden">
-            <div className="absolute -top-24 -left-24 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="glass-panel rounded-3xl p-8 md:p-12 text-center max-w-2xl mx-auto w-full shadow-2xl relative overflow-hidden border border-white/10">
+            <div className="absolute -top-32 -left-32 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-300 mb-6">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              严谨信号检测论 Type-2 SDT 算法驱动
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 mb-6 font-medium">
+              <Stars className="w-3.5 h-3.5" />
+              沉浸式思维灵觉探索
             </div>
 
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
-              探索你的深层认知觉察
+              探索属于你的本命特质
             </h2>
 
-            <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-8 max-w-lg mx-auto">
-              本测试采用无常识依赖的 8 种高阶抽象逻辑题，并通过动态自适应阶梯将解题难度锚定在认知边界。
-              核心不仅检验你能否解对，更衡量你是否<strong>“知己所知，知己所不知”</strong>。
+            <p className="text-slate-300 text-sm md:text-base leading-relaxed mb-8 max-w-lg mx-auto font-normal">
+              放下世俗的评判与对错包袱。这是一场只关乎你<span className="text-amber-300 font-semibold">直觉韵律与决断魄力</span>的静谧探索之旅。
+              跟随你的第一感应，发现那份深藏于意识底层的神级特质。
             </p>
 
             <div className="space-y-4 max-w-sm mx-auto text-left mb-8">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">受测者昵称</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Feather className="w-3.5 h-3.5 text-amber-400" /> 尊贵探索者昵称（可留空使用代号）
+                </label>
                 <input
                   type="text"
-                  placeholder="请输入您的姓名或代号"
+                  placeholder="输入您喜欢的称谓..."
                   value={subjectName}
                   onChange={(e) => setSubjectName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-900/80 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-900/80 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50 text-sm transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">测试题量规模</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">探索航程规模</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { label: "标准完整测验 (30题)", val: 30 },
-                    { label: "快速精简测验 (16题)", val: 16 },
+                    { label: "深度沉浸旅程 (30步)", val: 30 },
+                    { label: "敏捷灵感漫游 (16步)", val: 16 },
                   ].map((opt) => (
                     <button
                       key={opt.val}
                       type="button"
                       onClick={() => setTotalTrials(opt.val)}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-medium border text-center transition-all ${
+                      className={`px-3 py-2.5 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
                         totalTrials === opt.val
-                          ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
+                          ? "bg-amber-500/20 border-amber-400 text-amber-200 ring-1 ring-amber-400/30"
                           : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/20"
                       }`}
                     >
@@ -316,49 +297,35 @@ export default function App() {
             <button
               onClick={startSession}
               disabled={loading}
-              className="w-full max-w-sm px-6 py-4 rounded-xl bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 text-white font-semibold text-sm shadow-xl shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer mx-auto"
+              className="w-full max-w-sm px-6 py-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 text-white font-semibold text-sm shadow-xl shadow-amber-500/20 hover:shadow-amber-500/35 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer mx-auto"
             >
-              {loading ? "正在初始化测试题库..." : "开始答题 →"}
+              {loading ? "正在凝铸探索图景..." : "开启探索旅程 →"}
             </button>
           </div>
         )}
 
-        {/* 2. 答题进行阶段 */}
+        {/* 2. 答题进行阶段：无对错焦虑、无分数扣罚压迫 */}
         {stage === "TESTING" && trialData && (
           <div className="w-full max-w-3xl mx-auto space-y-6">
-            {/* 进度与题型标题栏 */}
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-indigo-400 font-bold text-sm">
-                  第 {String(trialData.trial_index).padStart(2, "0")} 题
-                </span>
-                <span>/ 共 {totalTrials} 题</span>
-              </div>
-
-              <div className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-slate-300 text-[11px] font-medium">
-                {trialData.payload.task_type || "抽象认知推演"}
-              </div>
-            </div>
-
-            {/* 顶部长条进度条 */}
-            <div className="w-full h-1.5 bg-slate-800/80 rounded-full overflow-hidden">
+            {/* 顶部长条柔和流光进度 */}
+            <div className="w-full h-1 bg-slate-800/80 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300 rounded-full"
+                className="h-full bg-gradient-to-r from-amber-400 via-indigo-500 to-purple-500 transition-all duration-300 rounded-full"
                 style={{ width: `${(trialData.trial_index / totalTrials) * 100}%` }}
               />
             </div>
 
-            {/* 核心题目展示卡片 */}
-            <div className="glass-panel rounded-2xl p-6 md:p-8 space-y-4">
-              <div className="text-sm md:text-base text-slate-200 leading-relaxed whitespace-pre-line font-medium">
+            {/* 核心图形与规律卡片 */}
+            <div className="glass-panel rounded-2xl p-6 md:p-8 space-y-4 border border-white/10">
+              <div className="text-sm md:text-base text-slate-200 leading-relaxed whitespace-pre-line font-medium font-sans">
                 {trialData.payload.prompt}
               </div>
 
-              {/* 线索展示抽屉 */}
+              {/* 灵感启示抽屉 */}
               {hintText ? (
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs md:text-sm leading-relaxed animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs md:text-sm leading-relaxed animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="font-semibold text-amber-300 flex items-center gap-1.5 mb-1">
-                    <Sparkles className="w-4 h-4" /> 启发式线索提示 (已消耗 2 分)
+                    <Sparkles className="w-4 h-4" /> 启发式灵感指引
                   </div>
                   {hintText}
                 </div>
@@ -368,17 +335,17 @@ export default function App() {
                     type="button"
                     onClick={handleBuyHint}
                     disabled={loading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 transition-all cursor-pointer"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     💡 查看线索 (-2分)
-                    <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 border border-white/10">H</kbd>
+                    <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">H</kbd>
                   </button>
                 </div>
               )}
             </div>
 
-            {/* 2x2 选项网格 */}
+            {/* 2x2 选项卡片 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {Object.entries(trialData.payload.options).map(([key, val]) => {
                 const isSelected = selectedOption === key;
@@ -389,14 +356,14 @@ export default function App() {
                     onClick={() => setSelectedOption(key)}
                     className={`p-4 rounded-xl border text-left transition-all duration-200 flex items-start gap-3.5 cursor-pointer relative ${
                       isSelected
-                        ? "glass-card border-indigo-500 bg-indigo-600/15 ring-2 ring-indigo-500/30"
+                        ? "glass-card border-amber-400 bg-amber-500/15 ring-2 ring-amber-400/30"
                         : "glass-card border-white/5 hover:border-white/20 hover:bg-white/[0.03]"
                     }`}
                   >
                     <span
                       className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs font-mono shrink-0 transition-colors ${
                         isSelected
-                          ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/40"
+                          ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/40"
                           : "bg-slate-800 text-slate-400 border border-white/10"
                       }`}
                     >
@@ -410,11 +377,11 @@ export default function App() {
               })}
             </div>
 
-            {/* Phase 2 投注与决策面板 */}
-            <div className="glass-panel rounded-2xl p-5 space-y-4">
+            {/* 决断本能选择面板 */}
+            <div className="glass-panel rounded-2xl p-5 space-y-4 border border-white/10">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">选择您的第二阶段决策信心：</span>
-                <span className="text-[11px] text-slate-500">键盘快捷键 [1] 或 [2]</span>
+                <span className="text-slate-300">倾听此刻的本能信心：</span>
+                <span className="text-[11px] text-slate-500 font-mono">[1] 确信 · [2] 保底</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -423,7 +390,7 @@ export default function App() {
                   onClick={() => setSelectedAction("HIGH_BET")}
                   className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                     selectedAction === "HIGH_BET"
-                      ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500 text-amber-200 ring-2 ring-amber-500/20"
+                      ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-400 text-amber-200 ring-2 ring-amber-400/25"
                       : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
                   }`}
                 >
@@ -435,7 +402,7 @@ export default function App() {
                     <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">1</kbd>
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    若判断正确净胜 +10 分；若判断失误扣除 -10 分
+                    直觉清醒坚定，胜券在握全额决断
                   </div>
                 </button>
 
@@ -444,7 +411,7 @@ export default function App() {
                   onClick={() => setSelectedAction("SAFE_BET")}
                   className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                     selectedAction === "SAFE_BET"
-                      ? "bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-cyan-500 text-cyan-200 ring-2 ring-cyan-500/20"
+                      ? "bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-cyan-400 text-cyan-200 ring-2 ring-cyan-400/25"
                       : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
                   }`}
                 >
@@ -456,27 +423,27 @@ export default function App() {
                     <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">2</kbd>
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    无论客观对错均安全保底斩获 +3 分
+                    审慎留白，以守为攻蓄势而动
                   </div>
                 </button>
               </div>
 
-              {/* 确认下一题按钮 */}
+              {/* 继续前行主按钮 */}
               <button
                 type="button"
                 onClick={handleSubmitTrial}
                 disabled={!selectedOption || loading}
                 className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   selectedOption && !loading
-                    ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30"
+                    ? "bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white shadow-lg shadow-amber-500/20"
                     : "bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5"
                 }`}
               >
-                {loading ? "正在评估结算..." : "确认，下一题 ↵"}
+                {loading ? "正在记录感应..." : "确认，下一题 ↵"}
               </button>
             </div>
 
-            {/* 键盘盲打提示条 */}
+            {/* 键盘盲打指引 */}
             <div className="flex items-center justify-center gap-4 text-[11px] text-slate-500">
               <span>快捷键：[A/B/C/D] 选答案</span>
               <span>•</span>
@@ -489,127 +456,95 @@ export default function App() {
           </div>
         )}
 
-        {/* 3. 最终评估报告阶段 */}
+        {/* 3. 最终结果展示页面：零量化数据、神级尊贵名片、放下一切防备 */}
         {stage === "REPORT" && report && (
-          <div className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
-            {/* 称号英雄大卡片 */}
-            <div className="glass-panel rounded-3xl p-8 md:p-10 relative overflow-hidden text-center shadow-2xl border border-indigo-500/30">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300 mb-3">
-                <Award className="w-3.5 h-3.5" /> 认知潜能定位与称号鉴定
+          <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-700 pb-12">
+            {/* 专属本命神级名片卡 */}
+            <div className="glass-panel rounded-3xl p-8 md:p-12 relative overflow-hidden text-center shadow-2xl border border-amber-500/30 glow-gold bg-gradient-to-b from-amber-950/20 via-slate-900/80 to-[#0b0d13]">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 mb-4 font-medium shadow-inner">
+                <Crown className="w-4 h-4 text-amber-400" /> 专属本命思维特质名片
               </div>
 
-              <div className="text-xs text-slate-400 mb-2">受测者：{report.subject_name}</div>
+              <div className="text-xs text-slate-400 mb-3 tracking-widest uppercase">
+                EXPLORER · {report.subject_name}
+              </div>
 
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 mb-2">
+              {/* 5大专属称号 */}
+              <h2 className="text-4xl md:text-6xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-300 to-orange-400 mb-3 drop-shadow-md">
                 {report.diagnostic_profile.role_title}
               </h2>
 
-              <p className="text-base md:text-lg text-amber-200/90 font-medium tracking-wide mb-6">
+              {/* 专属灵魂 Tagline */}
+              <p className="text-lg md:text-xl text-amber-100 font-semibold tracking-wide mb-6">
                 “{report.diagnostic_profile.praise_tagline}”
               </p>
 
-              {/* 核心亮点标签 */}
-              <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mx-auto mb-6">
+              {/* 尊贵高光标签 */}
+              <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mx-auto mb-8">
                 {report.diagnostic_profile.strength_tags.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="px-3 py-1 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20"
+                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-200 border border-amber-500/30 shadow-sm"
                   >
                     #{tag}
                   </span>
                 ))}
               </div>
 
-              {/* 赋能评语 */}
-              <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-2xl mx-auto text-left bg-black/20 p-5 rounded-2xl border border-white/5">
-                {report.diagnostic_profile.empowering_feedback}
-              </p>
+              {/* 深度赋能评语（极高情绪价值） */}
+              <div className="text-sm md:text-base text-slate-200 leading-relaxed max-w-2xl mx-auto text-left bg-black/40 p-6 rounded-2xl border border-white/10 shadow-inner space-y-2">
+                <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5 mb-2">
+                  <Sparkles className="w-4 h-4" /> 灵魂特质共鸣解读
+                </div>
+                <p className="text-slate-300 text-sm md:text-base leading-relaxed">
+                  {report.diagnostic_profile.empowering_feedback}
+                </p>
+              </div>
             </div>
 
-            {/* 专属技能矩阵 */}
-            <div className="space-y-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-indigo-400" /> 专属认知技能谱系
-              </h3>
+            {/* 专属特技谱系 */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" /> 专属天赋特技谱系
+                </h3>
+                <span className="text-xs text-slate-500">独一无二的思维武器库</span>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {report.diagnostic_profile.skills.map((skill, idx) => (
-                  <div key={idx} className="glass-card rounded-2xl p-5 border border-white/5 space-y-2">
+                  <div
+                    key={idx}
+                    className="glass-card rounded-2xl p-5 border border-white/5 space-y-2 hover:border-amber-500/30 transition-all"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">{skill.icon}</span>
-                        <span className="font-bold text-sm text-white">{skill.name}</span>
+                        <span className="text-2xl">{skill.icon}</span>
+                        <span className="font-bold text-sm text-amber-200">{skill.name}</span>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10">
+                      <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
                         {skill.type}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">{skill.desc}</p>
+                    <p className="text-xs text-slate-300 leading-relaxed pt-1">{skill.desc}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* 量化指标数据仪表盘 */}
-            <div className="space-y-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-400" /> 严谨心理测量学量化数据
-              </h3>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                <div className="glass-card rounded-xl p-3.5 text-center">
-                  <div className="text-[11px] text-slate-400 mb-1">客观正确率</div>
-                  <div className="text-base font-bold font-mono text-indigo-400">
-                    {Math.round(report.summary.first_order_accuracy * 100)}%
-                  </div>
-                </div>
-
-                <div className="glass-card rounded-xl p-3.5 text-center">
-                  <div className="text-[11px] text-slate-400 mb-1">一元辨别力 d'</div>
-                  <div className="text-base font-bold font-mono text-cyan-400">
-                    {report.metacognitive_metrics.d_prime}
-                  </div>
-                </div>
-
-                <div className="glass-card rounded-xl p-3.5 text-center">
-                  <div className="text-[11px] text-slate-400 mb-1">二元 Meta-d'</div>
-                  <div className="text-base font-bold font-mono text-purple-400">
-                    {report.metacognitive_metrics.meta_d_prime}
-                  </div>
-                </div>
-
-                <div className="glass-card rounded-xl p-3.5 text-center">
-                  <div className="text-[11px] text-slate-400 mb-1">知行自洽 M_ratio</div>
-                  <div className="text-base font-bold font-mono text-amber-400">
-                    {report.metacognitive_metrics.m_ratio}
-                  </div>
-                </div>
-
-                <div className="glass-card rounded-xl p-3.5 text-center">
-                  <div className="text-[11px] text-slate-400 mb-1">校准偏差 Bias</div>
-                  <div className="text-base font-bold font-mono text-emerald-400">
-                    {report.metacognitive_metrics.calibration_bias > 0
-                      ? `+${report.metacognitive_metrics.calibration_bias}`
-                      : report.metacognitive_metrics.calibration_bias}
-                  </div>
-                </div>
-
-                <div className="glass-card rounded-xl p-3.5 text-center">
-                  <div className="text-[11px] text-slate-400 mb-1">最终得分</div>
-                  <div className="text-base font-bold font-mono text-yellow-400">
-                    {report.summary.final_score}
-                  </div>
-                </div>
+            {/* 战略建议 */}
+            <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/20 text-xs md:text-sm text-amber-100 leading-relaxed space-y-1">
+              <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                <Compass className="w-4 h-4" /> 进阶赋能战略启示
               </div>
+              <p className="text-slate-300 text-xs md:text-sm pt-1">
+                {report.diagnostic_profile.growth_advice}
+              </p>
             </div>
 
-            {/* 成长建议 */}
-            <div className="p-5 rounded-2xl bg-indigo-950/30 border border-indigo-500/20 text-xs md:text-sm text-indigo-200 leading-relaxed">
-              <span className="font-bold text-indigo-300">进阶战略建议：</span>
-              {report.diagnostic_profile.growth_advice}
-            </div>
-
-            {/* 操作按钮区 */}
+            {/* 按钮区 */}
             <div className="flex items-center justify-center gap-4 pt-4">
               <button
                 type="button"
@@ -618,34 +553,30 @@ export default function App() {
                   setReport(null);
                   setTrialData(null);
                 }}
-                className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors border border-white/10"
+                className="px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors border border-white/10 shadow-lg"
               >
-                <RotateCcw className="w-4 h-4" /> 再测一次
+                <RotateCcw className="w-4 h-4" /> 重新启程探索
               </button>
 
               <button
                 type="button"
                 onClick={() => {
-                  const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `认知测评报告_${report.subject_name}_${report.session_id}.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
+                  const shareText = `【${report.diagnostic_profile.role_title}】\n“${report.diagnostic_profile.praise_tagline}”\n探索者：${report.subject_name}\n标签：${report.diagnostic_profile.strength_tags.map(t => `#${t}`).join(" ")}\n\n${report.diagnostic_profile.empowering_feedback}`;
+                  navigator.clipboard?.writeText(shareText);
+                  alert("专属本命名片文案已复制至剪贴板，可随心分享！");
                 }}
-                className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors shadow-lg shadow-indigo-600/30"
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-amber-500/30"
               >
-                <Download className="w-4 h-4" /> 保存报告
+                <Share2 className="w-4 h-4" /> 复制专属名片
               </button>
             </div>
           </div>
         )}
       </main>
 
-      {/* 底部版权与声明 */}
-      <footer className="py-4 text-center text-xs text-slate-500 border-t border-white/5 mt-8">
-        二元元认知测试实验室 · 基于 Levitt 阶梯控制与信号检测论 Type-2 SDT 范式
+      {/* 底部极简静谧脚注 */}
+      <footer className="py-4 text-center text-xs text-slate-600 border-t border-white/5 mt-8">
+        思维星图 · 映照真实的直觉与自我掌控
       </footer>
     </div>
   );
