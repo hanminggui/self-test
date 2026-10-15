@@ -67,60 +67,38 @@ bun start
 
 ---
 
-## 2. 模块结构
+## 2. 工程模块结构（全栈 Bun + TypeScript）
 
-- [`metacognitive_testing/models.py`](file:///Users/aduang/github/self-test/metacognitive_testing/models.py): Pydantic 数据规范（严格兼容 Spec 4.1, 4.2, 4.3 报文定义，支持安全 payload 与线索配置）。
-- [`metacognitive_testing/staircase.py`](file:///Users/aduang/github/self-test/metacognitive_testing/staircase.py): 2-up-1-down 自适应阶梯难度追踪控制器。
-- [`metacognitive_testing/task_generator.py`](file:///Users/aduang/github/self-test/metacognitive_testing/task_generator.py): 包含 5 大无先验知识抽象认知范式的合成任务生成器（符号密码演化、点阵离散密度、图形矩阵推理、空间心智旋转、结构守恒律）。
-- [`metacognitive_testing/session_manager.py`](file:///Users/aduang/github/self-test/metacognitive_testing/session_manager.py): 会话生命周期与状态机（支持在原页面购买线索、零答案泄漏与下注矩阵结算）。
-- [`metacognitive_testing/metrics.py`](file:///Users/aduang/github/self-test/metacognitive_testing/metrics.py): 心理物理学与信号检测论计算引擎（$d'$, $\text{Meta-}d'$, $M_{ratio}$, Bias, Brier, IVE）。
-- [`metacognitive_testing/report_generator.py`](file:///Users/aduang/github/self-test/metacognitive_testing/report_generator.py): 诊断画像与评估报告生成器。
-- [`metacognitive_testing/agents.py`](file:///Users/aduang/github/self-test/metacognitive_testing/agents.py): 模拟受试者（盲赌型、理想型、谨慎型等）。
-- [`metacognitive_testing/api.py`](file:///Users/aduang/github/self-test/metacognitive_testing/api.py): FastAPI REST 接口与静态页面路由，提供 `/api/cohort/scatter` 群体四象限点阵接口。
-- [`metacognitive_testing/cli.py`](file:///Users/aduang/github/self-test/metacognitive_testing/cli.py): 命令行运行与批量模拟评测工具。
-- [`metacognitive_testing/web/index.html`](file:///Users/aduang/github/self-test/metacognitive_testing/web/index.html): 人类受试者现代交互 Web UI（支持在线实时实测、规范 ABC 选线索与下注流程，并内置【一二元四象限点阵看板】：牛逼组/谨慎组/潜力组/冒险组，支持动态拖拽调节原点阈值与中位数分割）。
+### 后端核心 (`src/backend/`)
+- [`src/backend/models.ts`](file:///Users/aduang/github/self-test/src/backend/models.ts): 核心领域数据模型与 TypeScript 强类型定义（严格兼容 Spec 4.1, 4.2, 4.3）。
+- [`src/backend/staircase.ts`](file:///Users/aduang/github/self-test/src/backend/staircase.ts): Levitt 2-up-1-down 自适应阶梯难度追踪控制器。
+- [`src/backend/task_generator.ts`](file:///Users/aduang/github/self-test/src/backend/task_generator.ts): 8 大无先验知识抽象思维范式动态生成器（符号密码演化、点阵离散密度、图形矩阵推理、空间心智旋转、结构守恒律等）。
+- [`src/backend/session_manager.ts`](file:///Users/aduang/github/self-test/src/backend/session_manager.ts): 会话状态机与生命周期管理，集成 Bun 原生 SQLite 持久化与结果直出幂等保障。
+- [`src/backend/math.ts`](file:///Users/aduang/github/self-test/src/backend/math.ts): 零依赖数学库（Nelder-Mead 单纯形多维优化、高精度正态分布逆函数与积分拟合）。
+- [`src/backend/metrics.ts`](file:///Users/aduang/github/self-test/src/backend/metrics.ts): 信号检测论与心理计量学引擎（Type-1 $d'$, Type-2 $\text{Meta-}d'$, $M_{ratio}$, 校准偏差 Bias, Brier 分数, 信息效率 IVE）。
+- [`src/backend/report_generator.ts`](file:///Users/aduang/github/self-test/src/backend/report_generator.ts): 5 大专属本命神级画像分型与特技技能树映射。
+- [`src/backend/server.ts`](file:///Users/aduang/github/self-test/src/backend/server.ts): Hono REST API 服务端，同时托管受测者答题流、独立口令控制台与前端 SPA。
+
+### 前端应用 (`src/frontend/`)
+- [`src/frontend/App.tsx`](file:///Users/aduang/github/self-test/src/frontend/App.tsx): 受测者沉浸式交互界面（零量化指标干扰、消除对错焦虑、流光卡片交互与本命神级名片直出）。
+- [`src/frontend/Admin.tsx`](file:///Users/aduang/github/self-test/src/frontend/Admin.tsx): 独立管理员控制台（口令验证、群体四象限散点图、受测者全明细深度数据审查与完整报告模态框）。
 
 ---
 
 ## 3. 运行指南
 
-### 3.1 启动 Web 评测界面与 REST API
-
 ```bash
-# 使用虚拟环境启动服务
-.venv/bin/python3 -m metacognitive_testing.cli serve --host 127.0.0.1 --port 8000
+# 1. 运行全部单元测试与集成测试
+bun test
+
+# 2. 编译生产前端静态资产 (Vite + Tailwind v4)
+bun run build
+
+# 3. 启动全栈生产/开发服务
+bun run start
 ```
 
-打开浏览器访问：`http://127.0.0.1:8000` 即可直接参与测试！
+服务启动后：
+- 🌐 **受测者答题界面**：`http://127.0.0.1:8000/`
+- 🔑 **管理员独立控制台**：服务启动时控制台会自动打印免密链接 `http://127.0.0.1:8000/admin?token=...` 及访问密码。
 
-### 3.2 运行受试者策略模拟（CLI 评测）
-
-```bash
-# 1. 评测理想受试者 (知己所知，知己所不知)
-.venv/bin/python3 -m metacognitive_testing.cli eval --policy ideal --trials 60
-
-# 2. 评测盲赌受试者 (达克效应显著，逢题必重注)
-.venv/bin/python3 -m metacognitive_testing.cli eval --policy blind_gambler --trials 60
-
-# 3. 评测谨慎内耗受试者 (准确率高但过度自卑不敢下注)
-.venv/bin/python3 -m metacognitive_testing.cli eval --policy underconfident --trials 60
-```
-
-### 3.3 运行自动化验收测试套件
-
-系统已完整通过 Spec 6 规定的所有质量基准（共 17 项单元与端到端测试）：
-
-```bash
-uv run pytest -v
-```
-
----
-
-## 4. 验收基准验证结果
-
-| 验收项目 | 规范要求 | 实际测试表现 | 结论 |
-| :--- | :--- | :--- | :--- |
-| **阶梯收敛测试** | 70% 真实正确率下运行 80 轮，第 20–30 轮收敛，总体一元准确率落在 $70\% \pm 3\%$ | 均值准确率稳定在 $70.7\% \pm 1.5\%$ | **PASSED** |
-| **盲赌型区分度** | 盲目 Agent: $M_{ratio} < 0.4$，且 `calibration_bias` $> +0.25$ | $M_{ratio} = 0.008 < 0.4$, `Bias` $= +0.257 > +0.25$ | **PASSED** |
-| **理想型区分度** | 理想 Agent: $M_{ratio} \ge 0.95$ | $M_{ratio} = 1.704 \ge 0.95$ | **PASSED** |
-| **防泄露防作弊** | Phase 1 & 2 报文中严禁包含答案、置信度权重等任何元数据 | 所有 TrialRequest 仅暴露安全 Stimulus 且已自动化断言拦截 | **PASSED** |

@@ -37,3 +37,12 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 scratch/
 *.sqlite
 *.sqlite-journal
+
+# Python remnants (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.venv/
+
