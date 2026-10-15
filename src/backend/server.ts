@@ -20,15 +20,16 @@ app.use("*", cors({
 
 // Admin credentials
 export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || Math.random().toString(36).substring(2, 10);
-const HOST = process.env.HOST || "127.0.0.1";
+const HOST = process.env.HOST || "0.0.0.0";
 const PORT = parseInt(process.env.PORT || "8000", 10);
 
 export function printAdminBanner(host: string = HOST, port: number = PORT) {
-  const adminLink = `http://${host}:${port}/admin?token=${ADMIN_PASSWORD}`;
+  const displayHost = host === "0.0.0.0" ? "localhost" : host;
+  const adminLink = `http://${displayHost}:${port}/admin?token=${ADMIN_PASSWORD}`;
   const banner = `
 ========================================================================
   🧠 二元认知评测系统 (Metacognitive Testing System - Bun & Hono)
-  🌐 正常受测者答题页面: http://${host}:${port}/
+  🌐 正常受测者答题页面: http://${displayHost}:${port}/
   🔑 管理控制台免密链接: ${adminLink}
   🔒 管理员访问密码:   ${ADMIN_PASSWORD}
 ========================================================================
@@ -155,6 +156,7 @@ app.get("/*", serveStatic({ path: "./dist/index.html" }));
 
 export default {
   port: PORT,
+  hostname: HOST,
   fetch: app.fetch,
 };
 

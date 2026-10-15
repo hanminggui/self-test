@@ -1,0 +1,7 @@
+node_modules
+.git
+data/*.sqlite*
+dist
+.env*
+scratch
+*.tsbuildinfo

@@ -1,0 +1,15 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: metacognitive-testing
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin_secret_key_888}
+    volumes:
+      - ./data:/app/data
