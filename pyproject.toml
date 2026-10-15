@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metacognitive-testing"
+version = "1.0.0"
+description = "Metacognitive Testing System for decoupling first-order ability and measuring Type-2 Meta-d' metrics"
+readme = "metacognitive_testing_system_spec.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "pydantic>=2.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+]
+
+[project.scripts]
+mcts = "metacognitive_testing.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.27.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["metacognitive_testing/tests"]

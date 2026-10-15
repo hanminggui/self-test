@@ -1,0 +1,50 @@
+[
+  {
+    "id": "sess_1792035961_7a17b0",
+    "name": "debug",
+    "subject_type": "HUMAN",
+    "first_order_accuracy": 0.9,
+    "second_order_accuracy": 0.8,
+    "d_prime": 2.2165,
+    "meta_d_prime": 0.01,
+    "m_ratio": 0.0045,
+    "calibration_bias": -0.005,
+    "final_score": 128,
+    "is_current": false,
+    "created_at": "2026-10-15 11:46:01",
+    "role_title": null,
+    "quadrant_code": null
+  },
+  {
+    "id": "sess_1792053465_11b945",
+    "name": "林晨",
+    "subject_type": "HUMAN",
+    "first_order_accuracy": 0.35,
+    "second_order_accuracy": 0.5,
+    "d_prime": 0.3816,
+    "meta_d_prime": 0.01,
+    "m_ratio": 0.0262,
+    "calibration_bias": 0.35,
+    "final_score": 85,
+    "is_current": false,
+    "created_at": "2026-10-15 16:37:45",
+    "role_title": "探索先锋",
+    "quadrant_code": "Q4_BRAVE_EXPLORER"
+  },
+  {
+    "id": "sess_1792053971_a4c4cf",
+    "name": "abc",
+    "subject_type": "HUMAN",
+    "first_order_accuracy": 0.3,
+    "second_order_accuracy": 0.7857,
+    "d_prime": 0.2494,
+    "meta_d_prime": 1.0461,
+    "m_ratio": 4.1945,
+    "calibration_bias": 0.48,
+    "final_score": 56,
+    "is_current": false,
+    "created_at": "2026-10-15 16:46:11",
+    "role_title": "敏锐洞察者",
+    "quadrant_code": "Q2_FUTURE_MASTER"
+  }
+]

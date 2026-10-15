@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理控制台 - 二元认知评测系统</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 26, 44, 0.85);
+      --card-border: rgba(56, 189, 248, 0.15);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --accent: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --purple: #8b5cf6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Auth Screen */
+    #auth-screen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 70vh;
+      width: 100%;
+    }
+
+    .auth-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .auth-card h2 {
+      font-size: 1.4rem;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
+
+    .auth-card p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .auth-input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      margin-bottom: 16px;
+      text-align: center;
+      letter-spacing: 2px;
+      transition: border-color 0.2s;
+    }
+
+    .auth-input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .auth-error {
+      color: var(--danger);
+      font-size: 0.85rem;
+      margin-top: 12px;
+      display: none;
+    }
+
+    /* Dashboard UI */
+    #admin-dashboard {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 24px;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+    }
+
+    .title-group h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #60a5fa;
+      letter-spacing: -0.3px;
+    }
+
+    .title-group p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Cohort 4-Quadrant Dashboard Styles */
+    .cohort-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .cohort-header h2 {
+      font-size: 1.35rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    .cohort-ctrl-panel {
+      background: #0b1120;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chip-btn:hover {
+      border-color: #38bdf8;
+      color: white;
+    }
+
+    .chip-btn.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .slider-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .slider-item label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .slider {
+      flex: 1;
+      accent-color: #3b82f6;
+      cursor: pointer;
+    }
+
+    .slider-item span {
+      font-weight: 700;
+      color: #38bdf8;
+      min-width: 48px;
+      text-align: right;
+      font-size: 0.85rem;
+    }
+
+    /* Quadrant Canvas Container */
+    .canvas-quadrant-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      background: #070b13;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 12px;
+      overflow: hidden;
+    }
+
+    #quadrantCanvas {
+      width: 100%;
+      max-width: 980px;
+      height: 520px;
+      cursor: crosshair;
+    }
+
+    /* Floating Tooltip */
+    #quadrant-tooltip {
+      position: absolute;
+      display: none;
+      pointer-events: none;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(8px);
+      border: 1px solid #38bdf8;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      color: white;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      z-index: 50;
+      white-space: nowrap;
+      transition: transform 0.05s ease-out;
+    }
+
+    /* Quadrant Statistics Grid */
+    .quadrant-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .quadrant-stat-card {
+      background: #0b1120;
+      border-radius: 10px;
+      padding: 16px;
+      border: 1px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .card-master {
+      border-top: 3px solid #10b981;
+    }
+
+    .card-pioneer {
+      border-top: 3px solid #f59e0b;
+    }
+
+    .card-insight {
+      border-top: 3px solid #3b82f6;
+    }
+
+    .card-explorer {
+      border-top: 3px solid #8b5cf6;
+    }
+
+    .q-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .q-val {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin: 4px 0 2px;
+    }
+
+    .q-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    /* Subject Table */
+    .table-container {
+      margin-top: 20px;
+      overflow-x: auto;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      text-align: left;
+    }
+
+    thead {
+      background: #0f172a;
+      color: #94a3b8;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    tbody tr:hover {
+      background: rgba(56, 189, 248, 0.04);
+    }
+
+    .badge-quad {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    /* Modal for viewing single subject report */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: #0f172a;
+      border: 1px solid #38bdf8;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 760px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 28px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 18px;
+      right: 20px;
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .modal-close-btn:hover {
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Auth Screen -->
+  <div id="auth-screen">
+    <div class="auth-card">
+      <div style="font-size: 2.2rem; margin-bottom: 12px;">🔒</div>
+      <h2>管理后台安全验证</h2>
+      <p>请输入服务启动时在控制台输出的管理员访问密码，或直接点击控制台提供的免密链接访问。</p>
+      <input type="password" id="admin-token-input" class="auth-input" placeholder="请输入管理员密码" />
+      <button class="btn-primary" onclick="verifyToken()">验证并进入控制台</button>
+      <div id="auth-error-msg" class="auth-error">密码错误，请核对控制台输出的密码</div>
+    </div>
+  </div>
+
+  <!-- Dashboard Container -->
+  <div id="admin-dashboard" class="container">
+    <header>
+      <div class="title-group">
+        <h1>二元认知评测系统 · 管理控制台</h1>
+        <p>Decoupled Metacognitive 4-Quadrant Engine · Cohort Analysis & Administration</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button class="chip-btn" onclick="fetchCohortData(true)">🔄 刷新数据</button>
+        <button class="chip-btn" onclick="logoutAdmin()" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171;">🚪 退出后台</button>
+      </div>
+    </header>
+
+    <!-- 1. Cohort 4-Quadrant Scatter Dashboard -->
+    <div class="card">
+      <div class="cohort-header">
+        <div>
+          <h2>一二元认知群体四象限分布点阵</h2>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">
+            解耦一元客观推理胜任率与二元自我认知觉察度，实时标定人群分布与坐标聚类
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls Panel -->
+      <div class="cohort-ctrl-panel">
+        <div class="ctrl-row">
+          <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">坐标轴度量体系：</span>
+          <div class="btn-group">
+            <button id="btn-mode-pct" class="chip-btn active" onclick="setAxisMetricMode('pct')">
+              🎯 直观百分比体系 (一元客观正确率 vs 二元判断准确度)
+            </button>
+            <button id="btn-mode-sdt" class="chip-btn" onclick="setAxisMetricMode('sdt')">
+              🔬 信号检测论体系 (一元敏感度 d' vs 二元效率 M_ratio)
+            </button>
+          </div>
+        </div>
+
+        <div class="ctrl-row">
+          <span style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">原点基准分割预设：</span>
+          <div class="btn-group">
+            <button id="btn-split-preset" class="chip-btn active" onclick="applySplitMode('preset')">
+              ⚡ 理论基准 (70.7% / 70.7%)
+            </button>
+            <button id="btn-split-median" class="chip-btn" onclick="applySplitMode('median')">
+              📊 样本中位数分割 (Median)
+            </button>
+            <button id="btn-split-mean" class="chip-btn" onclick="applySplitMode('mean')">
+              📈 样本均值分割 (Mean)
+            </button>
+          </div>
+        </div>
+
+        <!-- Sliders -->
+        <div class="ctrl-row" style="margin-top: 4px;">
+          <div class="slider-item">
+            <label id="lbl-slider-x">X 轴原点 (一元基准):</label>
+            <input type="range" id="slider-x" class="slider" min="40" max="95" value="70"
+              oninput="onThresholdSliderChange('x', this.value)" />
+            <span id="txt-slider-x">70.7%</span>
+          </div>
+          <div class="slider-item">
+            <label id="lbl-slider-y">Y 轴原点 (二元基准):</label>
+            <input type="range" id="slider-y" class="slider" min="40" max="95" value="70"
+              oninput="onThresholdSliderChange('y', this.value)" />
+            <span id="txt-slider-y">70.7%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas Scatter Plot -->
+      <div class="canvas-quadrant-container">
+        <canvas id="quadrantCanvas" width="980" height="520"></canvas>
+        <div id="quadrant-tooltip"></div>
+      </div>
+
+      <!-- Quadrant Breakdown Summary Cards -->
+      <div class="quadrant-stats-grid">
+        <div class="quadrant-stat-card card-master">
+          <div class="q-title" style="color: #34d399;">
+            <span>🏆</span>
+            <span>【人形外挂】(莫不是开了？)</span>
+          </div>
+          <div id="count-master" class="q-val">0 人</div>
+          <div id="pct-master" class="q-sub">占比 0% · 降维制导 / 全知自察</div>
+        </div>
+
+        <div class="quadrant-stat-card card-pioneer">
+          <div class="q-title" style="color: #fbbf24;">
+            <span>🔥</span>
+            <span>【飞龙在天 / 定海神针】(高一元, 低二元)</span>
+          </div>
+          <div id="count-pioneer" class="q-val">0 人</div>
+          <div id="pct-pioneer" class="q-sub">占比 0% · 龙啸长空 / 固若金汤</div>
+        </div>
+
+        <div class="quadrant-stat-card card-insight">
+          <div class="q-title" style="color: #60a5fa;">
+            <span>🌱</span>
+            <span>【潜龙在渊】(低一元, 高二元)</span>
+          </div>
+          <div id="count-insight" class="q-val">0 人</div>
+          <div id="pct-insight" class="q-sub">占比 0% · 深潜知盲 / 蓄势腾渊</div>
+        </div>
+
+        <div class="quadrant-stat-card card-explorer">
+          <div class="q-title" style="color: #c084fc;">
+            <span>🚩</span>
+            <span>【无畏先锋】(低一元, 低二元)</span>
+          </div>
+          <div id="count-explorer" class="q-val">0 人</div>
+          <div id="pct-explorer" class="q-sub">占比 0% · 敢为人先 / 披荆斩棘</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Subject Records Table -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: #f8fafc;">受测者评测档案明细</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+            记录真实受测者的心理物理学测量数据与专属认知画像
+          </p>
+        </div>
+        <input type="text" id="search-subject-input" oninput="filterSubjectTable()" placeholder="🔍 搜索受测者姓名或ID..." 
+          style="background: #0b1120; border: 1px solid #1e293b; color: white; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; outline: none; width: 240px;" />
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>受测者姓名</th>
+              <th>身份类型</th>
+              <th>一元准确率</th>
+              <th>二元判断力</th>
+              <th>一元敏感度 d'</th>
+              <th>元认知 M_ratio</th>
+              <th>校准偏差</th>
+              <th>博弈总分</th>
+              <th>认知画像称号</th>
+              <th>测评时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="subject-table-body">
+            <tr>
+              <td colspan="11" style="text-align: center; color: var(--text-muted); padding: 24px;">加载受测者数据中...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="report-modal" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+      <div id="modal-report-body">加载报告中...</div>
+    </div>
+  </div>
+
+  <script>
+    let validToken = null;
+    let cohortData = null;
+    let metricMode = "pct"; // "pct" or "sdt"
+    let splitMode = "preset";
+    let thresholdX = 0.7071;
+    let thresholdY = 0.7071;
+    let renderedPoints = [];
+
+    // Check token from URL param or localStorage on page load
+    window.addEventListener("DOMContentLoaded", async () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get("token") || params.get("pwd") || params.get("key");
+      const savedToken = localStorage.getItem("meta_admin_token");
+
+      const tokenToTry = urlToken || savedToken;
+      if (tokenToTry) {
+        const ok = await checkToken(tokenToTry);
+        if (ok) {
+          validToken = tokenToTry;
+          localStorage.setItem("meta_admin_token", validToken);
+          showDashboard();
+          return;
+        }
+      }
+      showAuthScreen();
+    });
+
+    async function checkToken(token) {
+      try {
+        const res = await fetch("/api/admin/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: token })
+        });
+        const data = await res.json();
+        return data.valid === true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    async function verifyToken() {
+      const input = document.getElementById("admin-token-input").value.trim();
+      const errEl = document.getElementById("auth-error-msg");
+      if (!input) {
+        errEl.innerText = "请输入管理员访问密码";
+        errEl.style.display = "block";
+        return;
+      }
+
+      const ok = await checkToken(input);
+      if (ok) {
+        validToken = input;
+        localStorage.setItem("meta_admin_token", validToken);
+        errEl.style.display = "none";
+        showDashboard();
+      } else {
+        errEl.innerText = "密码错误，请核对控制台输出的访问密码";
+        errEl.style.display = "block";
+      }
+    }
+
+    function showAuthScreen() {
+      document.getElementById("auth-screen").style.display = "flex";
+      document.getElementById("admin-dashboard").style.display = "none";
+    }
+
+    function showDashboard() {
+      document.getElementById("auth-screen").style.display = "none";
+      document.getElementById("admin-dashboard").style.display = "flex";
+      fetchCohortData();
+    }
+
+    function logoutAdmin() {
+      localStorage.removeItem("meta_admin_token");
+      validToken = null;
+      showAuthScreen();
+    }
+
+    async function fetchCohortData(forceRefresh = false) {
+      try {
+        const res = await fetch("/api/cohort/scatter");
+        cohortData = await res.json();
+        applySplitMode(splitMode);
+        renderSubjectTable();
+      } catch (err) {
+        console.error("Failed to load cohort scatter dataset:", err);
+      }
+    }
+
+    function setAxisMetricMode(mode) {
+      metricMode = mode;
+      document.getElementById("btn-mode-pct").classList.toggle("active", mode === "pct");
+      document.getElementById("btn-mode-sdt").classList.toggle("active", mode === "sdt");
+
+      const sX = document.getElementById("slider-x");
+      const sY = document.getElementById("slider-y");
+      const lblX = document.getElementById("lbl-slider-x");
+      const lblY = document.getElementById("lbl-slider-y");
+
+      if (mode === "pct") {
+        lblX.innerText = "X 轴原点 (一元正确率基准):";
+        lblY.innerText = "Y 轴原点 (二元判断力基准):";
+        sX.min = 40; sX.max = 95;
+        sY.min = 40; sY.max = 95;
+      } else {
+        lblX.innerText = "X 轴原点 (一元敏感度 d'):";
+        lblY.innerText = "Y 轴原点 (二元效率 M_ratio):";
+        sX.min = 5; sX.max = 25;
+        sY.min = 4; sY.max = 16;
+      }
+
+      applySplitMode(splitMode);
+    }
+
+    function applySplitMode(mode) {
+      splitMode = mode;
+      document.getElementById("btn-split-preset").classList.toggle("active", mode === "preset");
+      document.getElementById("btn-split-median").classList.toggle("active", mode === "median");
+      document.getElementById("btn-split-mean").classList.toggle("active", mode === "mean");
+
+      if (!cohortData) return;
+
+      const subjects = cohortData.subjects || [];
+      const xVals = subjects.map(s => metricMode === "pct" ? s.first_order_accuracy : s.d_prime);
+      const yVals = subjects.map(s => metricMode === "pct" ? s.second_order_accuracy : s.m_ratio);
+
+      if (mode === "preset") {
+        thresholdX = metricMode === "pct" ? 0.7071 : 1.50;
+        thresholdY = metricMode === "pct" ? 0.7071 : 0.85;
+      } else if (mode === "median") {
+        thresholdX = calcMedian(xVals);
+        thresholdY = calcMedian(yVals);
+      } else if (mode === "mean") {
+        thresholdX = calcMean(xVals);
+        thresholdY = calcMean(yVals);
+      }
+
+      syncSlidersWithThresholds();
+      drawCohortScatter();
+    }
+
+    function calcMedian(arr) {
+      if (!arr || !arr.length) return 0.7071;
+      const sorted = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+
+    function calcMean(arr) {
+      if (!arr || !arr.length) return 0.7071;
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    function syncSlidersWithThresholds() {
+      const sX = document.getElementById("slider-x");
+      const sY = document.getElementById("slider-y");
+      const txtX = document.getElementById("txt-slider-x");
+      const txtY = document.getElementById("txt-slider-y");
+
+      if (metricMode === "pct") {
+        const valX = Math.round(thresholdX * 100);
+        const valY = Math.round(thresholdY * 100);
+        sX.value = valX;
+        sY.value = valY;
+        txtX.innerText = (thresholdX * 100).toFixed(1) + "%";
+        txtY.innerText = (thresholdY * 100).toFixed(1) + "%";
+      } else {
+        const valX = Math.round(thresholdX * 10);
+        const valY = Math.round(thresholdY * 10);
+        sX.value = valX;
+        sY.value = valY;
+        txtX.innerText = thresholdX.toFixed(2);
+        txtY.innerText = thresholdY.toFixed(2);
+      }
+    }
+
+    function onThresholdSliderChange(axis, rawVal) {
+      splitMode = "custom";
+      document.getElementById("btn-split-preset").classList.remove("active");
+      document.getElementById("btn-split-median").classList.remove("active");
+      document.getElementById("btn-split-mean").classList.remove("active");
+
+      if (metricMode === "pct") {
+        const val = parseInt(rawVal) / 100.0;
+        if (axis === "x") {
+          thresholdX = val;
+          document.getElementById("txt-slider-x").innerText = (val * 100).toFixed(1) + "%";
+        } else {
+          thresholdY = val;
+          document.getElementById("txt-slider-y").innerText = (val * 100).toFixed(1) + "%";
+        }
+      } else {
+        const val = parseInt(rawVal) / 10.0;
+        if (axis === "x") {
+          thresholdX = val;
+          document.getElementById("txt-slider-x").innerText = val.toFixed(2);
+        } else {
+          thresholdY = val;
+          document.getElementById("txt-slider-y").innerText = val.toFixed(2);
+        }
+      }
+
+      drawCohortScatter();
+    }
+
+    function drawCohortScatter() {
+      const canvas = document.getElementById("quadrantCanvas");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+      renderedPoints = [];
+
+      if (!cohortData || !cohortData.subjects) return;
+
+      const padLeft = 70;
+      const padRight = 50;
+      const padTop = 50;
+      const padBottom = 60;
+      const plotW = w - padLeft - padRight;
+      const plotH = h - padTop - padBottom;
+
+      let minX, maxX, minY, maxY;
+      if (metricMode === "pct") {
+        minX = 0.40; maxX = 0.95;
+        minY = 0.30; maxY = 0.98;
+      } else {
+        minX = 0.20; maxX = 2.60;
+        minY = 0.00; maxY = 1.80;
+      }
+
+      function toScreenX(val) {
+        return padLeft + ((val - minX) / (maxX - minX)) * plotW;
+      }
+      function toScreenY(val) {
+        return padTop + plotH - ((val - minY) / (maxY - minY)) * plotH;
+      }
+
+      const splitScreenX = Math.max(padLeft, Math.min(padLeft + plotW, toScreenX(thresholdX)));
+      const splitScreenY = Math.max(padTop, Math.min(padTop + plotH, toScreenY(thresholdY)));
+
+      // 1. Draw 4 Quadrants Soft Tints
+      ctx.fillStyle = "rgba(16, 185, 129, 0.07)";
+      ctx.fillRect(splitScreenX, padTop, (padLeft + plotW) - splitScreenX, splitScreenY - padTop);
+
+      ctx.fillStyle = "rgba(245, 158, 11, 0.07)";
+      ctx.fillRect(splitScreenX, splitScreenY, (padLeft + plotW) - splitScreenX, (padTop + plotH) - splitScreenY);
+
+      ctx.fillStyle = "rgba(59, 130, 246, 0.07)";
+      ctx.fillRect(padLeft, padTop, splitScreenX - padLeft, splitScreenY - padTop);
+
+      ctx.fillStyle = "rgba(139, 92, 246, 0.07)";
+      ctx.fillRect(padLeft, splitScreenY, splitScreenX - padLeft, (padTop + plotH) - splitScreenY);
+
+      // 2. Draw Quadrant Title Watermarks
+      ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = "rgba(52, 211, 153, 0.75)";
+      ctx.fillText("🏆 人形外挂 (降维制导 · 全知自察)", splitScreenX + 16, padTop + 24);
+
+      ctx.fillStyle = "rgba(251, 191, 36, 0.75)";
+      ctx.fillText("🔥 飞龙在天 / 🛡️ 定海神针 (雄厚底蕴)", splitScreenX + 16, padTop + plotH - 16);
+
+      ctx.fillStyle = "rgba(96, 165, 250, 0.75)";
+      ctx.fillText("🌱 潜龙在渊 (深潜知盲 · 蓄势腾渊)", padLeft + 16, padTop + 24);
+
+      ctx.fillStyle = "rgba(192, 132, 252, 0.75)";
+      ctx.fillText("🚩 无畏先锋 (敢为人先 · 披荆斩棘)", padLeft + 16, padTop + plotH - 16);
+
+      // 3. Grid Border & Threshold Split Axis Lines
+      ctx.strokeStyle = "#1e293b";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(padLeft, padTop, plotW, plotH);
+
+      ctx.beginPath();
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 1.5;
+      ctx.moveTo(splitScreenX, padTop);
+      ctx.lineTo(splitScreenX, padTop + plotH);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(padLeft, splitScreenY);
+      ctx.lineTo(padLeft + plotW, splitScreenY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.font = "10px sans-serif";
+      ctx.fillStyle = "#38bdf8";
+      ctx.textAlign = "center";
+      const tagTxtX = metricMode === "pct" ? `X 基准: ${(thresholdX * 100).toFixed(1)}%` : `X 基准: ${thresholdX.toFixed(2)}`;
+      ctx.fillText(tagTxtX, splitScreenX, padTop - 8);
+
+      ctx.textAlign = "left";
+      const tagTxtY = metricMode === "pct" ? `Y 基准: ${(thresholdY * 100).toFixed(1)}%` : `Y 基准: ${thresholdY.toFixed(2)}`;
+      ctx.fillText(tagTxtY, padLeft + plotW + 6, splitScreenY + 3);
+
+      // 4. Axis Labels
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "11px sans-serif";
+      ctx.textAlign = "center";
+      const xLabel = metricMode === "pct"
+        ? "一元客观准确率 (First-Order Accuracy) →"
+        : "一元知觉敏感度 (Type-1 d') →";
+      ctx.fillText(xLabel, padLeft + plotW / 2, padTop + plotH + 42);
+
+      ctx.save();
+      ctx.translate(20, padTop + plotH / 2);
+      ctx.rotate(-Math.PI / 2);
+      const yLabel = metricMode === "pct"
+        ? "二元认知判断准确度 (Second-Order Alignment) →"
+        : "纯元认知效率 (M_ratio = Meta-d' / d') →";
+      ctx.fillText(yLabel, 0, 0);
+      ctx.restore();
+
+      // 5. Draw Subject Points & Update Counts
+      let cntMaster = 0, cntPioneer = 0, cntInsight = 0, cntExplorer = 0;
+      const subjects = cohortData.subjects || [];
+
+      if (subjects.length === 0) {
+        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        ctx.fillRect(padLeft + 40, padTop + plotH / 2 - 45, plotW - 80, 90);
+        ctx.strokeStyle = "#334155";
+        ctx.strokeRect(padLeft + 40, padTop + plotH / 2 - 45, plotW - 80, 90);
+
+        ctx.font = "bold 15px -apple-system, sans-serif";
+        ctx.fillStyle = "#94a3b8";
+        ctx.textAlign = "center";
+        ctx.fillText("暂无受测者实测数据", padLeft + plotW / 2, padTop + plotH / 2 - 10);
+        ctx.font = "12px -apple-system, sans-serif";
+        ctx.fillStyle = "#64748b";
+        ctx.fillText("请受试者在主页面完成测评后，记录将实时同步展现", padLeft + plotW / 2, padTop + plotH / 2 + 16);
+        return;
+      }
+
+      subjects.forEach(sub => {
+        const valX = metricMode === "pct" ? sub.first_order_accuracy : sub.d_prime;
+        const valY = metricMode === "pct" ? sub.second_order_accuracy : sub.m_ratio;
+
+        const isHighX = (valX >= thresholdX);
+        const isHighY = (valY >= thresholdY);
+
+        let quad = "";
+        let color = "";
+        if (isHighX && isHighY) {
+          quad = "人形外挂";
+          color = "#10b981";
+          cntMaster++;
+        } else if (isHighX && !isHighY) {
+          quad = sub.calibration_bias >= 0 ? "飞龙在天" : "定海神针";
+          color = "#f59e0b";
+          cntPioneer++;
+        } else if (!isHighX && isHighY) {
+          quad = "潜龙在渊";
+          color = "#3b82f6";
+          cntInsight++;
+        } else {
+          quad = "无畏先锋";
+          color = "#8b5cf6";
+          cntExplorer++;
+        }
+
+        const sx = toScreenX(valX);
+        const sy = toScreenY(valY);
+        const radius = 6;
+
+        ctx.beginPath();
+        ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = "#ffffff";
+        ctx.stroke();
+
+        renderedPoints.push({
+          x: sx,
+          y: sy,
+          r: radius,
+          data: sub,
+          valX: valX,
+          valY: valY,
+          quad: quad,
+          color: color
+        });
+      });
+
+      const total = subjects.length || 1;
+      document.getElementById("count-master").innerText = `${cntMaster} 人`;
+      document.getElementById("pct-master").innerText = `占比 ${(cntMaster / total * 100).toFixed(1)}% · 知行合一 / 洞悉边界`;
+
+      document.getElementById("count-pioneer").innerText = `${cntPioneer} 人`;
+      document.getElementById("pct-pioneer").innerText = `占比 ${(cntPioneer / total * 100).toFixed(1)}% · 攻坚破局 / 稳健防守`;
+
+      document.getElementById("count-insight").innerText = `${cntInsight} 人`;
+      document.getElementById("pct-insight").innerText = `占比 ${(cntInsight / total * 100).toFixed(1)}% · 清醒自省 / 蓄势进化`;
+
+      document.getElementById("count-explorer").innerText = `${cntExplorer} 人`;
+      document.getElementById("pct-explorer").innerText = `占比 ${(cntExplorer / total * 100).toFixed(1)}% · 敢为人先 / 敏捷求索`;
+    }
+
+    // Tooltip
+    const canvas = document.getElementById("quadrantCanvas");
+    const tooltip = document.getElementById("quadrant-tooltip");
+
+    canvas.addEventListener("mousemove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      const mx = (e.clientX - rect.left) * scaleX;
+      const my = (e.clientY - rect.top) * scaleY;
+
+      let hovered = null;
+      for (const p of renderedPoints) {
+        const dist = Math.hypot(p.x - mx, p.y - my);
+        if (dist <= p.r + 5) {
+          hovered = p;
+          break;
+        }
+      }
+
+      if (hovered) {
+        tooltip.style.display = "block";
+        tooltip.style.left = `${e.clientX - rect.left + 14}px`;
+        tooltip.style.top = `${e.clientY - rect.top - 14}px`;
+        tooltip.style.borderColor = hovered.color;
+
+        const d = hovered.data;
+        const xDisp = metricMode === "pct"
+          ? `一元准确率: <strong>${(d.first_order_accuracy * 100).toFixed(1)}%</strong>`
+          : `一元 d': <strong>${d.d_prime.toFixed(2)}</strong>`;
+        const yDisp = metricMode === "pct"
+          ? `二元判断力: <strong>${(d.second_order_accuracy * 100).toFixed(1)}%</strong>`
+          : `元认知 M_ratio: <strong>${d.m_ratio.toFixed(3)}</strong>`;
+
+        tooltip.innerHTML = `
+          <div style="font-weight: 700; color: ${hovered.color}; font-size: 0.9rem; margin-bottom: 3px;">
+            ${d.name || '匿名受测者'}
+          </div>
+          <div style="color: #cbd5e1; font-size: 0.78rem; line-height: 1.5;">
+            象限归属: <strong style="color: ${hovered.color};">${hovered.quad}</strong><br/>
+            ${xDisp}<br/>
+            ${yDisp}<br/>
+            校准偏差: ${d.calibration_bias >= 0 ? "+" : ""}${(d.calibration_bias * 100).toFixed(1)}%<br/>
+            博弈总分: <strong>${d.final_score} 分</strong>
+          </div>
+        `;
+      } else {
+        tooltip.style.display = "none";
+      }
+    });
+
+    canvas.addEventListener("mouseleave", () => {
+      tooltip.style.display = "none";
+    });
+
+    // Subject Table
+    function renderSubjectTable() {
+      const tbody = document.getElementById("subject-table-body");
+      if (!tbody) return;
+      const subjects = (cohortData && cohortData.subjects) || [];
+
+      if (!subjects.length) {
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 24px;">暂无受测者档案记录</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = "";
+      subjects.forEach(sub => {
+        const tr = document.createElement("tr");
+        const biasStr = (sub.calibration_bias >= 0 ? "+" : "") + (sub.calibration_bias * 100).toFixed(1) + "%";
+        const scoreColor = sub.final_score >= 0 ? "#34d399" : "#f87171";
+        const role = sub.role_title || "未知";
+
+        let roleBadgeColor = "rgba(56, 189, 248, 0.15)";
+        let roleTextColor = "#38bdf8";
+        if (role.includes("领航者")) {
+          roleBadgeColor = "rgba(16, 185, 129, 0.15)"; roleTextColor = "#34d399";
+        } else if (role.includes("开拓者") || role.includes("明辨者")) {
+          roleBadgeColor = "rgba(245, 158, 11, 0.15)"; roleTextColor = "#fbbf24";
+        } else if (role.includes("洞察者")) {
+          roleBadgeColor = "rgba(59, 130, 246, 0.15)"; roleTextColor = "#60a5fa";
+        } else {
+          roleBadgeColor = "rgba(139, 92, 246, 0.15)"; roleTextColor = "#c084fc";
+        }
+
+        const dateStr = sub.created_at ? new Date(sub.created_at).toLocaleString() : "-";
+
+        tr.innerHTML = `
+          <td style="font-weight: 600; color: #f8fafc;">${sub.name || '匿名'}</td>
+          <td><span style="font-size: 0.75rem; color: #94a3b8;">${sub.subject_type || 'HUMAN'}</span></td>
+          <td style="color: #38bdf8; font-weight: 600;">${(sub.first_order_accuracy * 100).toFixed(1)}%</td>
+          <td style="color: #a78bfa; font-weight: 600;">${(sub.second_order_accuracy * 100).toFixed(1)}%</td>
+          <td>${sub.d_prime.toFixed(2)}</td>
+          <td>${sub.m_ratio.toFixed(3)}</td>
+          <td style="color: #cbd5e1;">${biasStr}</td>
+          <td style="font-weight: 700; color: ${scoreColor};">${sub.final_score} 分</td>
+          <td>
+            <span class="badge-quad" style="background: ${roleBadgeColor}; color: ${roleTextColor};">
+              ${role}
+            </span>
+          </td>
+          <td style="font-size: 0.75rem; color: #94a3b8;">${dateStr}</td>
+          <td>
+            <button class="chip-btn" style="padding: 4px 10px; font-size: 0.75rem;" onclick="viewSubjectReport('${sub.id}')">
+              📄 查看报告
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterSubjectTable() {
+      const q = document.getElementById("search-subject-input").value.toLowerCase();
+      const rows = document.querySelectorAll("#subject-table-body tr");
+      rows.forEach(r => {
+        const text = r.innerText.toLowerCase();
+        r.style.display = text.includes(q) ? "" : "none";
+      });
+    }
+
+    async function viewSubjectReport(sessionId) {
+      const modal = document.getElementById("report-modal");
+      const body = document.getElementById("modal-report-body");
+      modal.style.display = "flex";
+      body.innerHTML = `<div style="text-align: center; padding: 40px; color: #94a3b8;">加载报告数据中...</div>`;
+
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}/report`);
+        if (!res.ok) {
+          body.innerHTML = `<div style="text-align: center; color: #f87171; padding: 30px;">未找到会话报告，该受测者可能未完成测评</div>`;
+          return;
+        }
+        const rep = await res.json();
+        const diag = rep.diagnostic_profile;
+        const metrics = rep.metacognitive_metrics;
+
+        body.innerHTML = `
+          <div style="text-align: center; margin-bottom: 20px;">
+            <span style="font-size: 0.8rem; color: #38bdf8; letter-spacing: 1px; font-weight: 700;">PSYCHOMETRIC PROFILE</span>
+            <h2 style="font-size: 1.5rem; color: #f8fafc; margin-top: 4px;">二元认知天赋评估报告</h2>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 2px;">
+              受测者: <strong style="color: #60a5fa;">${rep.subject_name || '匿名'}</strong> · 编号: <span style="font-family: monospace;">${rep.session_id}</span>
+            </p>
+          </div>
+
+          <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 1.25rem; font-weight: 800; color: #34d399; margin-bottom: 6px;">
+              ${diag.role_title}
+            </div>
+            <div style="color: #38bdf8; font-size: 0.95rem; font-weight: 600; margin-bottom: 12px;">
+              ${diag.praise_tagline || ''}
+            </div>
+            <div style="color: #e2e8f0; font-size: 0.9rem; line-height: 1.8; text-align: justify; margin-bottom: 12px;">
+              ${diag.empowering_feedback || diag.detailed_feedback}
+            </div>
+            <div style="background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; padding: 10px 14px; text-align: left; font-size: 0.82rem; color: #cbd5e1; border-radius: 0 6px 6px 0;">
+              <strong>💡 赋能建议：</strong> ${diag.growth_advice || '无'}
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+            <div style="background: #0b1120; padding: 12px; border-radius: 8px; border: 1px solid #1e293b;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">一元逻辑推理胜任率</div>
+              <div style="font-size: 1.3rem; font-weight: 700; color: #38bdf8; margin-top: 4px;">${(rep.summary.first_order_accuracy * 100).toFixed(1)}%</div>
+            </div>
+            <div style="background: #0b1120; padding: 12px; border-radius: 8px; border: 1px solid #1e293b;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">自我认知敏感度 (Meta-d')</div>
+              <div style="font-size: 1.3rem; font-weight: 700; color: #a78bfa; margin-top: 4px;">${metrics.meta_d_prime.toFixed(2)}</div>
+            </div>
+            <div style="background: #0b1120; padding: 12px; border-radius: 8px; border: 1px solid #1e293b;">
+              <div style="font-size: 0.75rem; color: #94a3b8;">博弈实战总积分</div>
+              <div style="font-size: 1.3rem; font-weight: 700; color: #fbbf24; margin-top: 4px;">${rep.summary.final_score} 分</div>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        body.innerHTML = `<div style="text-align: center; color: #f87171; padding: 30px;">请求失败: ${e.message}</div>`;
+      }
+    }
+
+    function closeModal(e) {
+      document.getElementById("report-modal").style.display = "none";
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,2 @@
+[console_scripts]
+mcts = metacognitive_testing.cli:main
