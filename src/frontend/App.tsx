@@ -84,6 +84,7 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState("");
 
   // Report state
+  const [report, setReport] = useState<ReportData | null>(null);
   const [placeholderCodename, setPlaceholderCodename] = useState(() => generateRandomCodename());
 
   // Start a new exploration session

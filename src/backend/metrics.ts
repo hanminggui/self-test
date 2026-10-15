@@ -187,8 +187,8 @@ export class PsychometricScorer {
    */
   static computeCalibrationBias(records: TrialRecord[]): number {
     if (!records || records.length === 0) return 0.0;
-    const confidences = records.map(r => r.confidence_level);
-    const accuracies = records.map(r => (r.is_correct_first_order ? 1.0 : 0.0));
+    const confidences: number[] = records.map(r => r.confidence_level ?? 0.5);
+    const accuracies: number[] = records.map(r => (r.is_correct_first_order ? 1.0 : 0.0));
 
     const meanConf = confidences.reduce((a, b) => a + b, 0) / confidences.length;
     const meanAcc = accuracies.reduce((a, b) => a + b, 0) / accuracies.length;
@@ -203,7 +203,8 @@ export class PsychometricScorer {
     if (!records || records.length === 0) return 0.25;
     const squaredErrors = records.map(r => {
       const outcome = r.is_correct_first_order ? 1.0 : 0.0;
-      return Math.pow(r.confidence_level - outcome, 2);
+      const conf = r.confidence_level ?? 0.5;
+      return Math.pow(conf - outcome, 2);
     });
     const avg = squaredErrors.reduce((a, b) => a + b, 0) / squaredErrors.length;
     return Math.round(avg * 10000) / 10000;

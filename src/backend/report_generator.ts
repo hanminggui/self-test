@@ -101,7 +101,7 @@ export class ReportGenerator {
     y: number,
     metrics: MetacognitiveMetrics,
     evalRecords: TrialRecord[],
-    highBetRate: float = 0.5
+    highBetRate: number = 0.5
   ): {
     quadrant_code: string;
     role_title: string;
