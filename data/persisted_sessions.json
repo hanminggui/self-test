@@ -46,5 +46,21 @@
     "created_at": "2026-10-15 16:46:11",
     "role_title": "敏锐洞察者",
     "quadrant_code": "Q2_FUTURE_MASTER"
+  },
+  {
+    "id": "sess_1792054771_3efd7a",
+    "name": "qwe",
+    "subject_type": "HUMAN",
+    "first_order_accuracy": 0.6,
+    "second_order_accuracy": 0.5,
+    "d_prime": 1.1239,
+    "meta_d_prime": 0.01,
+    "m_ratio": 0.0089,
+    "calibration_bias": 0.3,
+    "final_score": -10,
+    "is_current": false,
+    "created_at": "2026-10-15 16:59:31",
+    "role_title": "探索先锋",
+    "quadrant_code": "Q4_BRAVE_EXPLORER"
   }
 ]
