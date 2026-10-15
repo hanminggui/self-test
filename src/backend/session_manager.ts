@@ -216,7 +216,16 @@ export class SessionManager {
   submitPhase1(sessionId: string, choice: string): any {
     const session = this.getSession(sessionId);
     if (!session) throw new Error(`Session '${sessionId}' not found.`);
-    if (session.isCompleted) throw new Error("Session already completed.");
+    if (session.isCompleted) {
+      return {
+        session_id: session.sessionId,
+        trial_index: session.currentTrialIndex,
+        phase: PhaseType.COMPLETED,
+        status: "COMPLETED",
+        is_completed: true,
+        report: session.finalReport || this.finalizeReport(session),
+      };
+    }
 
     const upperChoice = choice.trim().toUpperCase();
     const validOpts = session.currentTask ? Object.keys(session.currentTask.options) : ["A", "B", "C", "D"];
@@ -263,6 +272,15 @@ export class SessionManager {
   ): any {
     const session = this.getSession(sessionId);
     if (!session) throw new Error(`Session '${sessionId}' not found.`);
+    if (session.isCompleted) {
+      return {
+        session_id: session.sessionId,
+        trial_index: session.currentTrialIndex,
+        status: "COMPLETED",
+        is_completed: true,
+        report: session.finalReport || this.finalizeReport(session),
+      };
+    }
     if (session.stagedP1Choice === null) throw new Error("Phase 1 choice has not been submitted yet.");
     if (!session.currentTask) throw new Error("No active trial task found.");
 
@@ -327,7 +345,7 @@ export class SessionManager {
       session.isCompleted = true;
       session.currentPhase = PhaseType.COMPLETED;
       session.currentTask = null;
-      this.finalizeReport(session);
+      const finalReport = this.finalizeReport(session);
 
       return {
         session_id: session.sessionId,
@@ -337,6 +355,7 @@ export class SessionManager {
         next_trial_index: null,
         current_score: session.score,
         score_delta: scoreDelta,
+        report: finalReport,
       };
     }
 

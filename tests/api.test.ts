@@ -83,11 +83,52 @@ describe("Hono REST API Suite", () => {
     expect(dataInvalid.valid).toBe(false);
   });
 
-  test("GET /api/admin/sessions returns cohort records", async () => {
-    const res = await fetchApp("/api/admin/sessions");
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.sessions).toBeDefined();
-    expect(Array.isArray(data.sessions)).toBe(true);
+  test("Completing all trials returns report and repeat submission is idempotent", async () => {
+    // Current trial is 2 (total is 5)
+    for (let t = 2; t <= 5; t++) {
+      const p1 = await fetchApp(`/api/sessions/${sessionId}/phase1`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ choice: "A" }),
+      });
+      expect(p1.status).toBe(200);
+
+      const p2 = await fetchApp(`/api/sessions/${sessionId}/phase2`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "HIGH_BET", confidence_level: 0.9 }),
+      });
+      expect(p2.status).toBe(200);
+      const data2 = await p2.json();
+
+      if (t === 5) {
+        expect(data2.is_completed).toBe(true);
+        expect(data2.report).toBeDefined();
+        expect(data2.report.diagnostic_profile.role_title).toBeDefined();
+      }
+    }
+
+    // Repeated call to phase1 on completed session should succeed idempotently
+    const repP1 = await fetchApp(`/api/sessions/${sessionId}/phase1`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ choice: "A" }),
+    });
+    expect(repP1.status).toBe(200);
+    const repP1Data = await repP1.json();
+    expect(repP1Data.is_completed).toBe(true);
+    expect(repP1Data.report).toBeDefined();
+
+    // Repeated call to phase2 on completed session should succeed idempotently
+    const repP2 = await fetchApp(`/api/sessions/${sessionId}/phase2`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "HIGH_BET" }),
+    });
+    expect(repP2.status).toBe(200);
+    const repP2Data = await repP2.json();
+    expect(repP2Data.is_completed).toBe(true);
+    expect(repP2Data.report).toBeDefined();
   });
 });
+

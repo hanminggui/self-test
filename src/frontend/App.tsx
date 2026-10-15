@@ -134,7 +134,11 @@ export default function App() {
 
   // Submit trial answer & action
   const handleSubmitTrial = useCallback(async () => {
-    if (!sessionId || !selectedOption || loading) return;
+    if (!sessionId || loading) return;
+    if (!selectedOption) {
+      setErrorMsg("请先在上方轻点选择一个选项，再确认提交");
+      return;
+    }
     setLoading(true);
     setErrorMsg("");
 
@@ -145,7 +149,10 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ choice: selectedOption }),
       });
-      if (!p1Res.ok) throw new Error("记录选择中出现微澜");
+      if (!p1Res.ok) {
+        const errJson = await p1Res.json().catch(() => ({}));
+        throw new Error(errJson.error || "记录选择中出现微澜");
+      }
 
       // 2. Submit Phase 2
       const actionToSubmit = hintText ? "BUY_HINT" : selectedAction;
@@ -158,14 +165,19 @@ export default function App() {
           revised_choice: selectedOption,
         }),
       });
-      if (!p2Res.ok) throw new Error("确认决策中出现微澜");
+      if (!p2Res.ok) {
+        const errJson = await p2Res.json().catch(() => ({}));
+        throw new Error(errJson.error || "确认决策中出现微澜");
+      }
       const p2Data = await p2Res.json();
 
       if (p2Data.is_completed) {
-        // Fetch Report
-        const repRes = await fetch(`/api/sessions/${sessionId}/report`);
-        if (!repRes.ok) throw new Error("生成特质名片失败");
-        const repData = await repRes.json();
+        let repData = p2Data.report;
+        if (!repData) {
+          const repRes = await fetch(`/api/sessions/${sessionId}/report`);
+          if (!repRes.ok) throw new Error("生成特质名片失败");
+          repData = await repRes.json();
+        }
         setReport(repData);
         setStage("REPORT");
         confetti({
@@ -177,6 +189,7 @@ export default function App() {
       } else {
         // Fetch next trial
         const nextReqRes = await fetch(`/api/sessions/${sessionId}/trial`);
+        if (!nextReqRes.ok) throw new Error("获取下一步探索题目失败");
         const nextTrial: TrialRequest = await nextReqRes.json();
         setTrialData(nextTrial);
         setSelectedOption(null);
@@ -184,7 +197,7 @@ export default function App() {
         setHintText(null);
       }
     } catch (e: any) {
-      setErrorMsg(e.message || "请求出现微澜");
+      setErrorMsg(e.message || "请求出现微澜，请重试");
     } finally {
       setLoading(false);
     }
@@ -468,17 +481,35 @@ export default function App() {
                 </button>
               </div>
 
+              {/* 异常提示横幅 */}
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs text-center animate-in fade-in">
+                  {errorMsg}
+                </div>
+              )}
+
               {/* 继续前行主按钮 */}
               <button
                 type="button"
                 onClick={handleSubmitTrial}
-                disabled={!selectedOption || loading}
-                className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${selectedOption && !loading
-                  ? "bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white shadow-lg shadow-amber-500/20"
-                  : "bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5"
-                  }`}
+                disabled={loading}
+                className={`w-full py-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  selectedOption && !loading
+                    ? trialData.trial_index >= totalTrials
+                      ? "bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 hover:brightness-110 text-white shadow-xl shadow-amber-500/30 ring-2 ring-amber-400/40 hover:scale-[1.01] active:scale-[0.99]"
+                      : "bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white shadow-lg shadow-amber-500/20 active:scale-[0.99]"
+                    : "bg-slate-800/80 text-slate-400 border border-white/5 hover:border-white/10"
+                }`}
               >
-                {loading ? "正在记录感应..." : "确认，下一题 ↵"}
+                {loading ? (
+                  trialData.trial_index >= totalTrials ? "✨ 正在凝铸专属名片..." : "正在记录感应..."
+                ) : !selectedOption ? (
+                  "请先在上方轻点选择一个选项 ↵"
+                ) : trialData.trial_index >= totalTrials ? (
+                  "✨ 完成探索，凝铸专属名片 ↵"
+                ) : (
+                  "确认，下一题 ↵"
+                )}
               </button>
             </div>
 
