@@ -169,7 +169,7 @@ $$\text{Leverage} = \begin{cases} 0.50, & \text{if } N_{\text{hints}} = 0 \\ \fr
 
 #### C. 可信度保证机制
 * **统计显著性激活门槛（Activation Threshold）**：
-  若受试者购买线索总数 $N_{\text{hints}} < 2$，系统认定该行为不具备统计显著性，**严禁触发“Q7-ARB 长袖善舞”或“Q2-EVO 灵窍天开”等强依赖信息杠杆的专属画像**，防止偶发单次试探产生虚假画像。
+  若受试者购买线索总数 $N_{\text{hints}} < 2$，系统认定该行为不具备统计显著性，**严禁触发“Q7-ARB 诸葛在世”或“Q2-EVO 灵窍天开”等强依赖信息杠杆的专属画像**，防止偶发单次试探产生虚假画像。
 
 #### D. 误差规避策略（Error Mitigation）
 * **除零与负值防护**：公式显式定义 $N_{\text{hints}}=0$ 的分段解析解，分子使用 $\max(0, \Delta \text{NetScore})$ 截断，保证 $\text{IVE}$ 严格位于区间 $[0.0, 1.0]$ 内。
@@ -217,13 +217,13 @@ $$\text{Leverage} = \begin{cases} 0.50, & \text{if } N_{\text{hints}} = 0 \\ \fr
 | 画像编码 | 统计层：数学指标硬约束 (不可修改) | 统计层：客观特征与临床真值描述 | 展示层：专属角色称号 (可调) | 展示层：赞誉金句 (可调) | 展示层：用户最爱看的正面特质赋能 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Q1-CAL** | $D^* \ge 0.60$ (或 $d' \ge 1.4$)<br>$M_{ratio} \ge 0.80$<br>$\vert \text{Bias} \vert \le 0.15$ | **高一元·高二元·知行自洽**。<br>底层抽象推演强，二阶敏感度极高，错题绝不下高注，做对从不犹疑，知己所知，战绩期望极优。 | **人形外挂**<br>*(The Sovereign)* | 你开了 · 诗人握持 | **降维打击与绝对定力**：具备全维度的战略全局观与决策定力，胜券在握时百发百中，面对陷阱不贪功盲赌，团队核心定盘星。 |
-| **Q2-EVO** | $D^* < 0.60$<br>$M_{ratio} \ge 0.60$<br>$N_{\text{hints}} \ge 2$<br>$\text{IVE} \ge 0.60$ | **低一元·高二元·高信息杠杆**。<br>推演暂时受限，但自我认知边界极清醒，极擅长利用 Tier 1/2 线索挽救失误，Coachability 极高，成长天花板巨大。 | **灵窍天开**<br>*(The Adaptive Learner)* | 学不完 · 根本学不完 | **自省进化与敏锐嗅觉**：对未知边界拥有全场最敏锐的洞察力，善于借助外界线索启发完成攻守转换，拥有无可限量的成长天花板。 |
+| **Q2-EVO** | $D^* < 0.60$<br>$M_{ratio} \ge 0.60$<br>$N_{\text{hints}} \ge 2$<br>$\text{IVE} \ge 0.60$ | **低一元·高二元·高信息杠杆**。<br>推演暂时受限，但自我认知边界极清醒，极擅长利用 Tier 1/2 线索挽救失误，Coachability 极高，成长天花板巨大。 | **灵窍天开**<br>*(The Adaptive Learner)* | 心开一窍 · 融会贯通 | **自省进化与敏锐嗅觉**：对未知边界拥有全场最敏锐的洞察力，善于借助外界线索启发完成攻守转换，拥有无可限量的成长天花板。 |
 | **Q3-SEN** | $D^* \ge 0.60$ (或 $d' \ge 1.4$)<br>$\text{Bias} < -0.12$<br>(非 Q1) | **高一元·审慎二元·过度谨慎**。<br>一元硬实力扎实，但存在冒名顶替偏向（Impostor Syndrome），做对时频繁保守下保底注，宁可少拿分绝不冒进，守底极稳。 | **定海神针**<br>*(The Sentinel)* | 渊渟岳峙 · 固若金汤 | **极致缜密与命脉守卫**：深层底蕴极其过硬，凡事追求万无一失与极高交付底线，在惊涛骇浪中稳住大局，最值得托付后背的基石。 |
 | **Q4-PIO** | $D^* \ge 0.60$ (或 $d' \ge 1.4$)<br>$\text{Bias} \ge -0.12$<br>(非 Q1) | **高一元·激进冒险·进攻破局**。<br>推演底蕴扎实，但二阶风控较宽，遇到偶发盲区依然果断拍板前压，极少购买线索，攻坚破局魄力极强，高方差先锋。 | **飞龙在天**<br>*(The Audacious Pioneer)* | 飞龙骑脸 · 我怎么输 | **破局魄力与进攻统治**：敢打硬仗、大开大合，全场最果决的拍板定力，在团队面临僵局时能够挺身而出、一锤定音的中流砥柱。 |
-| **Q5-RET** | $D^* < 0.60$<br>$\text{Bias} \le +0.15$<br>(非 Q2, 非 Q8) | **低一元·防御避险·审慎守护**。<br>推演处于基底探索期，对未知具有高度敬畏，下注极其克制审慎，绝不盲目梭哈，擅长在迷雾中守住防线与底线。 | **潜龙勿用**<br>*(The Shadow Drifter)* | 独行幽微 · 见微知著 | **敬畏风险与敏锐探微**：对环境危险信号极度敏锐，步步为营、严防死守，具有天然的合规与风险雷达，擅长在复杂迷雾中守住防线。 |
+| **Q5-RET** | $D^* < 0.60$<br>$\text{Bias} \le +0.15$<br>(非 Q2, 非 Q8) | **低一元·防御避险·审慎守护**。<br>推演处于基底探索期，对未知具有高度敬畏，下注极其克制审慎，绝不盲目梭哈，擅长在迷雾中守住防线与底线。 | **大音希声**<br>*(The Formless Sentinel)* | 大音希声 · 大象无形 | **深邃内敛与抱朴守拙**：对环境危险信号极度敏锐，步步为营、严防死守，具有天然的合规与风险雷达，擅长在复杂迷雾中守住核心底盘。 |
 | **Q6-GAM** | $D^* < 0.60$<br>$M_{ratio} < 0.50$<br>$\text{Bias} > +0.15$ | **低一元·低二元·达克自负**。<br>经典达克效应态。错题高注率极高 $P(\text{HighBet}\mid\text{Err}) > 0.55$，感知不到陷阱盲区，行动力强，敢于以身试错。 | **无畏先锋**<br>*(The Vanguard)* | 左手高伤害 · 右手伤害高 | **无畏勇气与开拓魄力**：面对未知毫无精神内耗，行动力永远大于焦虑，敢为人先，在实战与试错中百炼成钢的破界尖兵。 |
-| **Q7-ARB** | $N_{\text{hints}} \ge 3$<br>$\text{IVE} \ge 0.70$<br>$M_{ratio} \ge 0.65$ | **中高一元·高二元·系统性概率套利**。<br>纯粹的数学期望最大化者。把握高则全额下注，存疑则果断购入线索穿透，收益期望极高，极精于借力打力。 | **长袖善舞**<br>*(The Pragmatic Arbitrageur)* | 算无遗策 · 以巧破千钧 | **精算博弈与资源整合**：极擅长用最小成本撬动最高概率确定性，精通借力打力与资源杠杆，在多重约束下斩获最高净胜收益。 |
-| **Q8-DRI** | $\text{Brier} > 0.28$<br>$M_{ratio} < 0.35$<br>行为方差发散 | **决策脱钩·纯高熵漫游态**。<br>行为模式呈现高度随机猜测，下注动作与真实正误完全脱钩，处于纯直觉游走或测试动机脱失状态。 | **暮光星灵**<br>*(The Cosmic Wanderer)* | 逍遥天地 · 不滞于物 | **自由直觉与跳脱灵动**：跳出常规逻辑桎梏，依靠纯粹的第一直觉游走于混沌之中，不可预测，在极端复杂场景中往往孕育出奇迹解。 |
+| **Q7-ARB** | $N_{\text{hints}} \ge 3$<br>$\text{IVE} \ge 0.70$<br>$M_{ratio} \ge 0.65$ | **中高一元·高二元·系统性概率套利**。<br>纯粹的数学期望最大化者。把握高则全额下注，存疑则果断购入线索穿透，收益期望极高，极精于借力打力。 | **诸葛在世**<br>*(The Pragmatic Strategist)* | 羽扇纶巾 · 算无遗策 | **草船借箭与算无遗策**：极擅长用最小成本撬动最高概率确定性，精通借力打力与资源杠杆，在多重约束下斩获最高净胜收益。 |
+| **Q8-DRI** | $\text{Brier} > 0.28$<br>$M_{ratio} < 0.35$<br>行为方差发散 | **决策脱钩·纯高熵漫游态**。<br>行为模式呈现高度随机猜测，下注动作与真实正误完全脱钩，处于纯直觉游走或测试动机脱失状态。 | **暮光星灵**<br>*(The Twilight Celestial)* | 逍遥天地 · 不滞于物 | **自由直觉与跳脱灵动**：跳出常规逻辑桎梏，依靠纯粹的第一直觉游走于混沌之中，不可预测，在极端复杂场景中往往孕育出奇迹解。 |
 
 ---
 
@@ -238,7 +238,7 @@ flowchart TD
     Q8_Check -- "是" --> P8["Q8-DRI: 暮光星灵"]
     Q8_Check -- "否" --> Q7_Check{"Step 2: 系统性概率套利判定?<br>(N_hints >= 3 且 IVE >= 0.70 且 M_ratio >= 0.65)"}
     
-    Q7_Check -- "是" --> P7["Q7-ARB: 长袖善舞"]
+    Q7_Check -- "是" --> P7["Q7-ARB: 诸葛在世"]
     Q7_Check -- "否" --> Tier1_Split{"Step 3: 一元认知相变点判定<br>(D* >= 0.60 或 d' >= 1.40)"}
     
     %% 高一元分支 (High First-Order)
@@ -252,11 +252,11 @@ flowchart TD
     Tier1_Split -- "低一元分支 (Low 1st-Order)" --> L_Meta{"二元觉察判定<br>(M_ratio >= 0.60)?"}
     L_Meta -- "高二元 (灵觉感知敏锐)" --> L_IVE{"信息杠杆激活判定<br>(N_hints >= 2 且 IVE >= 0.60)?"}
     L_IVE -- "是 (借助线索自省进化)" --> P2["Q2-EVO: 灵窍天开"]
-    L_IVE -- "否 (审慎避险守护)" --> P5["Q5-RET: 潜龙勿用"]
+    L_IVE -- "否 (审慎避险守护)" --> P5["Q5-RET: 大音希声"]
     
     L_Meta -- "低二元 (盲区钝化)" --> L_Bias{"主观自负判定<br>(Bias > +0.15 且 M_ratio < 0.50)?"}
     L_Bias -- "是 (严重达克盲赌)" --> P6["Q6-GAM: 无畏先锋"]
-    L_Bias -- "否 (低能低知但审慎本分)" --> P5_Fallback["归入 Q5-RET: 潜龙勿用"]
+    L_Bias -- "否 (低能低知但审慎本分)" --> P5_Fallback["归入 Q5-RET: 大音希声"]
 ```
 
 ### 6.1 MECE 算法实现伪代码 (TypeScript 规范)
@@ -299,13 +299,13 @@ export function classifyCognitiveArchetype(x: {
       if (x.hintsCount >= 2 && x.ive >= 0.60) {
         return CognitiveArchetype.ADAPTIVE_LEARNER; // Q2-EVO
       }
-      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 潜龙勿用)
+      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 大音希声)
     } else {
       if (x.bias > 0.15 && x.mRatio < 0.50) {
         return CognitiveArchetype.BLIND_GAMBLER; // Q6-GAM (展示为: 无畏先锋)
       }
       // 审慎本分且无盲赌恶习的低一元者，安全归入 Q5 避险守护，严禁打入 Q8
-      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 潜龙勿用)
+      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 大音希声)
     }
   }
 }
@@ -371,12 +371,12 @@ export function classifyCognitiveArchetype(x: {
 | 画像角色 | 散点空间坐标 (X, Y) | 色相 Hue (Bias 偏向) | 饱和度与透明度 (IVE 杠杆) | 最终直观视觉感受 |
 | :--- | :--- | :--- | :--- | :--- |
 | **Q1-CAL 人形外挂** | 右上方 (高 $D^*$, 高 $M_{ratio}$) | 翡翠中正绿 ($155^\circ$) | 中等纯度 + 通透质感 ($\alpha \approx 0.65$) | **温润内敛的通透青玉**（知行绝对合一，不依赖外界线索亦能自洽胜出） |
-| **Q7-ARB 长袖善舞** | 中上方 (中 $D^*$, 高 $M_{ratio}$) | 鲜活黄绿 ($120^\circ \sim 80^\circ$) | 极高纯度 + $\alpha=1.0$ + 外发光辉光 | **极度璀璨的高能霓虹珠**（精算博弈大师，工具与外界杠杆被催发到极致） |
+| **Q7-ARB 诸葛在世** | 中上方 (中 $D^*$, 高 $M_{ratio}$) | 鲜活黄绿 ($120^\circ \sim 80^\circ$) | 极高纯度 + $\alpha=1.0$ + 外发光辉光 | **极度璀璨的高能霓虹珠**（精算博弈大师，工具与外界杠杆被催发到极致） |
 | **Q2-EVO 灵窍天开** | 左上方 (低 $D^*$, 高 $M_{ratio}$) | 冰蓝微青 ($180^\circ$) | 鲜活纯度 + $\alpha=0.90$ + 轻度辉光 | **清澈透亮的灵动冰晶**（自省极其敏锐，擅借外界线索翻盘蜕变） |
 | **Q3-SEN 定海神针** | 右下方 (高 $D^*$, 审慎低 $M_{ratio}$) | 幽深冰蓝 ($205^\circ$) | 哑光低纯度 + $\alpha \approx 0.55$ | **沉静厚重的冷色玄石**（实力深厚底蕴扎实，但极度克制避险） |
 | **Q4-PIO 飞龙在天** | 右中方 (高 $D^*$, 激进冒险) | 炽烈橙红 ($20^\circ$) | 中高饱和度 + $\alpha \approx 0.75$ | **醒目凌厉的火红流星**（硬核攻坚破局，大开大合果断拍板） |
 | **Q6-GAM 无畏先锋** | 左下方 (低 $D^*$, 低 $M_{ratio}$) | 狂热鲜红 ($10^\circ$) | 偏干瘪红 + $\alpha \approx 0.60$ | **刺眼躁动的干红颗粒**（达克自负，盲赌梭哈） |
-| **Q5-RET 潜龙勿用** | 左下方 (低 $D^*$, 审慎避险) | 幽微灰蓝 ($210^\circ$) | 极低饱和度 + $\alpha \approx 0.45$ | **暗夜微光的深海幽灵**（敬畏未知风险，防御潜伏守护） |
+| **Q5-RET 大音希声** | 左下方 (低 $D^*$, 审慎避险) | 幽微灰蓝 ($210^\circ$) | 极低饱和度 + $\alpha \approx 0.45$ | **暗夜微光的深海幽灵**（敬畏未知风险，防御潜伏守护） |
 | **Q8-DRI 暮光星灵** | 左下角 (极低 $D^*$, 混沌噪态) | 杂色漂移 | 低纯度 + 哑光漫射 | **模糊暗淡的灰白噪点**（决策与胜率脱钩，高熵直觉漫游） |
 
 ---
@@ -440,7 +440,7 @@ export function computeMultivariateColor(
     ADAPTIVE_LEARNER = "ADAPTIVE_LEARNER",         // Q2-EVO
     VIGILANT_SENTINEL = "VIGILANT_SENTINEL",       // Q3-SEN
     AUDACIOUS_PIONEER = "AUDACIOUS_PIONEER",       // Q4-PIO
-    ANXIOUS_RETREATER = "ANXIOUS_RETREATER",       // Q5-RET (展示: 潜龙勿用)
+    ANXIOUS_RETREATER = "ANXIOUS_RETREATER",       // Q5-RET (展示: 大音希声)
     BLIND_GAMBLER = "BLIND_GAMBLER",               // Q6-GAM (展示: 无畏先锋)
     PRAGMATIC_ARBITRAGEUR = "PRAGMATIC_ARBITRAGEUR", // Q7-ARB
     STOCHASTIC_DRIFTER = "STOCHASTIC_DRIFTER",     // Q8-DRI

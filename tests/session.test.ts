@@ -88,9 +88,9 @@ describe("SessionManager", () => {
       "灵窍天开",
       "定海神针",
       "飞龙在天",
-      "潜龙勿用",
+      "大音希声",
       "无畏先锋",
-      "长袖善舞",
+      "诸葛在世",
       "暮光星灵",
     ];
     expect(allowedTitles).toContain(report.diagnostic_profile.role_title);

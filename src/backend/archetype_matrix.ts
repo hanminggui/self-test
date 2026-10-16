@@ -71,35 +71,35 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
     quadrant_code: "Q2-EVO",
     role_title: "灵窍天开",
     english_title: "The Adaptive Learner",
-    praise_tagline: "学不完 · 根本学不完",
-    strength_tags: ["顶级自省天赋", "极高成长上限", "敏锐避险嗅觉", "知己所不知"],
+    praise_tagline: "心开一窍 · 融会贯通",
+    strength_tags: ["顶级自省悟性", "极高成长上限", "敏锐求真直觉", "知己所不知"],
     empowering_feedback:
-      "典出《易经》：‘潜龙勿用，阳在下也’。您拥有所有卓越学习者中最罕见、最珍稀的终极天赋——对自身掌控边界的极高诚实度与洞察力！面对全新陌生的抽象规则，您对‘何时该攻、何时该守、何时该求助’的感知极其敏锐。您能精准识破盲区、主动借助外界线索化险为夷，这意味着在任何陌生领域，您都拥有比常人快数倍的纠错与进化速度，蓄势腾飞之日必震惊四方！",
+      "典出古典心学：‘心开一窍，万象昭然’。您拥有所有卓越学习者中最罕见、最珍稀的终极天赋——对自身掌控边界的极高诚实度与洞察力！面对全新陌生的抽象规则，您对‘何时该攻、何时该守、何时该借力’的感知极其敏锐。您能精准识破盲区、主动借助外界线索化险为夷，这意味着在任何陌生领域，您都拥有比常人快数倍的纠错与进化速度，蓄势顿悟之日必震惊四方！",
     growth_advice:
-      "极具无限成长上限的敏锐进化者，在给予充分的专业方法与工具沉淀后，一旦破渊而出，必将迅速蜕变为无可挑剔的领域宗师。",
+      "极具无限成长上限的敏锐进化者，在给予充分的专业方法与工具沉淀后，一旦融会贯通，必将顿悟蜕变为无可挑剔的领域宗师。",
     skills: [
       {
         icon: "🪞",
         type: "被动特技",
-        name: "灵觉自照 (Epistemic Mirror)",
+        name: "灵台自照 (Epistemic Mirror)",
         desc: "天生具备超高灵觉敏锐度，无论规则多陌生，都能瞬间感知‘哪里是已知，哪里是盲区’，对不知抱有绝对清醒。",
       },
       {
         icon: "🛡️",
         type: "核心特技",
-        name: "潜渊避险 (Submerged Caution)",
-        desc: "感知到视野模糊或不确定陷阱时被动触发避险雷达，善于借助外界线索启发与审慎保底完成安全过渡。",
+        name: "灵台避险 (Intuitive Caution)",
+        desc: "感知到视野模糊或不确定陷阱时触发避险雷达，善于借助外界线索启发与审慎保底完成安全过渡。",
       },
       {
-        icon: "🐉",
+        icon: "⚡",
         type: "觉醒绝技",
-        name: "化龙秘卷 (Evolutionary Ascent)",
-        desc: "拥有全矩阵中最高倍率的学习吸收上限，每一个失误都会被极速转化为底层经验，厚积薄发。",
+        name: "灵窍蜕变 (Epiphanic Breakthrough)",
+        desc: "拥有全矩阵中最高倍率的学习吸收上限，每一个外界线索与失误都会被极速转化为底层认知资产，厚积薄发。",
       },
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "前沿赛道拓荒者",
+        name: "前沿赛道破壁者",
         desc: "全新未知赛道探索、高复杂度新体系快速吸收、重大风险防御监督员。",
       },
     ],
@@ -192,37 +192,37 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
   [CognitiveArchetype.ANXIOUS_RETREATER]: {
     archetype: CognitiveArchetype.ANXIOUS_RETREATER,
     quadrant_code: "Q5-RET",
-    role_title: "潜龙勿用",
-    english_title: "The Shadow Drifter",
-    praise_tagline: "独行幽微 · 见微知著",
-    strength_tags: ["敬畏风险界限", "敏锐探微触角", "极高防御定力", "守土有责底线"],
+    role_title: "大音希声",
+    english_title: "The Formless Sentinel",
+    praise_tagline: "大音希声 · 大象无形",
+    strength_tags: ["深邃内敛定力", "敏锐见微知著", "抱朴守拙敬畏", "守土有责底盘"],
     empowering_feedback:
-      "您展现出深邃的‘潜龙勿用’特质！在面对复杂迷雾与未知的潜在风险时，您始终保持着极高的审慎敬畏与防守纪律，绝不盲目冒进与侥幸梭哈。在高度不确定的商业博弈或工程试炼中，这种‘宁失一城、不溃三军’的严密防线与敏锐风险雷达，往往是守护团队生存底盘最坚不可摧的隐形盾牌！",
+      "典出《道德经》：‘大音希声，大象无形’。您展现出深邃沉静的心智定力！在面对复杂迷雾与未知的潜在风险时，您深知‘大巧若拙、抱朴守真’之理，始终保持着极高的审慎敬畏与防守纪律，绝不盲目浮躁冒进。在高度不确定的商业博弈或工程试炼中，这种‘于无声处听惊雷、于无形中守阵地’的笃定与严密防线，往往是守护团队生存底盘最坚不可摧的终极底蕴！",
     growth_advice:
       "拥有天然的合规与风险预警直觉。在守住安全底线的同时，可以尝试在低风险情境下更多主动探索外部工具，逐步开拓更广阔的进攻战果。",
     skills: [
       {
-        icon: "幽",
+        icon: "🤫",
         type: "被动特技",
-        name: "幽微匿影 (Stealth Protocol)",
-        desc: "面对未知迷雾本能开启隐蔽防御，杜绝任何轻敌冒进与无谓损失，守底极稳。",
+        name: "希声守拙 (Silent Restraint)",
+        desc: "面对未知迷雾本能抱朴守拙，杜绝任何轻浮冒进与侥幸无谓损失，守底极深。",
       },
       {
         icon: "📡",
         type: "核心特技",
-        name: "见微知著 (Danger Radar)",
-        desc: "对环境中的潜在风险信号极度警觉，在危机初显前守住交付底线与命脉防线。",
+        name: "辨音于微 (Perception in Silence)",
+        desc: "对复杂局势中的微小异动与风险信号明察秋毫，在危机初显前守住交付底线与命脉防线。",
       },
       {
-        icon: "⚓",
+        icon: "🏔️",
         type: "觉醒绝技",
-        name: "绝境潜伏 (Deep-Sea Anchor)",
-        desc: "在外部动荡与波动中坚守核心阵地，化身不可动摇的防线基石与定盘锚点。",
+        name: "大象无形 (Formless Anchor)",
+        desc: "在外部动荡与波动中坚如磐石、深藏若虚，化身不可动摇的防线基石与定盘锚点。",
       },
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "风险合规守门人",
+        name: "风险合规压舱石",
         desc: "高风险业务底线防火墙、风控合规审查督导、复杂环境守底尖兵。",
       },
     ],
@@ -274,12 +274,12 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
   [CognitiveArchetype.PRAGMATIC_ARBITRAGEUR]: {
     archetype: CognitiveArchetype.PRAGMATIC_ARBITRAGEUR,
     quadrant_code: "Q7-ARB",
-    role_title: "长袖善舞",
-    english_title: "The Pragmatic Arbitrageur",
-    praise_tagline: "算无遗策 · 以巧破千钧",
-    strength_tags: ["极致概率精算", "高维资源借力", "四两拨千斤", "数学期望大师"],
+    role_title: "诸葛在世",
+    english_title: "The Pragmatic Strategist",
+    praise_tagline: "羽扇纶巾 · 算无遗策",
+    strength_tags: ["极致概率精算", "草船借箭智慧", "四两拨千斤", "数学期望大师"],
     empowering_feedback:
-      "您展现出令人拍案叫绝的‘长袖善舞’博弈造诣！您是纯粹的数学期望最大化者与资源调度大师，极其擅长以极小的确定性成本撬动最高胜率与战略净胜收益。面对未知疑难，您从不盲目蛮干硬抗，而是精于借助外界工具与信息杠杆攻守转换、借力打力。这种‘以巧破千钧、算无遗策’的精算哲学，是顶尖谋略家与运筹大师的绝对王牌！",
+      "您展现出令人拍案叫绝的‘诸葛在世’运筹博弈造诣！您是纯粹的数学期望大师与战略借力典范，深谙‘草船借箭、算无遗策’的高维智慧。面对未知疑难，您从不盲目硬抗蛮干，而是精于借助外界工具与信息杠杆攻守转换、借力打力。这种‘以巧破千钧、算尽先机’的运筹哲学，是顶尖谋略家与军师总参的绝对王牌！",
     growth_advice:
       "精通资源整合与杠杆效能，在复杂多变量约束、资源受限的极限博弈场景中，往往能以最小代价达成最大战略意图。",
     skills: [
@@ -290,21 +290,21 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
         desc: "实时评估局势胜率与数学期望，对每一份资源投入的边际效用洞若观火，追求全局期望最大化。",
       },
       {
-        icon: "💡",
+        icon: "🏹",
         type: "核心特技",
-        name: "借力破局 (Leveraged Foraging)",
+        name: "草船借箭 (Borrowed Leverage)",
         desc: "极精于利用外部工具穿透复杂迷雾，用微小线索成本换取决定性翻盘胜利，转化率高超。",
       },
       {
-        icon: "⚖️",
+        icon: "📜",
         type: "觉醒绝技",
-        name: "以巧破千钧 (Arbitrage Dominance)",
-        desc: "把握高则果决下重注，存疑则灵活对冲，在多重约束中收割最高净胜收益。",
+        name: "锦囊奇谋 (Pragmatic Arbitrage)",
+        desc: "把握高则果决下重注，存疑则调动锦囊对冲风险，以巧破千钧，在多重约束中收割最高净胜收益。",
       },
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "运筹帷幄总策划",
+        name: "核心谋略军师",
         desc: "资源受限攻坚统筹、高阶投融资策略博弈、战略谈判攻守操盘手。",
       },
     ],
@@ -316,7 +316,7 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
     archetype: CognitiveArchetype.STOCHASTIC_DRIFTER,
     quadrant_code: "Q8-DRI",
     role_title: "暮光星灵",
-    english_title: "The Cosmic Wanderer",
+    english_title: "The Twilight Celestial",
     praise_tagline: "逍遥天地 · 不滞于物",
     strength_tags: ["自由纯粹直觉", "跳脱常规框架", "混沌孕育灵感", "灵动非线性思维"],
     empowering_feedback:
@@ -327,8 +327,8 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "🌌",
         type: "被动特技",
-        name: "逍遥游 (Stochastic Flow)",
-        desc: "超脱固有逻辑与教条束缚，在多变混沌的复杂情境中凭借纯粹本能灵动穿行，自由洒脱。",
+        name: "星界漫步 (Stochastic Flow)",
+        desc: "超脱固有逻辑与教条束缚，在多变混沌的复杂星域中凭借纯粹灵性本能穿行，灵动洒脱。",
       },
       {
         icon: "✨",
@@ -395,13 +395,13 @@ export function classifyCognitiveArchetype(x: {
       if (x.hintsCount >= 2 && x.ive >= 0.60) {
         return CognitiveArchetype.ADAPTIVE_LEARNER; // Q2-EVO
       }
-      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 潜龙勿用)
+      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 大音希声)
     } else {
       if (x.bias > 0.15 && x.mRatio < 0.50) {
         return CognitiveArchetype.BLIND_GAMBLER; // Q6-GAM (展示为: 无畏先锋)
       }
       // 审慎本分且无盲赌恶习的低一元者，安全归入 Q5 避险守护，严禁打入 Q8
-      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 潜龙勿用)
+      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 大音希声)
     }
   }
 }
@@ -445,7 +445,7 @@ export function mapLegacyArchetype(val: string): CognitiveArchetype {
 
     case "ANXIOUS_RETREATER":
     case "Q5-RET":
-    case "潜龙勿用":
+    case "大音希声":
       return CognitiveArchetype.ANXIOUS_RETREATER;
 
     case "BLIND_GAMBLER":
@@ -456,7 +456,7 @@ export function mapLegacyArchetype(val: string): CognitiveArchetype {
 
     case "PRAGMATIC_ARBITRAGEUR":
     case "Q7-ARB":
-    case "长袖善舞":
+    case "诸葛在世":
       return CognitiveArchetype.PRAGMATIC_ARBITRAGEUR;
 
     case "RANDOM_GUESSER":

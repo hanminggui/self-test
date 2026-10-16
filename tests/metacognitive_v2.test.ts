@@ -42,7 +42,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       expect(def.quadrant_code).toBe("Q8-DRI");
     });
 
-    test("Q7-ARB: 长袖善舞 (系统性概率套利)", () => {
+    test("Q7-ARB: 诸葛在世 (系统性概率套利)", () => {
       const arch = classifyCognitiveArchetype({
         dStar: 0.55,
         dPrime: 1.20,
@@ -54,7 +54,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       });
       expect(arch).toBe(CognitiveArchetype.PRAGMATIC_ARBITRAGEUR);
       const def = getArchetypeDefinition(arch);
-      expect(def.role_title).toBe("长袖善舞");
+      expect(def.role_title).toBe("诸葛在世");
       expect(def.quadrant_code).toBe("Q7-ARB");
     });
 
@@ -122,7 +122,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       expect(def.quadrant_code).toBe("Q2-EVO");
     });
 
-    test("Q5-RET: 潜龙勿用 (低一元·审慎防御避险)", () => {
+    test("Q5-RET: 大音希声 (低一元·审慎防御避险)", () => {
       // 分支 A: mRatio >= 0.60 但未购买足够线索 (hintsCount < 2)
       const archA = classifyCognitiveArchetype({
         dStar: 0.45,
@@ -135,7 +135,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       });
       expect(archA).toBe(CognitiveArchetype.ANXIOUS_RETREATER);
       const defA = getArchetypeDefinition(archA);
-      expect(defA.role_title).toBe("潜龙勿用");
+      expect(defA.role_title).toBe("大音希声");
       expect(defA.quadrant_code).toBe("Q5-RET");
 
       // 分支 B: 低一元、低知觉但审慎本分 (bias <= 0.15)
@@ -198,7 +198,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       expect(report.metacognitive_metrics.cognitive_manifold_vector.length).toBe(4);
     });
 
-    test("Mock Q7 Pragmatic Arbitrageur Agent 端到端产出长袖善舞报告", () => {
+    test("Mock Q7 Pragmatic Arbitrageur Agent 端到端产出诸葛在世报告", () => {
       const sm = new SessionManager(":memory:");
       const session = sm.createSession({ totalTrials: 30, warmupTrials: 6, subjectName: "ArbitrageurAgent" });
 
@@ -225,7 +225,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
 
       const report = sm.getReport(session.sessionId);
       expect(report.diagnostic_profile.archetype).toBe(CognitiveArchetype.PRAGMATIC_ARBITRAGEUR);
-      expect(report.diagnostic_profile.role_title).toBe("长袖善舞");
+      expect(report.diagnostic_profile.role_title).toBe("诸葛在世");
       expect(report.metacognitive_metrics.info_buying_efficiency).toBeGreaterThanOrEqual(0.70);
     });
 
@@ -288,7 +288,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       expect(report.metacognitive_metrics.calibration_bias).toBeLessThan(-0.12);
     });
 
-    test("Mock Q5 Anxious Retreater Agent 端到端产出潜龙勿用报告", () => {
+    test("Mock Q5 Anxious Retreater Agent 端到端产出大音希声报告", () => {
       const sm = new SessionManager(":memory:");
       const session = sm.createSession({ totalTrials: 30, warmupTrials: 6, subjectName: "RetreaterAgent" });
 
@@ -304,7 +304,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
 
       const report = sm.getReport(session.sessionId);
       expect(report.diagnostic_profile.archetype).toBe(CognitiveArchetype.ANXIOUS_RETREATER);
-      expect(report.diagnostic_profile.role_title).toBe("潜龙勿用");
+      expect(report.diagnostic_profile.role_title).toBe("大音希声");
       expect(report.diagnostic_profile.quadrant_code).toBe("Q5-RET");
     });
 
