@@ -246,9 +246,9 @@ export class TaskGenerator {
 
     const prompt = `观察抽象符号序列的动态演化规则：
 
-  [第1步]: ${step1.join(" ")}
-  [第2步]: ${step2.join(" ")}
-  [第3步]: ${step3.join(" ")}
+[第1步]: ${step1.join(" ")}
+[第2步]: ${step2.join(" ")}
+[第3步]: ${step3.join(" ")}
 
 请从选项 A、B、C、D 中推断第 4 步的精确演化序列。`;
 
@@ -344,9 +344,9 @@ export class TaskGenerator {
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
 
-    const gridDisplay = `  第 1 行:  [ ${row1[0]} ]  [ ${row1[1]} ]  [ ${row1[2]} ]
-  第 2 行:  [ ${row2[0]} ]  [ ${row2[1]} ]  [ ${row2[2]} ]
-  第 3 行:  [ ${row3[0]} ]  [ ${row3[1]} ]  [ ${row3[2]} ]`;
+    const gridDisplay = `第 1 行:  [ ${row1[0]} ]  [ ${row1[1]} ]  [ ${row1[2]} ]
+第 2 行:  [ ${row2[0]} ]  [ ${row2[1]} ]  [ ${row2[2]} ]
+第 3 行:  [ ${row3[0]} ]  [ ${row3[1]} ]  [ ${row3[2]} ]`;
 
     const prompt = `分析下列 3x3 抽象符号矩阵的行列守恒规律：
 
@@ -527,9 +527,9 @@ ${gridToStr(baseGrid)}
 
     const prompt = `以下 3 组示例序列均严格满足某种抽象结构平衡法则（合法样本）：
 
-  [样本 1]: ${sample1}
-  [样本 2]: ${sample2}
-  [样本 3]: ${sample3}
+[样本 1]: ${sample1}
+[样本 2]: ${sample2}
+[样本 3]: ${sample3}
 
 请从选项 A、B、C、D 中判断：哪一个序列同样严格满足该守恒法则？`;
 
@@ -583,7 +583,7 @@ ${gridToStr(baseGrid)}
 
     const prompt = `系统已知下列抽象符号之间的直接序位关系（'X ▷ Y' 表示 X 的层级严格先于 Y）：
 
-  已知前提：${pairsPresented.join(" ， ")}
+已知前提：${pairsPresented.join(" ， ")}
 
 依据严格的传递性公理（若 X ▷ Y 且 Y ▷ Z，则 X ▷ Z），请判断下列哪一个命题必然成立？`;
 
@@ -633,7 +633,7 @@ ${gridToStr(baseGrid)}
 
     const prompt = `观察下列符号与数值的双轨演化序列：
 
-  ${seqItems.join("  ")}  [ ? ]
+${seqItems.join("  ")}  [ ? ]
 
 推断末尾 [ ? ] 处所对应的符号与数值组合。`;
 
@@ -678,7 +678,7 @@ ${gridToStr(baseGrid)}
 
     const prompt = `下列 3 个参考样本图形共享同一种拓扑内腔特征：
 
-  参考样本:  [ ${samples[0]} ]    [ ${samples[1]} ]    [ ${samples[2]} ]
+参考样本:  [ ${samples[0]} ]    [ ${samples[1]} ]    [ ${samples[2]} ]
 
 请从选项 A、B、C、D 中选出同样满足该拓扑特征的图形。`;
 

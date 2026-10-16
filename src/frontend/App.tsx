@@ -81,6 +81,73 @@ const cleanOption = (text: string): string => {
     .trim();
 };
 
+const renderSymbolGrid = (matrix: string[][], isOption: boolean = false) => {
+  const cols = matrix[0]?.length || 4;
+  const isLarge = cols <= 4;
+  const cellSize = isOption
+    ? (isLarge ? "w-6 h-6 text-sm" : "w-4 h-4 text-[10px]")
+    : (isLarge ? "w-8 h-8 sm:w-9 sm:h-9 text-base sm:text-lg" : "w-6 h-6 sm:w-7 sm:h-7 text-xs sm:text-sm");
+  const dotSize = isOption
+    ? (isLarge ? "w-1.5 h-1.5" : "w-1 h-1")
+    : (isLarge ? "w-2 h-2" : "w-1.5 h-1.5");
+  const gap = isOption
+    ? (isLarge ? "gap-1" : "gap-0.5")
+    : (isLarge ? "gap-1.5" : "gap-1");
+  const containerPad = isOption
+    ? "p-2 rounded-lg bg-slate-950/60 border border-white/5"
+    : "p-3 sm:p-3.5 rounded-xl bg-slate-950/80 border border-indigo-500/30 shadow-inner";
+
+  return (
+    <div className={`inline-flex flex-col ${gap} ${containerPad} select-none`}>
+      {matrix.map((row, rIdx) => (
+        <div key={rIdx} className={`flex ${gap}`}>
+          {row.map((cell, cIdx) => {
+            const isEmpty = cell === "・" || cell === "·";
+            return (
+              <div
+                key={cIdx}
+                className={`${cellSize} flex items-center justify-center rounded-md transition-all ${
+                  isEmpty
+                    ? "bg-slate-900/50 border border-white/5 text-slate-600"
+                    : "bg-indigo-950/70 text-amber-300 font-bold border border-indigo-500/40 shadow-sm shadow-indigo-500/20"
+                }`}
+              >
+                {isEmpty ? (
+                  <span className={`${dotSize} rounded-full bg-slate-500/70 inline-block`} />
+                ) : (
+                  <span>{cell}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const renderOption = (rawVal: string) => {
+  const val = cleanOption(rawVal);
+  const lines = val.split("\n").map(l => l.trim()).filter(Boolean);
+  const is2DGrid =
+    lines.length >= 2 &&
+    lines.every(l => /^[■▲★◆●○□△✦⬡・·\s]+$/.test(l));
+
+  if (is2DGrid) {
+    const matrix = lines.map(l => l.split(/\s+/).filter(Boolean));
+    const isUniform = matrix.every(r => r.length === matrix[0].length && r.length >= 2);
+    if (isUniform) {
+      return renderSymbolGrid(matrix, true);
+    }
+  }
+
+  return (
+    <span className="text-xs md:text-sm text-slate-200 leading-relaxed font-mono whitespace-pre-line pt-0.5 inline-block">
+      {val}
+    </span>
+  );
+};
+
 const renderPrompt = (rawPrompt: string) => {
   if (!rawPrompt) return null;
   // 1. Strip any residual title like "【任务类型：...】"
@@ -94,30 +161,50 @@ const renderPrompt = (rawPrompt: string) => {
   return (
     <div className="space-y-3.5">
       {paragraphs.map((p, idx) => {
-        const trimmed = p.trim();
-        const lines = trimmed.split("\n");
-        // Check if this paragraph contains a 2D symbol grid or structured rows
-        const isSymbolGrid =
-          lines.length >= 2 &&
-          lines.every(line => /^[■▲★◆●○□△✦⬡・\s]+$/.test(line.trim()) && line.trim().length > 0);
-        const isStructuredBlock =
-          lines.length >= 2 &&
-          lines.some(line => /^(\s*第\s*\d+\s*行[:：]|\s*\[(样本|第\d步)[^\]]*\])/.test(line));
+        const rawLines = p.split("\n");
+        const cleanLines = rawLines.map(l => l.trim()).filter(Boolean);
 
-        if (isSymbolGrid || isStructuredBlock) {
+        // 1. Check if this paragraph is a 2D symbol grid (e.g. 4x4 rotation or 7x6 density)
+        const is2DGrid =
+          cleanLines.length >= 2 &&
+          cleanLines.every(l => /^[■▲★◆●○□△✦⬡・·\s]+$/.test(l));
+
+        if (is2DGrid) {
+          const matrix = cleanLines.map(l => l.split(/\s+/).filter(Boolean));
+          const isUniform = matrix.every(r => r.length === matrix[0].length && r.length >= 2);
+          if (isUniform) {
+            return (
+              <div key={idx} className="my-3">
+                {renderSymbolGrid(matrix, false)}
+              </div>
+            );
+          }
+        }
+
+        // 2. Check if this paragraph is a structured multi-line block (steps, samples, rows)
+        const isStructuredBlock =
+          cleanLines.length >= 2 &&
+          cleanLines.some(l => /^(\s*第\s*\d+\s*行[:：]|\s*\[(样本|第\d步)[^\]]*\])/.test(l));
+
+        if (isStructuredBlock) {
           return (
             <div
               key={idx}
-              className="my-3 p-4 rounded-xl bg-slate-950/80 border border-indigo-500/25 font-mono text-sm md:text-base text-indigo-200 tracking-widest leading-relaxed shadow-inner overflow-x-auto select-none inline-block min-w-[220px]"
+              className="my-3 p-3.5 sm:p-4 rounded-xl bg-slate-950/80 border border-indigo-500/25 space-y-2 inline-block min-w-[220px]"
             >
-              <pre className="font-mono whitespace-pre">{trimmed}</pre>
+              {cleanLines.map((line, lIdx) => (
+                <div key={lIdx} className="font-mono text-sm md:text-base text-indigo-200 leading-relaxed tracking-wider">
+                  {line}
+                </div>
+              ))}
             </div>
           );
         }
 
+        // 3. Standard text paragraph
         return (
           <p key={idx} className="text-sm md:text-base text-slate-200 leading-relaxed font-sans font-medium whitespace-pre-line">
-            {trimmed}
+            {cleanLines.join("\n")}
           </p>
         );
       })}
@@ -503,8 +590,6 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {Object.entries(trialData.payload.options).map(([key, rawVal]) => {
                 const isSelected = selectedOption === key;
-                const val = cleanOption(rawVal);
-                const isMultiLine = val.includes("\n");
                 return (
                   <button
                     key={key}
@@ -524,15 +609,7 @@ export default function App() {
                       {key}
                     </span>
                     <div className="flex-1 min-w-0">
-                      {isMultiLine ? (
-                        <div className="font-mono text-xs md:text-sm text-slate-200 leading-relaxed tracking-widest bg-slate-950/50 p-2.5 rounded-lg border border-white/5 inline-block select-none overflow-x-auto">
-                          <pre className="font-mono whitespace-pre">{val}</pre>
-                        </div>
-                      ) : (
-                        <span className="text-xs md:text-sm text-slate-200 leading-relaxed font-mono whitespace-pre-line pt-0.5 inline-block">
-                          {val}
-                        </span>
-                      )}
+                      {renderOption(rawVal)}
                     </div>
                   </button>
                 );
