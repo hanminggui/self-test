@@ -38,6 +38,10 @@ interface TrialPayload {
   options: Record<string, string>;
   has_hint: boolean;
   hint_cost: number;
+  hint_tier1_cost: number;
+  hint_tier2_cost: number;
+  hints_unlocked: number;
+  unlocked_hints: string[];
   task_type: string;
 }
 
@@ -79,13 +83,16 @@ export default function App() {
   const [trialData, setTrialData] = useState<TrialRequest | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [selectedAction, setSelectedAction] = useState<"HIGH_BET" | "SAFE_BET">("HIGH_BET");
-  const [hintText, setHintText] = useState<string | null>(null);
+  const [unlockedHints, setUnlockedHints] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   // Report state
   const [report, setReport] = useState<ReportData | null>(null);
   const [placeholderCodename, setPlaceholderCodename] = useState(() => generateRandomCodename());
+
+  // Current trial hint cost
+  const hintsCost = unlockedHints.length === 0 ? 0 : unlockedHints.length === 1 ? 1 : 3;
 
   // Start a new exploration session
   const startSession = async () => {
@@ -108,7 +115,7 @@ export default function App() {
       setTrialData(data);
       setSelectedOption(null);
       setSelectedAction("HIGH_BET");
-      setHintText(null);
+      setUnlockedHints(data.payload.unlocked_hints || []);
       setStage("TESTING");
     } catch (e: any) {
       setErrorMsg(e.message || "网络连接微澜，请稍后刷新");
@@ -117,15 +124,18 @@ export default function App() {
     }
   };
 
-  // Purchase hint
+  // Purchase tiered hint
   const handleBuyHint = async () => {
-    if (!sessionId || hintText || loading) return;
+    if (!sessionId || unlockedHints.length >= 2 || loading) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/sessions/${sessionId}/hint`, { method: "POST" });
-      if (!res.ok) throw new Error("获取灵感启示失败");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "获取灵感启示失败");
+      }
       const data = await res.json();
-      setHintText(data.hint);
+      setUnlockedHints(data.unlocked_hints || [...unlockedHints, data.hint]);
     } catch (e: any) {
       setErrorMsg(e.message);
     } finally {
@@ -155,13 +165,12 @@ export default function App() {
         throw new Error(errJson.error || "记录选择中出现微澜");
       }
 
-      // 2. Submit Phase 2
-      const actionToSubmit = hintText ? "BUY_HINT" : selectedAction;
+      // 2. Submit Phase 2: action is selectedAction (HIGH_BET or SAFE_BET)
       const p2Res = await fetch(`/api/sessions/${sessionId}/phase2`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: actionToSubmit,
+          action: selectedAction,
           confidence_level: selectedAction === "HIGH_BET" ? 0.90 : 0.55,
           revised_choice: selectedOption,
         }),
@@ -195,14 +204,14 @@ export default function App() {
         setTrialData(nextTrial);
         setSelectedOption(null);
         setSelectedAction("HIGH_BET");
-        setHintText(null);
+        setUnlockedHints(nextTrial.payload.unlocked_hints || []);
       }
     } catch (e: any) {
       setErrorMsg(e.message || "请求出现微澜，请重试");
     } finally {
       setLoading(false);
     }
-  }, [sessionId, selectedOption, selectedAction, hintText, loading]);
+  }, [sessionId, selectedOption, selectedAction, loading]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -379,16 +388,38 @@ export default function App() {
                 {trialData.payload.prompt}
               </div>
 
-              {/* 灵感启示抽屉 */}
-              {hintText ? (
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs md:text-sm leading-relaxed animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="font-semibold text-amber-300 flex items-center gap-1.5 mb-1">
-                    <Sparkles className="w-4 h-4" /> 启发式灵感指引
-                  </div>
-                  {hintText}
+              {/* 灵感启示抽屉 (多级线索) */}
+              {unlockedHints.length > 0 && (
+                <div className="space-y-2">
+                  {unlockedHints.map((hint, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs md:text-sm leading-relaxed animate-in fade-in slide-in-from-top-2 duration-300"
+                    >
+                      <div className="font-semibold text-amber-300 flex items-center justify-between mb-1">
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-400" />
+                          {idx === 0 ? "线索 1 · 宏观思考方向" : "线索 2 · 细节排除指引"}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">
+                          {idx === 0 ? "消耗 1 分" : "消耗 2 分"}
+                        </span>
+                      </div>
+                      {hint}
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="flex justify-end">
+              )}
+
+              {/* 线索购买操作栏 */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] text-slate-400">
+                  {unlockedHints.length === 0
+                    ? "解题遇阻？可按阶梯获取多级解题线索"
+                    : `已解锁 ${unlockedHints.length}/2 级线索 (当前本题已扣除 ${hintsCost} 分)`}
+                </span>
+
+                {unlockedHints.length === 0 ? (
                   <button
                     type="button"
                     onClick={handleBuyHint}
@@ -396,11 +427,26 @@ export default function App() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 transition-all cursor-pointer"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
-                    💡 查看线索 (-2分)
+                    💡 获取宏观线索 (-1分)
                     <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">H</kbd>
                   </button>
-                </div>
-              )}
+                ) : unlockedHints.length === 1 ? (
+                  <button
+                    type="button"
+                    onClick={handleBuyHint}
+                    disabled={loading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-orange-300 hover:text-orange-200 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 transition-all cursor-pointer"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    🔍 获取细节排除线索 (-2分)
+                    <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">H</kbd>
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-amber-400/80 font-mono flex items-center gap-1">
+                    ✨ 线索已全部解锁
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* 2x2 选项卡片 */}
@@ -452,7 +498,7 @@ export default function App() {
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-xs md:text-sm flex items-center gap-1.5 text-amber-300">
                       <Flame className="w-4 h-4 text-amber-400" />
-                      🔥 稳赢确信 (+10 / -10分)
+                      🔥 稳赢确信 (+{10 - hintsCost} / -{10 + hintsCost}分)
                     </span>
                     <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">1</kbd>
                   </div>
@@ -472,7 +518,7 @@ export default function App() {
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-xs md:text-sm flex items-center gap-1.5 text-cyan-300">
                       <Shield className="w-4 h-4 text-cyan-400" />
-                      🛡️ 稳健保底 (+3分)
+                      🛡️ 稳健保底 (+{3 - hintsCost}分)
                     </span>
                     <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">2</kbd>
                   </div>

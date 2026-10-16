@@ -70,20 +70,21 @@ export class PsychometricScorer {
     const nCorrectHigh = correctRecords.filter(r => r.action === MetacognitiveAction.HIGH_BET).length;
     const nIncorrectHigh = incorrectRecords.filter(r => r.action === MetacognitiveAction.HIGH_BET).length;
 
-    const rawH2 = correctRecords.length > 0 ? nCorrectHigh / correctRecords.length : 0.5;
-    const rawFa2 = incorrectRecords.length > 0 ? nIncorrectHigh / incorrectRecords.length : 0.5;
+    const h2Star = correctRecords.length > 0
+      ? (nCorrectHigh + 0.5) / (correctRecords.length + 1.0)
+      : 0.5;
+    const fa2Star = incorrectRecords.length > 0
+      ? (nIncorrectHigh + 0.5) / (incorrectRecords.length + 1.0)
+      : 0.5;
 
-    // Zero / negative empirical sensitivity (e.g. blind gambler)
-    if (rawH2 - rawFa2 <= 0.05) {
+    // Spec §2.2 D: 反向敏感度截断 (若 H2* < FA2*，下注倒挂失效，截断为 Meta-d' = 0.01)
+    if (h2Star < fa2Star) {
       return 0.01;
     }
 
-    let h2 = correctRecords.length > 0 ? (nCorrectHigh + 0.5) / (correctRecords.length + 1.0) : 0.5;
-    let fa2 = incorrectRecords.length > 0 ? (nIncorrectHigh + 0.5) / (incorrectRecords.length + 1.0) : 0.5;
-
-    h2 = Math.max(1e-4, Math.min(1.0 - 1e-4, h2));
-    fa2 = Math.max(1e-4, Math.min(1.0 - 1e-4, fa2));
-    const empiricalD2 = normPpf(h2) - normPpf(fa2);
+    const clampedH2 = Math.max(1e-4, Math.min(1.0 - 1e-4, h2Star));
+    const clampedFa2 = Math.max(1e-4, Math.min(1.0 - 1e-4, fa2Star));
+    const empiricalD2 = normPpf(clampedH2) - normPpf(clampedFa2);
 
     const is4afc = records.some(
       r => r.correct_option === "C" || r.correct_option === "D" ||
@@ -184,10 +185,16 @@ export class PsychometricScorer {
 
   /**
    * Calibration Bias = Subjective Confidence - Objective Accuracy
+   * High bet c_i = 1.0 (or continuous confidence), Safe bet c_i = 0.5
    */
   static computeCalibrationBias(records: TrialRecord[]): number {
     if (!records || records.length === 0) return 0.0;
-    const confidences: number[] = records.map(r => r.confidence_level ?? 0.5);
+    const confidences: number[] = records.map(r => {
+      if (r.confidence_level !== undefined && r.confidence_level !== null) {
+        return r.confidence_level;
+      }
+      return r.action === MetacognitiveAction.HIGH_BET ? 1.0 : 0.5;
+    });
     const accuracies: number[] = records.map(r => (r.is_correct_first_order ? 1.0 : 0.0));
 
     const meanConf = confidences.reduce((a, b) => a + b, 0) / confidences.length;
@@ -203,7 +210,7 @@ export class PsychometricScorer {
     if (!records || records.length === 0) return 0.25;
     const squaredErrors = records.map(r => {
       const outcome = r.is_correct_first_order ? 1.0 : 0.0;
-      const conf = r.confidence_level ?? 0.5;
+      const conf = r.confidence_level ?? (r.action === MetacognitiveAction.HIGH_BET ? 1.0 : 0.5);
       return Math.pow(conf - outcome, 2);
     });
     const avg = squaredErrors.reduce((a, b) => a + b, 0) / squaredErrors.length;
@@ -211,18 +218,33 @@ export class PsychometricScorer {
   }
 
   /**
-   * Information Value Efficiency (IVE) = (Delta Accuracy * Payoff) / Cost
+   * Information Value Efficiency (IVE) per §2.4:
+   * Leverage = N_rescued / N_hints
+   * DeltaNetScore = 10 * N_rescued - Cost_total
+   * IVE = Clamp[0, 1](0.40 * Leverage + 0.60 * max(0, DeltaNetScore) / max(10, 10 * N_hints))
+   * When N_hints = 0: IVE = 0.50 (neutral prior baseline)
    */
   static computeInfoBuyingEfficiency(records: TrialRecord[]): number {
-    const hintRecords = records.filter(r => r.hint_purchased);
-    if (hintRecords.length === 0) return 0.50;
+    let nHints = 0;
+    let costTotal = 0;
+    for (const r of records) {
+      if (r.hints_unlocked !== undefined && r.hints_unlocked > 0) {
+        nHints += r.hints_unlocked;
+        costTotal += r.hints_cost_total ?? (r.hints_unlocked === 1 ? 1 : 3);
+      } else if (r.hint_purchased) {
+        nHints += 1;
+        costTotal += 2;
+      }
+    }
 
-    const rescued = hintRecords.filter(r => !r.is_correct_first_order && r.is_correct_final).length;
-    const wasted = hintRecords.filter(r => r.is_correct_first_order && !r.is_correct_final).length;
+    if (nHints === 0) return 0.50;
 
-    const deltaAcc = (rescued - wasted) / hintRecords.length;
-    const rawIve = (Math.max(0.0, deltaAcc) * 10.0) / 2.0;
-    const normalizedIve = Math.min(1.0, Math.max(0.0, rawIve * 0.2 + (rescued / hintRecords.length) * 0.8));
+    const rescued = records.filter(r => r.hint_purchased && !r.is_correct_first_order && r.is_correct_final).length;
+    const leverage = rescued / nHints;
+    const deltaNetScore = 10 * rescued - costTotal;
+    const netScoreRatio = Math.max(0, deltaNetScore) / Math.max(10, 10 * nHints);
+    const rawIve = 0.40 * leverage + 0.60 * netScoreRatio;
+    const normalizedIve = Math.min(1.0, Math.max(0.0, rawIve));
     return Math.round(normalizedIve * 10000) / 10000;
   }
 
@@ -247,16 +269,46 @@ export class PsychometricScorer {
     return Math.round(0.5 * (pHit + pCr) * 10000) / 10000;
   }
 
-  static evaluate(records: TrialRecord[], excludeWarmup: boolean = true): MetacognitiveMetrics {
+  /**
+   * Evaluates complete 4D cognitive manifold metrics.
+   */
+  static evaluate(records: TrialRecord[], excludeWarmup: boolean = true, dStar?: number): MetacognitiveMetrics {
     const evalRecords = excludeWarmup ? records.filter(r => !r.is_warmup) : records;
     const targetRecords = evalRecords.length > 0 ? evalRecords : records;
 
     const [dPrime, c] = this.computeType1Sdt(targetRecords);
     const metaD = this.computeMetaDPrime(targetRecords, dPrime, c);
-    const mRatio = Math.round((metaD / Math.max(0.05, dPrime)) * 10000) / 10000;
+
+    // Spec §2.2 D: 反向敏感度截断与分母保护 max(0.20, d')
+    const correctRecords = targetRecords.filter(r => r.is_correct_first_order);
+    const incorrectRecords = targetRecords.filter(r => !r.is_correct_first_order);
+    const nCorrectHigh = correctRecords.filter(r => r.action === MetacognitiveAction.HIGH_BET).length;
+    const nIncorrectHigh = incorrectRecords.filter(r => r.action === MetacognitiveAction.HIGH_BET).length;
+    const h2Star = correctRecords.length > 0 ? (nCorrectHigh + 0.5) / (correctRecords.length + 1.0) : 0.5;
+    const fa2Star = incorrectRecords.length > 0 ? (nIncorrectHigh + 0.5) / (incorrectRecords.length + 1.0) : 0.5;
+
+    let mRatio: number;
+    if (h2Star < fa2Star) {
+      mRatio = 0.05;
+    } else {
+      mRatio = Math.round((metaD / Math.max(0.20, dPrime)) * 10000) / 10000;
+    }
+
     const bias = this.computeCalibrationBias(targetRecords);
     const brier = this.computeBrierScore(targetRecords);
     const ive = this.computeInfoBuyingEfficiency(targetRecords);
+
+    // Calculate D* if not passed
+    let dStarValue: number;
+    if (dStar !== undefined) {
+      dStarValue = dStar;
+    } else if (targetRecords.length > 0) {
+      const recent = targetRecords.slice(-5);
+      const avgDelta = recent.reduce((a, b) => a + (b.difficulty_level ?? 0.5), 0) / recent.length;
+      dStarValue = Math.round(Math.max(0.0, Math.min(1.0, (0.85 - avgDelta) / 0.80)) * 10000) / 10000;
+    } else {
+      dStarValue = 0.50;
+    }
 
     return {
       d_prime: dPrime,
@@ -265,6 +317,8 @@ export class PsychometricScorer {
       calibration_bias: bias,
       brier_score: brier,
       info_buying_efficiency: ive,
+      d_star: dStarValue,
+      cognitive_manifold_vector: [dStarValue, mRatio, bias, ive],
     };
   }
 }

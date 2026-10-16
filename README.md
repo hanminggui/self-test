@@ -2,7 +2,7 @@
 
 一套无一元认知污染、兼顾人类与大模型（LLM/VLM）受试者、具备严谨计算认知物理学数学度量（Meta-$d'$ 与 $M_{ratio}$）的二元认知测试引擎。
 
-> 🚀 **现已全栈迁移至 Bun + TypeScript 生态**（分支：`bun`），支持极速零依赖数学求解、毫秒级测试响应与现代 React 19 + Tailwind CSS 界面。
+> 🚀 **现已全栈迁移至 Bun + TypeScript 生态**，支持极速零依赖数学求解、毫秒级测试响应与现代 React 19 + Tailwind CSS 界面。
 
 ## ⚡ Bun 全栈快速启动
 

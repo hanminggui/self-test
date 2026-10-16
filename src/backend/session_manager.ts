@@ -24,6 +24,7 @@ import { StaircaseController } from "./staircase";
 import { TaskGenerator, GeneratedTask } from "./task_generator";
 import { PsychometricScorer } from "./metrics";
 import { ReportGenerator } from "./report_generator";
+import { mapLegacyArchetype, getArchetypeDefinition } from "./archetype_matrix";
 
 export interface SessionState {
   sessionId: string;
@@ -42,6 +43,8 @@ export interface SessionState {
   finalReport: FinalAssessmentReport | null;
   stagedP1Choice: string | null;
   hintRevealedForCurrentTrial: boolean;
+  hintsUnlockedForCurrentTrial: number; // 0 (none), 1 (tier1 unlocked), 2 (tier1 & tier2 unlocked)
+  hintsCostForCurrentTrial: number; // 0, 1, or 3
   createdAt: string;
 }
 
@@ -76,9 +79,17 @@ export class SessionManager {
         created_at TEXT,
         role_title TEXT,
         quadrant_code TEXT,
-        full_report_json TEXT
+        full_report_json TEXT,
+        d_star REAL,
+        ive REAL,
+        clinical_summary TEXT
       )
     `);
+
+    // Safe migration for existing sqlite databases
+    try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN d_star REAL"); } catch {}
+    try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN ive REAL"); } catch {}
+    try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN clinical_summary TEXT"); } catch {}
   }
 
   private migrateFromLegacyJson(jsonPath: string) {
@@ -171,6 +182,8 @@ export class SessionManager {
       finalReport: null,
       stagedP1Choice: null,
       hintRevealedForCurrentTrial: false,
+      hintsUnlockedForCurrentTrial: 0,
+      hintsCostForCurrentTrial: 0,
       createdAt,
     };
 
@@ -209,7 +222,7 @@ export class SessionManager {
       session_id: session.sessionId,
       trial_index: session.currentTrialIndex,
       phase: session.currentPhase,
-      payload: session.currentTask.toSafePayload(),
+      payload: session.currentTask.toSafePayload(session.hintsUnlockedForCurrentTrial),
     };
   }
 
@@ -244,7 +257,6 @@ export class SessionManager {
       available_actions: [
         { action: "HIGH_BET", description: "选对 +10 分；选错 -10 分" },
         { action: "SAFE_BET", description: "无论对错：保底 +3 分" },
-        { action: "BUY_HINT", description: "消耗 2 分购买线索：若选对净胜 +4 分，选错为 0 分（净扣 -2 分）" },
       ],
     };
   }
@@ -255,13 +267,53 @@ export class SessionManager {
     if (session.isCompleted || !session.currentTask) throw new Error("Session already completed.");
 
     session.hintRevealedForCurrentTrial = true;
-    return {
-      session_id: session.sessionId,
-      trial_index: session.currentTrialIndex,
-      hint: session.currentTask.hint,
-      hint_cost: 2,
-      message: "线索已获取，消耗 2 分。请结合线索完成判断与下注。",
-    };
+    const task = session.currentTask;
+
+    if (session.hintsUnlockedForCurrentTrial === 0) {
+      // Unlock Tier 1 (1 point)
+      session.hintsUnlockedForCurrentTrial = 1;
+      session.hintsCostForCurrentTrial = 1;
+      return {
+        session_id: session.sessionId,
+        trial_index: session.currentTrialIndex,
+        tier: 1,
+        hint: task.hint_tier1,
+        cost: 1,
+        hint_cost: 1,
+        total_cost: 1,
+        next_tier_available: true,
+        next_tier_cost: 2,
+        message: "已解锁第 1 级宏观规律线索 (消耗 1 分)。后续仍有疑问可继续解锁第 2 级细节排除线索 (-2分)。",
+      };
+    } else if (session.hintsUnlockedForCurrentTrial === 1) {
+      // Unlock Tier 2 (2 points, total 3)
+      session.hintsUnlockedForCurrentTrial = 2;
+      session.hintsCostForCurrentTrial = 3;
+      return {
+        session_id: session.sessionId,
+        trial_index: session.currentTrialIndex,
+        tier: 2,
+        hint: task.hint_tier2,
+        cost: 2,
+        hint_cost: 2,
+        total_cost: 3,
+        next_tier_available: false,
+        next_tier_cost: 0,
+        message: "已解锁第 2 级细节穿透线索 (消耗 2 分，累计 3 分)。线索已全部解锁，请自由决策下注。",
+      };
+    } else {
+      return {
+        session_id: session.sessionId,
+        trial_index: session.currentTrialIndex,
+        tier: 2,
+        hint: task.hint_tier2,
+        cost: 0,
+        total_cost: session.hintsCostForCurrentTrial,
+        next_tier_available: false,
+        next_tier_cost: 0,
+        message: "所有线索已处于解锁状态。",
+      };
+    }
   }
 
   submitPhase2(
@@ -288,7 +340,7 @@ export class SessionManager {
     const task = session.currentTask;
     const isP1Correct = p1Choice === task.correct_option;
 
-    const hintBought = action === MetacognitiveAction.BUY_HINT || session.hintRevealedForCurrentTrial;
+    const hintBought = session.hintsCostForCurrentTrial > 0 || session.hintRevealedForCurrentTrial;
     let finalChoice = p1Choice;
     const validOpts = Object.keys(task.options);
 
@@ -308,13 +360,15 @@ export class SessionManager {
       else conf = 0.50;
     }
 
+    const hintCost = session.hintsCostForCurrentTrial || 0;
     let scoreDelta = 0;
     if (action === MetacognitiveAction.HIGH_BET) {
-      scoreDelta = isP1Correct ? +10 : -10;
+      scoreDelta = (isFinalCorrect ? +10 : -10) - hintCost;
     } else if (action === MetacognitiveAction.SAFE_BET) {
-      scoreDelta = +3;
-    } else if (action === MetacognitiveAction.BUY_HINT) {
-      scoreDelta = -2 + (isFinalCorrect ? +6 : 0);
+      scoreDelta = +3 - hintCost;
+    } else {
+      // Fallback
+      scoreDelta = (isFinalCorrect ? +10 : -10) - hintCost;
     }
 
     session.score += scoreDelta;
@@ -331,6 +385,8 @@ export class SessionManager {
       action,
       confidence_level: conf,
       hint_purchased: hintBought,
+      hints_unlocked: session.hintsUnlockedForCurrentTrial,
+      hints_cost_total: hintCost,
       revised_choice: hintBought ? finalChoice : null,
       is_correct_final: isFinalCorrect,
       score_delta: scoreDelta,
@@ -363,6 +419,8 @@ export class SessionManager {
     session.currentPhase = PhaseType.PHASE_1_FIRST_ORDER;
     session.stagedP1Choice = null;
     session.hintRevealedForCurrentTrial = false;
+    session.hintsUnlockedForCurrentTrial = 0;
+    session.hintsCostForCurrentTrial = 0;
     session.currentTask = session.taskGenerator.generate(session.currentTrialIndex, newDelta);
 
     return {
@@ -389,7 +447,8 @@ export class SessionManager {
   finalizeReport(session: SessionState): FinalAssessmentReport {
     if (session.finalReport) return session.finalReport;
 
-    const metrics = PsychometricScorer.evaluate(session.records, true);
+    const dStar = session.staircase.computeDStar();
+    const metrics = PsychometricScorer.evaluate(session.records, true, dStar);
     const report = ReportGenerator.generateReport(
       session.sessionId,
       session.subjectType,
@@ -411,8 +470,8 @@ export class SessionManager {
 
       const stmt = this.db.prepare(`
         INSERT OR REPLACE INTO completed_sessions
-        (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       stmt.run(
         report.session_id,
@@ -428,7 +487,10 @@ export class SessionManager {
         session.createdAt,
         report.diagnostic_profile.role_title,
         report.diagnostic_profile.quadrant_code,
-        JSON.stringify(report)
+        JSON.stringify(report),
+        metrics.d_star,
+        metrics.info_buying_efficiency,
+        report.diagnostic_profile.clinical_summary
       );
     } catch (e) {
       console.warn("Error persisting session to DB:", e);
@@ -450,16 +512,41 @@ export class SessionManager {
     const row: any = this.db.query("SELECT * FROM completed_sessions WHERE id = ?").get(sessionId);
     if (row) {
       if (row.full_report_json) {
-        return JSON.parse(row.full_report_json);
+        const parsed = JSON.parse(row.full_report_json);
+        if (parsed.metacognitive_metrics.d_star === undefined) {
+          const dStarVal = row.d_star ?? Math.round(Math.max(0, Math.min(1, ((parsed.summary.first_order_accuracy ?? 0.7) - 0.25) / 0.75)) * 1000) / 1000;
+          parsed.metacognitive_metrics.d_star = dStarVal;
+          parsed.metacognitive_metrics.cognitive_manifold_vector = [
+            dStarVal,
+            parsed.metacognitive_metrics.m_ratio,
+            parsed.metacognitive_metrics.calibration_bias,
+            parsed.metacognitive_metrics.info_buying_efficiency ?? 0.50
+          ];
+        }
+        if (!parsed.diagnostic_profile.clinical_summary) {
+          const mappedArch = mapLegacyArchetype(parsed.diagnostic_profile.quadrant_code || parsed.diagnostic_profile.role_title);
+          const def = getArchetypeDefinition(mappedArch);
+          parsed.diagnostic_profile.clinical_summary = def.clinical_summary;
+          parsed.diagnostic_profile.role_title = def.role_title;
+          parsed.diagnostic_profile.quadrant_code = def.quadrant_code;
+        }
+        return parsed;
       }
+
       // Synthesize fallback report for legacy migrated record
-      const metrics = {
+      const mappedArch = mapLegacyArchetype(row.quadrant_code || row.role_title || "");
+      const def = getArchetypeDefinition(mappedArch);
+      const dStarVal = row.d_star ?? 0.50;
+      const iveVal = row.ive ?? 0.50;
+      const metrics: any = {
         d_prime: row.d_prime ?? 1.2,
         meta_d_prime: row.meta_d_prime ?? 1.1,
         m_ratio: row.m_ratio ?? 0.9,
         calibration_bias: row.calibration_bias ?? 0.0,
         brier_score: 0.15,
-        info_buying_efficiency: 0.6,
+        info_buying_efficiency: iveVal,
+        d_star: dStarVal,
+        cognitive_manifold_vector: [dStarVal, row.m_ratio ?? 0.9, row.calibration_bias ?? 0.0, iveVal],
       };
       return ReportGenerator.generateReport(
         row.id,
@@ -478,22 +565,35 @@ export class SessionManager {
   getCohortScatterData(currentSessionId?: string): CohortScatterResponse {
     const rows = this.db.query("SELECT * FROM completed_sessions ORDER BY created_at DESC").all() as any[];
 
-    const subjects: SubjectDataPoint[] = rows.map(r => ({
-      id: r.id,
-      name: r.name,
-      subject_type: r.subject_type,
-      first_order_accuracy: Math.round(r.first_order_accuracy * 1000) / 1000,
-      second_order_accuracy: Math.round(r.second_order_accuracy * 1000) / 1000,
-      d_prime: Math.round(r.d_prime * 1000) / 1000,
-      meta_d_prime: Math.round(r.meta_d_prime * 1000) / 1000,
-      m_ratio: Math.round(r.m_ratio * 1000) / 1000,
-      calibration_bias: Math.round(r.calibration_bias * 1000) / 1000,
-      final_score: r.final_score,
-      is_current: r.id === currentSessionId,
-      created_at: r.created_at,
-      role_title: r.role_title,
-      quadrant_code: r.quadrant_code,
-    }));
+    const subjects: SubjectDataPoint[] = rows.map(r => {
+      const dStar = r.d_star ?? Math.round(Math.max(0, Math.min(1, ((r.first_order_accuracy ?? 0.7) - 0.25) / 0.75)) * 1000) / 1000;
+      const ive = r.ive ?? 0.50;
+      const mappedArch = mapLegacyArchetype(r.quadrant_code || r.role_title || "");
+      const def = getArchetypeDefinition(mappedArch);
+      const mRatio = Math.round((r.m_ratio ?? 0.9) * 1000) / 1000;
+      const bias = Math.round((r.calibration_bias ?? 0.0) * 1000) / 1000;
+
+      return {
+        id: r.id,
+        name: r.name,
+        subject_type: r.subject_type,
+        first_order_accuracy: Math.round((r.first_order_accuracy ?? 0.7) * 1000) / 1000,
+        second_order_accuracy: Math.round((r.second_order_accuracy ?? 0.7) * 1000) / 1000,
+        d_prime: Math.round((r.d_prime ?? 1.2) * 1000) / 1000,
+        meta_d_prime: Math.round((r.meta_d_prime ?? 1.1) * 1000) / 1000,
+        m_ratio: mRatio,
+        calibration_bias: bias,
+        final_score: r.final_score ?? 0,
+        is_current: r.id === currentSessionId,
+        created_at: r.created_at,
+        role_title: def.role_title,
+        quadrant_code: def.quadrant_code,
+        d_star: dStar,
+        ive: ive,
+        cognitive_manifold_vector: [dStar, mRatio, bias, ive],
+        clinical_summary: r.clinical_summary || def.clinical_summary,
+      };
+    });
 
     // If current session is active and not yet saved
     if (currentSessionId && !subjects.some(s => s.id === currentSessionId)) {
@@ -503,7 +603,8 @@ export class SessionManager {
         const target = evalRecords.length > 0 ? evalRecords : active.records;
         const firstAcc = target.filter(r => r.is_correct_first_order).length / target.length;
         const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
-        const metrics = PsychometricScorer.evaluate(active.records, true);
+        const dStar = active.staircase.computeDStar();
+        const metrics = PsychometricScorer.evaluate(active.records, true, dStar);
 
         subjects.unshift({
           id: active.sessionId,
@@ -520,28 +621,32 @@ export class SessionManager {
           created_at: active.createdAt,
           role_title: active.finalReport?.diagnostic_profile.role_title,
           quadrant_code: active.finalReport?.diagnostic_profile.quadrant_code,
+          d_star: metrics.d_star,
+          ive: metrics.info_buying_efficiency,
+          cognitive_manifold_vector: metrics.cognitive_manifold_vector,
+          clinical_summary: active.finalReport?.diagnostic_profile.clinical_summary,
         });
       }
     }
 
-    const xVals = subjects.map(s => s.first_order_accuracy);
-    const yVals = subjects.map(s => s.second_order_accuracy);
+    const xVals = subjects.map(s => s.d_star);
+    const yVals = subjects.map(s => s.m_ratio);
 
     const median = (arr: number[]): number => {
-      if (arr.length === 0) return 0.7071;
+      if (arr.length === 0) return 0.50;
       const sorted = [...arr].sort((a, b) => a - b);
       const mid = Math.floor(sorted.length / 2);
       return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
     };
 
     const mean = (arr: number[]): number => {
-      if (arr.length === 0) return 0.7071;
+      if (arr.length === 0) return 0.50;
       return arr.reduce((a, b) => a + b, 0) / arr.length;
     };
 
     return {
-      baseline_x: 0.7071,
-      baseline_y: 0.7071,
+      baseline_x: 0.60,
+      baseline_y: 0.80,
       median_x: Math.round(median(xVals) * 1000) / 1000,
       median_y: Math.round(median(yVals) * 1000) / 1000,
       mean_x: Math.round(mean(xVals) * 1000) / 1000,

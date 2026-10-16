@@ -22,11 +22,20 @@ export enum SubjectType {
 }
 
 export enum CognitiveArchetype {
-  ACCURATELY_CALIBRATED = "ACCURATELY_CALIBRATED", // 精准自知型
-  OVERCONFIDENT = "OVERCONFIDENT",                 // 自负型 / 达克效应
-  UNDERCONFIDENT = "UNDERCONFIDENT",               // 谨慎内耗型
-  BLIND_GAMBLER = "BLIND_GAMBLER",                 // 盲赌型
-  RANDOM_GUESSER = "RANDOM_GUESSER",               // 随机猜测型
+  SOVEREIGN = "SOVEREIGN",                       // Q1-CAL: 领航统帅
+  ADAPTIVE_LEARNER = "ADAPTIVE_LEARNER",         // Q2-EVO: 潜龙在渊
+  VIGILANT_SENTINEL = "VIGILANT_SENTINEL",       // Q3-SEN: 定海神针
+  AUDACIOUS_PIONEER = "AUDACIOUS_PIONEER",       // Q4-PIO: 飞龙在天
+  ANXIOUS_RETREATER = "ANXIOUS_RETREATER",       // Q5-RET: 暗夜行者
+  BLIND_GAMBLER = "BLIND_GAMBLER",               // Q6-GAM: 无畏先锋
+  PRAGMATIC_ARBITRAGEUR = "PRAGMATIC_ARBITRAGEUR", // Q7-ARB: 神机策士
+  STOCHASTIC_DRIFTER = "STOCHASTIC_DRIFTER",     // Q8-DRI: 星轨漫游者
+
+  // 向后兼容历史 v1 枚举别名
+  ACCURATELY_CALIBRATED = "SOVEREIGN",
+  OVERCONFIDENT = "AUDACIOUS_PIONEER",
+  UNDERCONFIDENT = "VIGILANT_SENTINEL",
+  RANDOM_GUESSER = "STOCHASTIC_DRIFTER",
 }
 
 export enum RiskAttitude {
@@ -41,7 +50,14 @@ export interface TrialPayload {
   prompt: string;
   options: Record<string, string>; // e.g. { "A": "...", "B": "...", "C": "...", "D": "..." }
   has_hint: boolean;
-  hint_cost: number;
+  hint_cost: number; // 默认 1 分 (Tier 1)
+  hint_tier1_cost: number; // 1 分 (宏观规律思考方向)
+  hint_tier2_cost: number; // 2 分 (微观穿透/细节排除)
+  hints_unlocked: number; // 当前已解锁级别: 0 (未买), 1 (解锁 Tier 1), 2 (全部解锁)
+  unlocked_hints?: {
+    tier1?: string;
+    tier2?: string;
+  };
   task_type: string;
   stimulus_data?: Record<string, any>;
 }
@@ -84,6 +100,8 @@ export interface TrialRecord {
   action: MetacognitiveAction;
   confidence_level: number;
   hint_purchased: boolean;
+  hints_unlocked?: number; // 0, 1, 2
+  hints_cost_total?: number; // 0, 1, 3
   revised_choice?: string | null;
   is_correct_final: boolean;
   score_delta: number;
@@ -96,6 +114,7 @@ export interface SessionSummary {
   target_staircase_convergence: number;
   final_score: number;
   reversals_count: number;
+  d_star?: number;
 }
 
 export interface MetacognitiveMetrics {
@@ -105,6 +124,8 @@ export interface MetacognitiveMetrics {
   calibration_bias: number;
   brier_score: number;
   info_buying_efficiency: number;
+  d_star: number;
+  cognitive_manifold_vector: [number, number, number, number]; // [D*, M_ratio, Bias, IVE]
 }
 
 export interface SkillItem {
@@ -119,8 +140,9 @@ export interface DiagnosticProfile {
   risk_attitude: RiskAttitude;
   critical_weakness: string;
   coachability_index: number;
+  clinical_summary: string; // 后台统计层：客观特征与临床真值描述 (零情感修饰)
   detailed_feedback?: string;
-  // 5大专属称号展示层（严禁改动）
+  // 展示层：纯正面赋能契约
   role_title: string;
   quadrant_code: string;
   praise_tagline: string;
@@ -154,6 +176,10 @@ export interface SubjectDataPoint {
   created_at?: string;
   role_title?: string;
   quadrant_code?: string;
+  d_star: number;
+  ive: number;
+  cognitive_manifold_vector: [number, number, number, number];
+  clinical_summary?: string;
 }
 
 export interface CohortScatterResponse {

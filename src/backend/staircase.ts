@@ -41,10 +41,13 @@ export class StaircaseController {
     this.lastDirection = 0;
     this.reversalCount = 0;
     this.reversalTrials = [];
+    this.reversalDeltas = [];
 
     this.historyDeltas = [this.currentDelta];
     this.historyResponses = [];
   }
+
+  reversalDeltas: number[];
 
   /**
    * Update the staircase state based on the first-order accuracy of current trial.
@@ -74,6 +77,7 @@ export class StaircaseController {
       if (this.lastDirection !== 0 && direction !== this.lastDirection) {
         this.reversalCount += 1;
         this.reversalTrials.push(this.trialCount);
+        this.reversalDeltas.push(this.currentDelta);
       }
 
       this.lastDirection = direction;
@@ -106,15 +110,37 @@ export class StaircaseController {
     return correctCount / responses.length;
   }
 
-  getEstimatedThreshold(lastNReversals: number = 4): number {
-    if (this.reversalTrials.length < 2) {
-      return this.currentDelta;
+  /**
+   * Estimates asymptotic difference threshold delta* based on effective post-warmup reversals.
+   * If reversals < 2 (extreme ceiling/floor performance), falls back to 5-trial moving average.
+   */
+  getEstimatedThreshold(warmupCutoff: number = 5): number {
+    const validDeltas: number[] = [];
+    for (let i = 0; i < this.reversalTrials.length; i++) {
+      if (this.reversalTrials[i] > warmupCutoff) {
+        validDeltas.push(this.reversalDeltas[i]);
+      }
     }
-    const targetTrials = this.reversalTrials.slice(-lastNReversals);
-    const recentDeltas = targetTrials
-      .filter(i => i < this.historyDeltas.length)
-      .map(i => this.historyDeltas[i]);
-    if (recentDeltas.length === 0) return this.currentDelta;
-    return recentDeltas.reduce((a, b) => a + b, 0) / recentDeltas.length;
+
+    if (validDeltas.length < 2) {
+      const last5 = this.historyDeltas.slice(-5);
+      if (last5.length === 0) return this.currentDelta;
+      return last5.reduce((a, b) => a + b, 0) / last5.length;
+    }
+
+    const kEff = Math.min(5, validDeltas.length);
+    const targetDeltas = validDeltas.slice(-kEff);
+    return targetDeltas.reduce((a, b) => a + b, 0) / targetDeltas.length;
+  }
+
+  /**
+   * Computes normalized first-order difficulty capacity D* in [0, 1].
+   * D* = (delta_max - delta*) / (delta_max - delta_min) = (0.85 - delta*) / 0.80
+   */
+  computeDStar(deltaStar?: number): number {
+    const delta = deltaStar !== undefined ? deltaStar : this.getEstimatedThreshold();
+    const dStar = (this.maxDelta - delta) / (this.maxDelta - this.minDelta);
+    const clamped = Math.max(0.0, Math.min(1.0, dStar));
+    return Math.round(clamped * 10000) / 10000;
   }
 }

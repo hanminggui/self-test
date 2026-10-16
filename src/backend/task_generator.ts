@@ -25,9 +25,11 @@ export interface GeneratedTask {
   options: Record<string, string>;
   correct_option: string; // "A" | "B" | "C" | "D"
   signal_type: "S1" | "S2";
+  hint_tier1: string; // Tier 1 (1分): 宏观规律与思考方向
+  hint_tier2: string; // Tier 2 (2分): 微观穿透与干扰排除
   hint: string;
   stimulus_data: Record<string, any>;
-  toSafePayload(): TrialPayload;
+  toSafePayload(unlockedTier?: number): TrialPayload;
 }
 
 export class TaskGenerator {
@@ -90,9 +92,18 @@ export class TaskGenerator {
 
     let padIdx = 1;
     while (cleanDistractors.length < 3) {
-      const fakeD = `${correctVal} (变体 ${padIdx})`;
+      // Create a perturbed alternative without adding textual leak labels
+      const chars = Array.from(correctVal);
+      if (chars.length > 2) {
+        const p1 = (padIdx * 2) % chars.length;
+        const p2 = (p1 + 1) % chars.length;
+        [chars[p1], chars[p2]] = [chars[p2], chars[p1]];
+      }
+      const fakeD = chars.join("");
       if (fakeD !== correctVal && !cleanDistractors.includes(fakeD)) {
         cleanDistractors.push(fakeD);
+      } else {
+        cleanDistractors.push(correctVal + " ");
       }
       padIdx++;
     }
@@ -137,9 +148,11 @@ export class TaskGenerator {
     options: Record<string, string>,
     correct_option: string,
     signal_type: "S1" | "S2",
-    hint: string,
+    hint_tier1: string,
+    hint_tier2: string,
     stimulus_data: Record<string, any>
   ): GeneratedTask {
+    const combinedHint = `【第一级线索 (宏观思维)】\n${hint_tier1}\n\n【第二级线索 (细节穿透)】\n${hint_tier2}`;
     return {
       stimulus_id,
       difficulty_level,
@@ -147,16 +160,26 @@ export class TaskGenerator {
       options,
       correct_option,
       signal_type,
-      hint,
+      hint_tier1,
+      hint_tier2,
+      hint: combinedHint,
       stimulus_data,
-      toSafePayload(): TrialPayload {
+      toSafePayload(unlockedTier: number = 0): TrialPayload {
+        const unlocked_hints: { tier1?: string; tier2?: string } = {};
+        if (unlockedTier >= 1) unlocked_hints.tier1 = hint_tier1;
+        if (unlockedTier >= 2) unlocked_hints.tier2 = hint_tier2;
+
         return {
           stimulus_id,
           difficulty_level: Math.round(difficulty_level * 10000) / 10000,
           prompt,
           options,
-          has_hint: Boolean(hint),
-          hint_cost: 2,
+          has_hint: true,
+          hint_cost: unlockedTier === 0 ? 1 : 2,
+          hint_tier1_cost: 1,
+          hint_tier2_cost: 2,
+          hints_unlocked: unlockedTier,
+          unlocked_hints: unlockedTier > 0 ? unlocked_hints : undefined,
           task_type: stimulus_data.task_type || "UNKNOWN",
           stimulus_data,
         };
@@ -228,10 +251,8 @@ export class TaskGenerator {
   [第3步]: ${step3.join(" ")}
 请从选项 A、B、C、D 中推断第 4 步的精确演化序列。`;
 
-    const hint = `【启发式线索】抽象密码遵循序列置换与状态转移机制：
-1. 观察符号在序列中的整体平移方向（向左循环还是向右循环）；
-2. 注意符号在移动时是否经历了形态映射置换（如实心与空心、特定图形间的固定映射）。
-比对前 3 步在相同位置上的符号演变轨迹，即可推导出第 4 步的转移律。`;
+    const hint_tier1 = `宏观规律方向（1分价值）：序列置换与状态转移机制。优先观察前3步在序列整体上的平移律（当前规则为：${ruleName}），判断符号整体是左移、右移还是端点置换，据此可粗筛排除50%平移错位的干扰项。`;
+    const hint_tier2 = `微观特征穿透（2分价值）：符号在平移的同时伴随一对一状态映射置换。例如第3步转移至第4步时，第1位符号必须由前一步指定位置的符号经固定映射得到，可明确排除首尾符号置换错误的特定混淆项。`;
 
     return this.wrapTask(
       stimulus_id,
@@ -240,7 +261,8 @@ export class TaskGenerator {
       options,
       correctOption,
       signalType,
-      hint,
+      hint_tier1,
+      hint_tier2,
       { task_type: "SYNTHETIC_CIPHER", rule_name: ruleName }
     );
   }
@@ -248,14 +270,15 @@ export class TaskGenerator {
   // 2. 离散点阵密度感知
   private generateDensityTask(trialIndex: number, delta: number): GeneratedTask {
     const stimulus_id = `density_matrix_t${String(trialIndex).padStart(3, "0")}`;
-    const baseN = 26;
-    const diff = Math.max(2, Math.round(baseN * (delta / 1.5)));
+    const baseN = 21;
+    // Scale perceptual difference directly with delta: at delta=0.05, diff=1; at delta=0.50, diff=5; at delta=0.85, diff=9
+    const diff = Math.max(1, Math.round(12 * Math.pow(Math.max(0.02, delta), 1.2)));
     const targetCount = baseN + diff;
     const dCounts = [
-      Math.max(4, baseN - diff),
-      Math.max(4, baseN - Math.floor(diff * 0.6) - 1),
-      Math.max(4, baseN - Math.floor(diff * 1.2) - 2),
-    ].map(c => (c >= targetCount ? targetCount - 2 : c));
+      Math.max(4, baseN),
+      Math.max(4, baseN + Math.max(0, diff - 1)),
+      Math.max(4, baseN - Math.max(1, Math.floor(diff * 0.5))),
+    ].map(c => (c >= targetCount ? targetCount - 1 : c));
 
     const gridW = 7;
     const gridH = 6;
@@ -278,11 +301,11 @@ export class TaskGenerator {
     };
 
     const chosenSym = this.choice(["■", "▲", "★", "◆"]);
-    const correctStr = `点阵区 (高聚集度):\n${makeGridStr(targetCount, chosenSym)}`;
+    const correctStr = `点阵区:\n${makeGridStr(targetCount, chosenSym)}`;
     const distractors = [
-      `点阵区 (散布比照 1):\n${makeGridStr(dCounts[0], chosenSym)}`,
-      `点阵区 (散布比照 2):\n${makeGridStr(dCounts[1], chosenSym)}`,
-      `点阵区 (散布比照 3):\n${makeGridStr(dCounts[2], chosenSym)}`,
+      `点阵区:\n${makeGridStr(dCounts[0], chosenSym)}`,
+      `点阵区:\n${makeGridStr(dCounts[1], chosenSym)}`,
+      `点阵区:\n${makeGridStr(dCounts[2], chosenSym)}`,
     ];
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
@@ -291,10 +314,8 @@ export class TaskGenerator {
 观察下列 4 个离散点阵区域（选项 A、B、C、D，网格大小 7x6）。
 依据快速知觉判断：哪一个区域包含最高密度的特征微元 (${chosenSym})？`;
 
-    const hint = `【启发式线索】微元密度对比的知觉聚焦策略：
-1. 避免逐个计数，关注特征微元 (${chosenSym}) 在局部区域的聚集团块与空白间距；
-2. 真正的高密度区域往往在局部形成密集的同类微元连通团块，而干扰项通常散布均匀稀疏；
-3. 快速对比各区域中“背景微元 (·)”的连通空白面积，空白面积最小者即为高聚集区。`;
+    const hint_tier1 = `宏观知觉聚焦（1分价值）：避免逐个细数。优先反向扫描“背景微元 (·)”的连通空白面积；真正的高密度区域其背景空白连通面积最小，可快速排除两个明显稀疏的散布对比项。`;
+    const hint_tier2 = `微观团块穿透（2分价值）：目标最高密度区域中，特征微元在局部形成了紧密的连通团块（总微元达到 ${targetCount} 个）；而对比项中微元数量上限不超过 ${Math.max(...dCounts)} 个，在网格边缘分布稀落，可排除缺乏局部核心聚集的干扰项。`;
 
     return this.wrapTask(
       stimulus_id,
@@ -303,7 +324,8 @@ export class TaskGenerator {
       options,
       correctOption,
       signalType,
-      hint,
+      hint_tier1,
+      hint_tier2,
       { task_type: "DOT_DENSITY", target_count: targetCount }
     );
   }
@@ -333,10 +355,8 @@ ${gridDisplay}
 
 从选项 A、B、C、D 中推断右下角 [ ? ] 处应填入哪一个符号？`;
 
-    const hint = `【启发式线索】3x3 矩阵推理的行列守恒不变量：
-1. 观察第 1 行与第 2 行所包含的符号全集，注意图形在每行是否各出现一次（拉丁方阵守恒）；
-2. 沿列方向交叉检验相同的守恒规律，确认每一列同样不存在重复符号；
-3. 找出前两行共有的 3 种基准符号，对比第 3 行当前已有的 2 个符号，即可确定右下角所缺失的唯一种类。`;
+    const hint_tier1 = `宏观规律方向（1分价值）：3x3 矩阵遵循严格的“拉丁方阵行列双向守恒律”。每一行与每一列均由相同的 3 种基准符号构成且无重复出现，与图形尺寸或渐变无关，可排除重复符选项。`;
+    const hint_tier2 = `微观细节穿透（2分价值）：对比前两行全集，再观察第 3 行与第 3 列已给出的两个符号，直接求出二者交集所缺失的唯一种类；选项中未出现在矩阵全集中的符号、或已在该行该列出现的符号均可直接排除。`;
 
     return this.wrapTask(
       stimulus_id,
@@ -345,7 +365,8 @@ ${gridDisplay}
       options,
       correctOption,
       signalType,
-      hint,
+      hint_tier1,
+      hint_tier2,
       { task_type: "MATRIX_REASONING" }
     );
   }
@@ -426,9 +447,9 @@ ${gridDisplay}
     }
 
     const distractors = [
-      `几何构型 (异构 1):\n${gridToStr(m1)}`,
-      `几何构型 (异构 2):\n${gridToStr(m2)}`,
-      `几何构型 (畸变 3):\n${gridToStr(deformed)}`,
+      `几何构型:\n${gridToStr(m1)}`,
+      `几何构型:\n${gridToStr(m2)}`,
+      `几何构型:\n${gridToStr(deformed)}`,
     ];
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
@@ -441,10 +462,8 @@ ${gridToStr(baseGrid)}
 请从选项 A、B、C、D 中判断：哪一个构型是由基准构型在平面内通过【纯旋转】得到的？
 （注：其余选项为镜像异构体或畸变体，无法仅靠平面旋转复原）`;
 
-    const hint = `【启发式线索】空间心智旋转与手征性辨识法：
-1. 刚体在平面内做纯旋转时，图形的“手征性”（左右利手方向）严格保持不变；
-2. 锁定基准构型中一个独特的局部特征（例如最长的连续分支或 L 型拐角），观察拐角末端的弯折方向；
-3. 凡是通过翻转（镜像反射）才能重合的选项均为干扰项，可依此率先排除手征性相反的异构体。`;
+    const hint_tier1 = `宏观思考方向（1分价值）：刚体平面纯旋转的手征性（手性）守恒律。纯旋转不改变手性，请锁定基准构型的最长分支折角，观察其顺时针拐弯走向，可快速剔除必须翻转才能重合的镜像体。`;
+    const hint_tier2 = `微观细节穿透（2分价值）：刚体旋转后微元总数严格守恒（畸变选项有点缺失直接排除）。同时基准构型的 3 微元主轴与单点侧翼的相对左右位置在旋转下恒定，可明确排除侧翼位置反转的异构体。`;
 
     return this.wrapTask(
       stimulus_id,
@@ -453,7 +472,8 @@ ${gridToStr(baseGrid)}
       options,
       correctOption,
       signalType,
-      hint,
+      hint_tier1,
+      hint_tier2,
       { task_type: "SPATIAL_ROTATION" }
     );
   }
@@ -464,30 +484,45 @@ ${gridToStr(baseGrid)}
     const solidSyms = ["●", "■", "▲"];
     const hollowSyms = ["○", "□", "△"];
 
-    const makeValid = (): string[] => {
-      const nSolid = this.choice([2, 4]);
+    const makeValid = (lenMult: number = 1): string[] => {
+      const nSolid = this.choice([2, 4]) * lenMult;
       const solids = Array.from({ length: nSolid }, () => this.choice(solidSyms));
       const hollows = Array.from({ length: 2 }, () => this.choice(hollowSyms));
       const inner = this.shuffle([...solids, hollows[0]]);
       return [...inner, hollows[1]];
     };
 
-    const makeInvalid = (nSolid: number): string[] => {
-      const solids = Array.from({ length: nSolid }, () => this.choice(solidSyms));
-      const hollows = Array.from({ length: 2 }, () => this.choice(hollowSyms));
-      const inner = this.shuffle([...solids, hollows[0]]);
-      return [...inner, hollows[1]];
+    const makeInvalid = (mode: number, lenMult: number = 1): string[] => {
+      if (mode === 0) {
+        // Violates hollow count (3 hollows instead of 2), even solids
+        const solids = Array.from({ length: 2 * lenMult }, () => this.choice(solidSyms));
+        const hollows = Array.from({ length: 3 }, () => this.choice(hollowSyms));
+        return this.shuffle([...solids, ...hollows]);
+      } else if (mode === 1) {
+        // Violates hollow count (1 hollow instead of 2), even solids
+        const solids = Array.from({ length: 4 * lenMult }, () => this.choice(solidSyms));
+        const hollows = Array.from({ length: 1 }, () => this.choice(hollowSyms));
+        return this.shuffle([...solids, ...hollows]);
+      } else {
+        // Violates solid parity (odd solids, 2 hollows)
+        const solids = Array.from({ length: (2 * lenMult) + 1 }, () => this.choice(solidSyms));
+        const hollows = Array.from({ length: 2 }, () => this.choice(hollowSyms));
+        return this.shuffle([...solids, ...hollows]);
+      }
     };
 
-    const sample1 = makeValid().join(" ");
-    const sample2 = makeValid().join(" ");
-    const sample3 = makeValid().join(" ");
+    const isHard = delta < 0.4;
+    const mult = isHard ? 2 : 1;
 
-    const correctStr = makeValid().join(" ");
+    const sample1 = makeValid(mult).join(" ");
+    const sample2 = makeValid(mult).join(" ");
+    const sample3 = makeValid(mult).join(" ");
+
+    const correctStr = makeValid(mult).join(" ");
     const distractors = [
-      makeInvalid(1).join(" "),
-      makeInvalid(3).join(" "),
-      makeInvalid(5).join(" "),
+      makeInvalid(0, mult).join(" "),
+      makeInvalid(1, mult).join(" "),
+      makeInvalid(2, mult).join(" "),
     ];
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
@@ -500,10 +535,8 @@ ${gridToStr(baseGrid)}
 
 请从选项 A、B、C、D 中判断：哪一个序列同样严格满足该守恒法则？`;
 
-    const hint = `【启发式线索】结构平衡不变量的归纳维度：
-1. 不要被符号的具体排列位置（前后次序）所干扰，结构守恒通常建立在宏观统计特征上；
-2. 分别统计样本中“实心图形”（●、■、▲）与“空心图形”（○、□、△）的各自出现频次；
-3. 观察合法样本在数量奇偶性（或总和配比）上的共同特征，并在各选项中检验该不变量。`;
+    const hint_tier1 = `宏观规律方向（1分价值）：结构平衡法则建立在‘实心图形(●/■/▲)’与‘空心图形(○/□/△)’的分类统计特征上，与具体符号前后次序无关。请重点统计样本中两类图形的各自出现总数。`;
+    const hint_tier2 = `微观细节穿透（2分价值）：所有合法样本均严格锁定双重不变量：①空心图形数量恒等于 2；②实心图形总数严格为偶数。干扰项中存在空心数为 1 或 3 个、或实心数为奇数的伪造序列，可直接排除。`;
 
     return this.wrapTask(
       stimulus_id,
@@ -512,7 +545,8 @@ ${gridToStr(baseGrid)}
       options,
       correctOption,
       signalType,
-      hint,
+      hint_tier1,
+      hint_tier2,
       { task_type: "PARITY_INVARIANT" }
     );
   }
@@ -551,10 +585,8 @@ ${gridToStr(baseGrid)}
 
 依据严格的传递性公理（若 X ▷ Y 且 Y ▷ Z，则 X ▷ Z），请判断下列哪一个命题必然成立？`;
 
-    const hint = `【启发式线索】偏序传递关系的拓扑建链法：
-1. 将已知条件视为有向图（X ▷ Y 表示 X 指向 Y）；
-2. 寻找链条的开端（只出现在 ▷ 左侧、从未出现在右侧的符号）以及末端（只出现在右侧的符号）；
-3. 顺藤摸瓜将分散的前提串联为一条单向有序总链，然后将各选项的前后序位代入总链中验证是否成立。`;
+    const hint_tier1 = `宏观规律方向（1分价值）：偏序关系的单向拓扑建链法。将已知条件视为有向图，寻找全序链的唯一起点（只出现在 ▷ 左侧者）与终点（只出现在右侧者），建立严格单向流动总链。`;
+    const hint_tier2 = `微观细节穿透（2分价值）：总链的局部前驱子链包含 '${s0} ▷ ${s1} ▷ ${s2}'。若选项断言后驱元素先于前驱元素（如逆向颠倒命题），均属于不可传递的伪命题，可直接排除逆向干扰项。`;
 
     return this.wrapTask(
       stimulus_id,
@@ -563,7 +595,8 @@ ${gridToStr(baseGrid)}
       options,
       correctOption,
       signalType,
-      hint,
+      hint_tier1,
+      hint_tier2,
       { task_type: "RELATIONAL_TRANSITIVITY" }
     );
   }
@@ -602,10 +635,8 @@ ${gridToStr(baseGrid)}
 
 推断末尾 [ ? ] 处所对应的符号与数值组合。`;
 
-    const hint = `【启发式线索】双轨演化序列的解耦分析法：
-1. 符号轨与数值轨是相互独立的双重规律，请分开独立推演；
-2. 符号轨：观察符号的循环周期，统计周期长度以确定第 5 项对应的符号；
-3. 数值轨：计算相邻两项之间的增量差值（一阶差），观察差值是否呈等差递增，进而累加推算出目标数值。`;
+    const hint_tier1 = `宏观规律方向（1分价值）：双轨演化序列的解耦分析。符号轨与数值轨是彼此独立的双重规律：符号遵循长度为 6 的有限循环群，数值遵循多阶等差数列，必须分别独立推导。`;
+    const hint_tier2 = `微观细节穿透（2分价值）：数值轨的一阶相邻差值依次递增 ${stepDiff}，二阶差分恒为常数；第 5 项的数值增量必为 ${stepDiff * 4}；同时符号循环周期为 6，当前末尾符号为循环序列的第 5 项，可直接排除数值计算偏差的干扰项。`;
 
     return this.wrapTask(
       stimulus_id,
@@ -614,7 +645,8 @@ ${gridToStr(baseGrid)}
       options,
       correctOption,
       signalType,
-      hint,
+      hint_tier1,
+      hint_tier2,
       { task_type: "SEQUENCE_PROGRESSION" }
     );
   }
@@ -661,10 +693,8 @@ ${gridToStr(baseGrid)}
 
 请从选项 A、B、C、D 中选出同样满足该拓扑特征的图形。`;
 
-    const hint = `【启发式线索】拓扑不变性与闭合内腔分析：
-1. 拓扑学中忽略笔画长度、曲直与几何形状，重点关注图形的“连通性”与“内部封闭空腔（孔洞）数目”；
-2. 仔细数一数 3 个参考样本图形内部各包围了多少个封闭区域（例如是否有内腔、是 1 个还是 2 个）；
-3. 选项中只有唯一一个图形具备与参考样本完全相同的空腔数量，其余均为异构干扰项。`;
+    const hint_tier1 = `宏观规律方向（1分价值）：拓扑同胚守恒与欧拉示性数。忽略笔画粗细、长短曲直与几何外形，核心考查图形在连通性上所包含的‘内部闭合空腔（孔洞/内环）数目’。`;
+    const hint_tier2 = `微观细节穿透（2分价值）：参考样本均为严格包含 ${kLoops} 个闭合孔洞的拓扑图形。候选项中具有 ${kLoops === 0 ? "1个或2个闭合内腔" : kLoops === 1 ? "0个或2个闭合内腔" : "0个或1个闭合内腔"} 的选项均为拓扑异构体，可直接排除。`;
 
     return this.wrapTask(
       stimulus_id,
@@ -673,7 +703,8 @@ ${gridToStr(baseGrid)}
       options,
       correctOption,
       signalType,
-      hint,
+      hint_tier1,
+      hint_tier2,
       { task_type: "TOPOLOGICAL_LOOPS" }
     );
   }

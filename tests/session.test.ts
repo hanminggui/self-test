@@ -82,9 +82,19 @@ describe("SessionManager", () => {
     expect(report.subject_name).toBe("测试员张三");
     expect(report.summary.total_trials).toBe(12);
 
-    // Profile must be one of the user's custom titles
-    const allowedTitles = ["人形外挂", "潜龙在渊", "飞龙在天", "定海神针", "无畏先锋"];
+    // Profile must be one of the 8 v2 custom titles
+    const allowedTitles = [
+      "领航统帅",
+      "潜龙在渊",
+      "定海神针",
+      "飞龙在天",
+      "暗夜行者",
+      "无畏先锋",
+      "神机策士",
+      "星轨漫游者",
+    ];
     expect(allowedTitles).toContain(report.diagnostic_profile.role_title);
     expect(report.diagnostic_profile.skills.length).toBe(4);
+    expect(report.diagnostic_profile.clinical_summary).toBeDefined();
   });
 });

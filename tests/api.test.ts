@@ -27,14 +27,28 @@ describe("Hono REST API Suite", () => {
     sessionId = data.session_id;
   });
 
-  test("POST /api/sessions/:id/hint purchases hint", async () => {
-    const res = await fetchApp(`/api/sessions/${sessionId}/hint`, {
+  test("POST /api/sessions/:id/hint purchases tier 1 and tier 2 hints", async () => {
+    // 1st purchase: Tier 1, cost 1
+    const res1 = await fetchApp(`/api/sessions/${sessionId}/hint`, {
       method: "POST",
     });
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.hint).toBeDefined();
-    expect(data.hint_cost).toBe(2);
+    expect(res1.status).toBe(200);
+    const data1 = await res1.json();
+    expect(data1.hint).toBeDefined();
+    expect(data1.cost).toBe(1);
+    expect(data1.total_cost).toBe(1);
+    expect(data1.next_tier_available).toBe(true);
+
+    // 2nd purchase: Tier 2, cost 2, total 3
+    const res2 = await fetchApp(`/api/sessions/${sessionId}/hint`, {
+      method: "POST",
+    });
+    expect(res2.status).toBe(200);
+    const data2 = await res2.json();
+    expect(data2.hint).toBeDefined();
+    expect(data2.cost).toBe(2);
+    expect(data2.total_cost).toBe(3);
+    expect(data2.next_tier_available).toBe(false);
   });
 
   test("POST /api/sessions/:id/phase1 records choice", async () => {
