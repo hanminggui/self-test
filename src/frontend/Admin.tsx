@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   ShieldCheck,
   Lock,
@@ -8,6 +8,7 @@ import {
   Users,
   Brain,
   Award,
+  ChevronLeft,
   ChevronRight,
   X,
   Sliders,
@@ -16,6 +17,7 @@ import {
   Info,
   Compass,
   Zap,
+  Filter,
 } from "lucide-react";
 
 export interface VisualColorToken {
@@ -97,6 +99,17 @@ interface ScatterData {
   subjects: SubjectPoint[];
 }
 
+const QUADRANT_PRESETS = [
+  { code: "Q1-CAL", defaultTitle: "人形外挂" },
+  { code: "Q2-EVO", defaultTitle: "灵窍天开" },
+  { code: "Q3-SEN", defaultTitle: "定海神针" },
+  { code: "Q4-PIO", defaultTitle: "飞龙在天" },
+  { code: "Q5-RET", defaultTitle: "大音希声" },
+  { code: "Q6-GAM", defaultTitle: "无畏先锋" },
+  { code: "Q7-ARB", defaultTitle: "诸葛在世" },
+  { code: "Q8-DRI", defaultTitle: "暮光星灵" },
+];
+
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [inputPassword, setInputPassword] = useState("");
@@ -107,7 +120,15 @@ export default function Admin() {
   const [scatterData, setScatterData] = useState<ScatterData | null>(null);
   const [loadingData, setLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string>("ALL");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [selectedSubjectReport, setSelectedSubjectReport] = useState<any | null>(null);
+
+  // Reset page when filter or page size changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedTag, pageSize]);
 
   // Scatter view controls
   const [splitLine, setSplitLine] = useState<"BASELINE" | "MEDIAN" | "MEAN">("BASELINE");
@@ -191,6 +212,73 @@ export default function Admin() {
     }
   };
 
+  const subjects = scatterData?.subjects || [];
+
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: subjects.length };
+    subjects.forEach((s) => {
+      const code = s.quadrant_code;
+      if (code) {
+        counts[code] = (counts[code] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [subjects]);
+
+  const quadrantTitles = useMemo(() => {
+    const titles: Record<string, string> = {};
+    subjects.forEach((s) => {
+      if (s.quadrant_code && s.role_title && !titles[s.quadrant_code]) {
+        titles[s.quadrant_code] = s.role_title;
+      }
+    });
+    return titles;
+  }, [subjects]);
+
+  const filteredSubjects = useMemo(() => {
+    return subjects.filter((s) => {
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !query ||
+        s.name.toLowerCase().includes(query) ||
+        s.id.toLowerCase().includes(query) ||
+        (s.role_title && s.role_title.toLowerCase().includes(query)) ||
+        (s.quadrant_code && s.quadrant_code.toLowerCase().includes(query));
+
+      const matchesTag =
+        selectedTag === "ALL" ||
+        s.quadrant_code === selectedTag ||
+        s.role_title === selectedTag;
+
+      return matchesSearch && matchesTag;
+    });
+  }, [subjects, searchQuery, selectedTag]);
+
+  const totalItems = filteredSubjects.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedSubjects = filteredSubjects.slice(startIndex, endIndex);
+
+  // Compute split line coordinates based on active settings (4D Cognitive Manifold)
+  let splitXRatio = 0.60;
+  let splitYRatio = 0.40; // 0.80 / 2.0 = 0.40
+  let splitXVal = 0.60;
+  let splitYVal = 0.80;
+
+  if (splitLine === "MEDIAN" && scatterData) {
+    splitXVal = scatterData.median_x;
+    splitYVal = scatterData.median_y;
+    splitXRatio = Math.max(0.05, Math.min(0.95, splitXVal));
+    splitYRatio = Math.max(0.05, Math.min(0.95, splitYVal / 2.0));
+  } else if (splitLine === "MEAN" && scatterData) {
+    splitXVal = scatterData.mean_x;
+    splitYVal = scatterData.mean_y;
+    splitXRatio = Math.max(0.05, Math.min(0.95, splitXVal));
+    splitYRatio = Math.max(0.05, Math.min(0.95, splitYVal / 2.0));
+  }
+
   if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#090a0f] text-slate-400 text-sm">
@@ -235,33 +323,6 @@ export default function Admin() {
         </div>
       </div>
     );
-  }
-
-  const subjects = scatterData?.subjects || [];
-  const filteredSubjects = subjects.filter(
-    (s) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.role_title && s.role_title.includes(searchQuery)) ||
-      (s.quadrant_code && s.quadrant_code.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  // Compute split line coordinates based on active settings (4D Cognitive Manifold)
-  let splitXRatio = 0.60;
-  let splitYRatio = 0.40; // 0.80 / 2.0 = 0.40
-  let splitXVal = 0.60;
-  let splitYVal = 0.80;
-
-  if (splitLine === "MEDIAN" && scatterData) {
-    splitXVal = scatterData.median_x;
-    splitYVal = scatterData.median_y;
-    splitXRatio = Math.max(0.05, Math.min(0.95, splitXVal));
-    splitYRatio = Math.max(0.05, Math.min(0.95, splitYVal / 2.0));
-  } else if (splitLine === "MEAN" && scatterData) {
-    splitXVal = scatterData.mean_x;
-    splitYVal = scatterData.mean_y;
-    splitXRatio = Math.max(0.05, Math.min(0.95, splitXVal));
-    splitYRatio = Math.max(0.05, Math.min(0.95, splitYVal / 2.0));
   }
 
   return (
@@ -407,68 +468,71 @@ export default function Admin() {
           </div>
 
           {/* 内部绘图核心网格区 (0% ~ 100% 对应 X:0~1.0, Y:0~2.0) */}
-          <div className="relative w-full h-[380px] md:h-[460px] border border-white/10 rounded-xl overflow-hidden bg-slate-950/60">
-            {/* 四象限光晕背景 */}
-            {/* Q1: 人形外挂 (右上: 高D*, 高M) */}
-            <div
-              className="absolute pointer-events-none transition-all duration-300"
-              style={{
-                left: `${splitXRatio * 100}%`,
-                bottom: `${splitYRatio * 100}%`,
-                right: 0,
-                top: 0,
-                background: "radial-gradient(ellipse at top right, rgba(16, 185, 129, 0.12), transparent 75%)",
-              }}
-            />
-            {/* Q2 / Q7: 灵窍天开 / 长袖善舞 (左上: 低D*, 高M) */}
-            <div
-              className="absolute pointer-events-none transition-all duration-300"
-              style={{
-                left: 0,
-                bottom: `${splitYRatio * 100}%`,
-                width: `${splitXRatio * 100}%`,
-                top: 0,
-                background: "radial-gradient(ellipse at top left, rgba(6, 182, 212, 0.10), transparent 75%)",
-              }}
-            />
-            {/* Q3 / Q4: 定海神针 / 飞龙在天 (右下: 高D*, 低M) */}
-            <div
-              className="absolute pointer-events-none transition-all duration-300"
-              style={{
-                left: `${splitXRatio * 100}%`,
-                bottom: 0,
-                right: 0,
-                height: `${splitYRatio * 100}%`,
-                background: "radial-gradient(ellipse at bottom right, rgba(245, 158, 11, 0.09), transparent 75%)",
-              }}
-            />
-            {/* Q5 / Q6 / Q8: 潜龙勿用 / 无畏先锋 / 暮光星灵 (左下: 低D*, 低M) */}
-            <div
-              className="absolute pointer-events-none transition-all duration-300"
-              style={{
-                left: 0,
-                bottom: 0,
-                width: `${splitXRatio * 100}%`,
-                height: `${splitYRatio * 100}%`,
-                background: "radial-gradient(ellipse at bottom left, rgba(244, 63, 94, 0.08), transparent 75%)",
-              }}
-            />
+          <div className="relative w-full h-[380px] md:h-[460px] border border-white/10 rounded-xl bg-slate-950/60">
+            {/* 背景剪裁层：仅对渐变光晕与坐标线执行圆角裁剪，严禁裁剪悬浮浮窗 */}
+            <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+              {/* 四象限光晕背景 */}
+              {/* Q1: 人形外挂 (右上: 高D*, 高M) */}
+              <div
+                className="absolute pointer-events-none transition-all duration-300"
+                style={{
+                  left: `${splitXRatio * 100}%`,
+                  bottom: `${splitYRatio * 100}%`,
+                  right: 0,
+                  top: 0,
+                  background: "radial-gradient(ellipse at top right, rgba(16, 185, 129, 0.12), transparent 75%)",
+                }}
+              />
+              {/* Q2 / Q7: 灵窍天开 / 诸葛在世 (左上: 低D*, 高M) */}
+              <div
+                className="absolute pointer-events-none transition-all duration-300"
+                style={{
+                  left: 0,
+                  bottom: `${splitYRatio * 100}%`,
+                  width: `${splitXRatio * 100}%`,
+                  top: 0,
+                  background: "radial-gradient(ellipse at top left, rgba(6, 182, 212, 0.10), transparent 75%)",
+                }}
+              />
+              {/* Q3 / Q4: 定海神针 / 飞龙在天 (右下: 高D*, 低M) */}
+              <div
+                className="absolute pointer-events-none transition-all duration-300"
+                style={{
+                  left: `${splitXRatio * 100}%`,
+                  bottom: 0,
+                  right: 0,
+                  height: `${splitYRatio * 100}%`,
+                  background: "radial-gradient(ellipse at bottom right, rgba(245, 158, 11, 0.09), transparent 75%)",
+                }}
+              />
+              {/* Q5 / Q6 / Q8: 大音希声 / 无畏先锋 / 暮光星灵 (左下: 低D*, 低M) */}
+              <div
+                className="absolute pointer-events-none transition-all duration-300"
+                style={{
+                  left: 0,
+                  bottom: 0,
+                  width: `${splitXRatio * 100}%`,
+                  height: `${splitYRatio * 100}%`,
+                  background: "radial-gradient(ellipse at bottom left, rgba(244, 63, 94, 0.08), transparent 75%)",
+                }}
+              />
 
-            {/* 微弱坐标网格线 */}
-            {[0.2, 0.4, 0.6, 0.8].map((x) => (
-              <div
-                key={`grid-x-${x}`}
-                className="absolute top-0 bottom-0 border-l border-white/[0.04] pointer-events-none"
-                style={{ left: `${x * 100}%` }}
-              />
-            ))}
-            {[0.2, 0.4, 0.6, 0.8].map((y) => (
-              <div
-                key={`grid-y-${y}`}
-                className="absolute left-0 right-0 border-t border-white/[0.04] pointer-events-none"
-                style={{ bottom: `${y * 100}%` }}
-              />
-            ))}
+              {/* 微弱坐标网格线 */}
+              {[0.2, 0.4, 0.6, 0.8].map((x) => (
+                <div
+                  key={`grid-x-${x}`}
+                  className="absolute top-0 bottom-0 border-l border-white/[0.04] pointer-events-none"
+                  style={{ left: `${x * 100}%` }}
+                />
+              ))}
+              {[0.2, 0.4, 0.6, 0.8].map((y) => (
+                <div
+                  key={`grid-y-${y}`}
+                  className="absolute left-0 right-0 border-t border-white/[0.04] pointer-events-none"
+                  style={{ bottom: `${y * 100}%` }}
+                />
+              ))}
+            </div>
 
             {/* 象限水印标识与称号 */}
             <div className="absolute top-3 right-4 text-right pointer-events-none z-0">
@@ -481,7 +545,7 @@ export default function Admin() {
             <div className="absolute top-3 left-4 text-left pointer-events-none z-0">
               <span className="text-xs font-bold text-cyan-400/50 uppercase tracking-widest block flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                Q2-EVO: 灵窍天开 / Q7-ARB: 长袖善舞
+                Q2-EVO: 灵窍天开 / Q7-ARB: 诸葛在世
               </span>
               <span className="text-[10px] text-slate-400">高二元觉察 · 借力进化与概率套利</span>
             </div>
@@ -497,7 +561,7 @@ export default function Admin() {
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
                 Q5-RET / Q6-GAM / Q8-DRI
               </span>
-              <span className="text-[10px] text-slate-400">潜龙勿用 · 无畏先锋 · 暮光星灵</span>
+              <span className="text-[10px] text-slate-400">大音希声 · 无畏先锋 · 暮光星灵</span>
             </div>
 
             {/* 动态相变/中位/均值 分割线 */}
@@ -569,15 +633,26 @@ export default function Admin() {
               );
             })}
 
-            {/* 精致悬浮浮窗 Tooltip */}
-            {hoveredSubject && (
-              <div
-                className="absolute pointer-events-none glass-panel rounded-2xl p-4 border border-indigo-500/40 text-xs shadow-2xl z-40 space-y-2.5 w-72 animate-in fade-in zoom-in-95 duration-150"
-                style={{
-                  left: `${Math.min(68, Math.max(6, (hoveredSubject.d_star ?? 0.5) * 100))}%`,
-                  bottom: `${Math.min(60, Math.max(8, ((hoveredSubject.m_ratio ?? 0.8) / 2.0) * 100))}%`,
-                }}
-              >
+            {/* 精致悬浮浮窗 Tooltip (智能翻转 + 置顶 z-50 + 绝不截断) */}
+            {hoveredSubject && (() => {
+              const dStar = hoveredSubject.d_star !== undefined ? hoveredSubject.d_star : 0.5;
+              const posX = Math.max(0.02, Math.min(0.98, dStar)) * 100;
+              const posY = Math.max(0.02, Math.min(0.98, (hoveredSubject.m_ratio ?? 0.8) / 2.0)) * 100;
+              const isUpperHalf = posY > 48; // 上半部点位：悬浮卡片向下展开，避免冲顶遮挡
+              const isRightHalf = posX > 52; // 右半部点位：悬浮卡片向左展开，避免溢出右侧
+
+              return (
+                <div
+                  className="absolute pointer-events-none glass-panel rounded-2xl p-4 border border-indigo-500/50 text-xs shadow-2xl z-50 space-y-2.5 w-72 md:w-80 backdrop-blur-xl bg-slate-950/95 animate-in fade-in zoom-in-95 duration-150"
+                  style={{
+                    ...(isUpperHalf
+                      ? { top: `${Math.max(4, Math.min(62, (100 - posY) + 4))}%` }
+                      : { bottom: `${Math.max(4, Math.min(62, posY + 4))}%` }),
+                    ...(isRightHalf
+                      ? { right: `${Math.max(3, Math.min(65, (100 - posX) + 3))}%` }
+                      : { left: `${Math.max(3, Math.min(65, posX + 3))}%` }),
+                  }}
+                >
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
                   <div>
                     <div className="font-bold text-white text-sm flex items-center gap-1.5">
@@ -643,7 +718,8 @@ export default function Admin() {
                   <span className="text-indigo-400 flex items-center">点击查看画像报告 →</span>
                 </div>
               </div>
-            )}
+            );
+          })()}
           </div>
 
           {/* X 轴刻度尺 (底部) */}
@@ -745,7 +821,12 @@ export default function Admin() {
       {/* 历史明细数据表格 */}
       <div className="glass-panel rounded-3xl p-6 md:p-8 border border-white/5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-base font-bold text-white">受测者 4D 流形评测明细 (MECE 8 大画像全量)</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-white">受测者 4D 流形评测明细 (MECE 8 大画像全量)</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-slate-400 font-mono">
+              {totalItems} 条
+            </span>
+          </div>
 
           <div className="relative w-full sm:w-64">
             <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
@@ -757,6 +838,53 @@ export default function Admin() {
               className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
+        </div>
+
+        {/* 分类标签过滤栏 */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 text-xs no-scrollbar border-b border-white/5">
+          <div className="flex items-center gap-1.5 text-slate-500 shrink-0 text-[11px] pr-1">
+            <Filter className="w-3.5 h-3.5" />
+            <span>标签筛选:</span>
+          </div>
+          <button
+            onClick={() => setSelectedTag("ALL")}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all flex items-center gap-1.5 shrink-0 text-xs ${selectedTag === "ALL"
+              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 font-semibold"
+              : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10"
+              }`}
+          >
+            <span>全部画像</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${selectedTag === "ALL" ? "bg-white/20 text-white" : "bg-black/30 text-slate-400"
+                }`}
+            >
+              {tagCounts["ALL"] || 0}
+            </span>
+          </button>
+          {QUADRANT_PRESETS.map((q) => {
+            const count = tagCounts[q.code] || 0;
+            const isSelected = selectedTag === q.code;
+            const title = quadrantTitles[q.code] || q.defaultTitle;
+            return (
+              <button
+                key={q.code}
+                onClick={() => setSelectedTag(isSelected ? "ALL" : q.code)}
+                className={`px-3 py-1.5 rounded-xl font-medium transition-all flex items-center gap-1.5 shrink-0 text-xs border ${isSelected
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-md shadow-amber-500/10 font-semibold"
+                  : "bg-white/5 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+                  }`}
+              >
+                <span className="font-mono text-[10px] opacity-75">{q.code.split("-")[0]}</span>
+                <span>{title}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isSelected ? "bg-amber-500/30 text-amber-200" : "bg-black/30 text-slate-400"
+                    }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="overflow-x-auto">
@@ -775,7 +903,7 @@ export default function Admin() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filteredSubjects.map((sub) => {
+              {paginatedSubjects.map((sub) => {
                 const colorToken = computeMultivariateColor(sub.calibration_bias, sub.ive ?? 0.50);
                 return (
                   <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors group">
@@ -821,7 +949,7 @@ export default function Admin() {
                   </tr>
                 );
               })}
-              {filteredSubjects.length === 0 && (
+              {paginatedSubjects.length === 0 && (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-slate-500">
                     未检索到符合条件的受试者记录
@@ -830,6 +958,78 @@ export default function Admin() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* 分页控制栏 */}
+        <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-400">
+          <div className="flex items-center gap-3">
+            <span>
+              显示第 <span className="text-white font-mono font-medium">{totalItems > 0 ? startIndex + 1 : 0}</span> - <span className="text-white font-mono font-medium">{endIndex}</span> 条，共 <span className="text-white font-mono font-medium">{totalItems}</span> 条
+            </span>
+            <div className="flex items-center gap-1.5 ml-2">
+              <span className="text-slate-500">每页:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                <option value={10}>10 条</option>
+                <option value={20}>20 条</option>
+                <option value={50}>50 条</option>
+                <option value={100}>100 条</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={safeCurrentPage <= 1}
+              className="p-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="上一页"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                if (
+                  totalPages > 7 &&
+                  pageNum !== 1 &&
+                  pageNum !== totalPages &&
+                  Math.abs(pageNum - safeCurrentPage) > 1
+                ) {
+                  if (pageNum === 2 || pageNum === totalPages - 1) {
+                    return <span key={pageNum} className="px-1 text-slate-600">...</span>;
+                  }
+                  return null;
+                }
+
+                const isActive = pageNum === safeCurrentPage;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`min-w-[28px] h-7 px-2 rounded-lg font-mono text-xs flex items-center justify-center transition-colors ${isActive
+                      ? "bg-indigo-600 text-white font-bold"
+                      : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                      }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safeCurrentPage >= totalPages}
+              className="p-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="下一页"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
