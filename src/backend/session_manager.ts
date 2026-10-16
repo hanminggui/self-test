@@ -24,7 +24,7 @@ import { StaircaseController } from "./staircase";
 import { TaskGenerator, GeneratedTask } from "./task_generator";
 import { PsychometricScorer } from "./metrics";
 import { ReportGenerator } from "./report_generator";
-import { mapLegacyArchetype, getArchetypeDefinition } from "./archetype_matrix";
+import { mapLegacyArchetype, getArchetypeDefinition, classifyCognitiveArchetype } from "./archetype_matrix";
 
 export interface SessionState {
   sessionId: string;
@@ -513,40 +513,66 @@ export class SessionManager {
     if (row) {
       if (row.full_report_json) {
         const parsed = JSON.parse(row.full_report_json);
-        if (parsed.metacognitive_metrics.d_star === undefined) {
-          const dStarVal = row.d_star ?? Math.round(Math.max(0, Math.min(1, ((parsed.summary.first_order_accuracy ?? 0.7) - 0.25) / 0.75)) * 1000) / 1000;
-          parsed.metacognitive_metrics.d_star = dStarVal;
-          parsed.metacognitive_metrics.cognitive_manifold_vector = [
-            dStarVal,
-            parsed.metacognitive_metrics.m_ratio,
-            parsed.metacognitive_metrics.calibration_bias,
-            parsed.metacognitive_metrics.info_buying_efficiency ?? 0.50
-          ];
-        }
-        if (!parsed.diagnostic_profile.clinical_summary) {
-          const mappedArch = mapLegacyArchetype(parsed.diagnostic_profile.quadrant_code || parsed.diagnostic_profile.role_title);
-          const def = getArchetypeDefinition(mappedArch);
-          parsed.diagnostic_profile.clinical_summary = def.clinical_summary;
-          parsed.diagnostic_profile.role_title = def.role_title;
-          parsed.diagnostic_profile.quadrant_code = def.quadrant_code;
-        }
+        const dStarVal = row.d_star ?? (parsed.metacognitive_metrics.d_star ?? Math.round(Math.max(0, Math.min(1, ((parsed.summary.first_order_accuracy ?? 0.7) - 0.20) / 0.80)) * 1000) / 1000);
+        const mRatioVal = parsed.metacognitive_metrics.m_ratio;
+        const biasVal = parsed.metacognitive_metrics.calibration_bias;
+        const iveVal = parsed.metacognitive_metrics.info_buying_efficiency ?? 0.50;
+        const dPrimeVal = parsed.metacognitive_metrics.d_prime ?? 1.2;
+        const brierVal = parsed.metacognitive_metrics.brier_score ?? 0.20;
+
+        parsed.metacognitive_metrics.d_star = dStarVal;
+        parsed.metacognitive_metrics.cognitive_manifold_vector = [dStarVal, mRatioVal, biasVal, iveVal];
+
+        // 动态根据 v2 超平面重新归纳画像，彻底消除历史遗留旧画像漂移
+        const archetype = classifyCognitiveArchetype({
+          dStar: dStarVal,
+          dPrime: dPrimeVal,
+          mRatio: mRatioVal,
+          bias: biasVal,
+          brier: brierVal,
+          ive: iveVal,
+          hintsCount: 0,
+        });
+        const def = getArchetypeDefinition(archetype);
+        parsed.diagnostic_profile.archetype = archetype;
+        parsed.diagnostic_profile.role_title = def.role_title;
+        parsed.diagnostic_profile.quadrant_code = def.quadrant_code;
+        parsed.diagnostic_profile.praise_tagline = def.praise_tagline;
+        parsed.diagnostic_profile.strength_tags = def.strength_tags;
+        parsed.diagnostic_profile.empowering_feedback = def.empowering_feedback;
+        parsed.diagnostic_profile.growth_advice = def.growth_advice;
+        parsed.diagnostic_profile.skills = def.skills;
+        parsed.diagnostic_profile.clinical_summary = def.clinical_summary;
         return parsed;
       }
 
       // Synthesize fallback report for legacy migrated record
-      const mappedArch = mapLegacyArchetype(row.quadrant_code || row.role_title || "");
-      const def = getArchetypeDefinition(mappedArch);
-      const dStarVal = row.d_star ?? 0.50;
+      const dStarVal = row.d_star ?? Math.round(Math.max(0, Math.min(1, ((row.first_order_accuracy ?? 0.7) - 0.20) / 0.80)) * 1000) / 1000;
+      const mRatioVal = row.m_ratio ?? 0.9;
+      const biasVal = row.calibration_bias ?? 0.0;
       const iveVal = row.ive ?? 0.50;
+      const dPrimeVal = row.d_prime ?? 1.2;
+
+      const archetype = classifyCognitiveArchetype({
+        dStar: dStarVal,
+        dPrime: dPrimeVal,
+        mRatio: mRatioVal,
+        bias: biasVal,
+        brier: 0.20,
+        ive: iveVal,
+        hintsCount: 0,
+      });
+      const def = getArchetypeDefinition(archetype);
+
       const metrics: any = {
-        d_prime: row.d_prime ?? 1.2,
+        d_prime: dPrimeVal,
         meta_d_prime: row.meta_d_prime ?? 1.1,
-        m_ratio: row.m_ratio ?? 0.9,
-        calibration_bias: row.calibration_bias ?? 0.0,
+        m_ratio: mRatioVal,
+        calibration_bias: biasVal,
         brier_score: 0.15,
         info_buying_efficiency: iveVal,
         d_star: dStarVal,
-        cognitive_manifold_vector: [dStarVal, row.m_ratio ?? 0.9, row.calibration_bias ?? 0.0, iveVal],
+        cognitive_manifold_vector: [dStarVal, mRatioVal, biasVal, iveVal],
       };
       return ReportGenerator.generateReport(
         row.id,
@@ -566,12 +592,34 @@ export class SessionManager {
     const rows = this.db.query("SELECT * FROM completed_sessions ORDER BY created_at DESC").all() as any[];
 
     const subjects: SubjectDataPoint[] = rows.map(r => {
-      const dStar = r.d_star ?? Math.round(Math.max(0, Math.min(1, ((r.first_order_accuracy ?? 0.7) - 0.25) / 0.75)) * 1000) / 1000;
+      const dStar = r.d_star ?? Math.round(Math.max(0, Math.min(1, ((r.first_order_accuracy ?? 0.7) - 0.20) / 0.80)) * 1000) / 1000;
       const ive = r.ive ?? 0.50;
-      const mappedArch = mapLegacyArchetype(r.quadrant_code || r.role_title || "");
-      const def = getArchetypeDefinition(mappedArch);
       const mRatio = Math.round((r.m_ratio ?? 0.9) * 1000) / 1000;
       const bias = Math.round((r.calibration_bias ?? 0.0) * 1000) / 1000;
+      const dPrime = Math.round((r.d_prime ?? 1.2) * 1000) / 1000;
+
+      let brier = 0.20;
+      let hintsCount = 0;
+      if (r.full_report_json) {
+        try {
+          const parsed = JSON.parse(r.full_report_json);
+          if (parsed.metacognitive_metrics?.brier_score !== undefined) {
+            brier = parsed.metacognitive_metrics.brier_score;
+          }
+        } catch {}
+      }
+
+      // 动态通过 v2 超平面算法为历史数据重新分类，使悬浮画像与散点坐标绝对严格对应
+      const archetype = classifyCognitiveArchetype({
+        dStar,
+        dPrime,
+        mRatio,
+        bias,
+        brier,
+        ive,
+        hintsCount,
+      });
+      const def = getArchetypeDefinition(archetype);
 
       return {
         id: r.id,
@@ -579,7 +627,7 @@ export class SessionManager {
         subject_type: r.subject_type,
         first_order_accuracy: Math.round((r.first_order_accuracy ?? 0.7) * 1000) / 1000,
         second_order_accuracy: Math.round((r.second_order_accuracy ?? 0.7) * 1000) / 1000,
-        d_prime: Math.round((r.d_prime ?? 1.2) * 1000) / 1000,
+        d_prime: dPrime,
         meta_d_prime: Math.round((r.meta_d_prime ?? 1.1) * 1000) / 1000,
         m_ratio: mRatio,
         calibration_bias: bias,
@@ -591,7 +639,7 @@ export class SessionManager {
         d_star: dStar,
         ive: ive,
         cognitive_manifold_vector: [dStar, mRatio, bias, ive],
-        clinical_summary: r.clinical_summary || def.clinical_summary,
+        clinical_summary: def.clinical_summary,
       };
     });
 

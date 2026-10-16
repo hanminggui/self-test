@@ -22,14 +22,14 @@ export enum SubjectType {
 }
 
 export enum CognitiveArchetype {
-  SOVEREIGN = "SOVEREIGN",                       // Q1-CAL: 领航统帅
-  ADAPTIVE_LEARNER = "ADAPTIVE_LEARNER",         // Q2-EVO: 潜龙在渊
+  SOVEREIGN = "SOVEREIGN",                       // Q1-CAL: 人形外挂
+  ADAPTIVE_LEARNER = "ADAPTIVE_LEARNER",         // Q2-EVO: 灵窍天开
   VIGILANT_SENTINEL = "VIGILANT_SENTINEL",       // Q3-SEN: 定海神针
   AUDACIOUS_PIONEER = "AUDACIOUS_PIONEER",       // Q4-PIO: 飞龙在天
-  ANXIOUS_RETREATER = "ANXIOUS_RETREATER",       // Q5-RET: 暗夜行者
+  ANXIOUS_RETREATER = "ANXIOUS_RETREATER",       // Q5-RET: 潜龙勿用
   BLIND_GAMBLER = "BLIND_GAMBLER",               // Q6-GAM: 无畏先锋
-  PRAGMATIC_ARBITRAGEUR = "PRAGMATIC_ARBITRAGEUR", // Q7-ARB: 神机策士
-  STOCHASTIC_DRIFTER = "STOCHASTIC_DRIFTER",     // Q8-DRI: 星轨漫游者
+  PRAGMATIC_ARBITRAGEUR = "PRAGMATIC_ARBITRAGEUR", // Q7-ARB: 长袖善舞
+  STOCHASTIC_DRIFTER = "STOCHASTIC_DRIFTER",     // Q8-DRI: 暮光星灵
 
   // 向后兼容历史 v1 枚举别名
   ACCURATELY_CALIBRATED = "SOVEREIGN",

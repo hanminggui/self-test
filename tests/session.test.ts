@@ -84,14 +84,14 @@ describe("SessionManager", () => {
 
     // Profile must be one of the 8 v2 custom titles
     const allowedTitles = [
-      "领航统帅",
-      "潜龙在渊",
+      "人形外挂",
+      "灵窍天开",
       "定海神针",
       "飞龙在天",
-      "暗夜行者",
+      "潜龙勿用",
       "无畏先锋",
-      "神机策士",
-      "星轨漫游者",
+      "长袖善舞",
+      "暮光星灵",
     ];
     expect(allowedTitles).toContain(report.diagnostic_profile.role_title);
     expect(report.diagnostic_profile.skills.length).toBe(4);

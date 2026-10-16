@@ -244,11 +244,12 @@ export class TaskGenerator {
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, cleanedDistractors);
 
-    const prompt = `【任务类型：符号密码规则推演】
-观察抽象符号序列的动态演化规则：
+    const prompt = `观察抽象符号序列的动态演化规则：
+
   [第1步]: ${step1.join(" ")}
   [第2步]: ${step2.join(" ")}
   [第3步]: ${step3.join(" ")}
+
 请从选项 A、B、C、D 中推断第 4 步的精确演化序列。`;
 
     const hint_tier1 = `宏观规律方向（1分价值）：序列置换与状态转移机制。优先观察前3步在序列整体上的平移律（当前规则为：${ruleName}），判断符号整体是左移、右移还是端点置换，据此可粗筛排除50%平移错位的干扰项。`;
@@ -293,7 +294,7 @@ export class TaskGenerator {
         const rowCells: string[] = [];
         for (let col = 0; col < gridW; col++) {
           const idx = r * gridW + col;
-          rowCells.push(coordSet.has(idx) ? symbol : "·");
+          rowCells.push(coordSet.has(idx) ? symbol : "・");
         }
         rows.push(rowCells.join(" "));
       }
@@ -301,20 +302,19 @@ export class TaskGenerator {
     };
 
     const chosenSym = this.choice(["■", "▲", "★", "◆"]);
-    const correctStr = `点阵区:\n${makeGridStr(targetCount, chosenSym)}`;
+    const correctStr = makeGridStr(targetCount, chosenSym);
     const distractors = [
-      `点阵区:\n${makeGridStr(dCounts[0], chosenSym)}`,
-      `点阵区:\n${makeGridStr(dCounts[1], chosenSym)}`,
-      `点阵区:\n${makeGridStr(dCounts[2], chosenSym)}`,
+      makeGridStr(dCounts[0], chosenSym),
+      makeGridStr(dCounts[1], chosenSym),
+      makeGridStr(dCounts[2], chosenSym),
     ];
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
 
-    const prompt = `【任务类型：离散微元点阵密度对比】
-观察下列 4 个离散点阵区域（选项 A、B、C、D，网格大小 7x6）。
-依据快速知觉判断：哪一个区域包含最高密度的特征微元 (${chosenSym})？`;
+    const prompt = `观察下列 4 个离散点阵区域（选项 A、B、C、D，网格大小 7x6）。
+依据直觉感知判断：哪一个区域包含最高密度的特征微元 (${chosenSym})？`;
 
-    const hint_tier1 = `宏观知觉聚焦（1分价值）：避免逐个细数。优先反向扫描“背景微元 (·)”的连通空白面积；真正的高密度区域其背景空白连通面积最小，可快速排除两个明显稀疏的散布对比项。`;
+    const hint_tier1 = `宏观知觉聚焦（1分价值）：避免逐个细数。优先反向扫描“背景微元 (・)”的连通空白面积；真正的高密度区域其背景空白连通面积最小，可快速排除两个明显稀疏的散布对比项。`;
     const hint_tier2 = `微观团块穿透（2分价值）：目标最高密度区域中，特征微元在局部形成了紧密的连通团块（总微元达到 ${targetCount} 个）；而对比项中微元数量上限不超过 ${Math.max(...dCounts)} 个，在网格边缘分布稀落，可排除缺乏局部核心聚集的干扰项。`;
 
     return this.wrapTask(
@@ -338,9 +338,9 @@ export class TaskGenerator {
 
     const row1 = [s1, s2, s3];
     const row2 = [s2, s3, s1];
-    const row3 = [s3, s1, "[ ? ]"];
-    const correctAns = `符号：${s2}`;
-    const distractors = [`符号：${s1}`, `符号：${s3}`, `符号：${s4}`];
+    const row3 = [s3, s1, "?"];
+    const correctAns = s2;
+    const distractors = [s1, s3, s4];
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
 
@@ -348,15 +348,14 @@ export class TaskGenerator {
   第 2 行:  [ ${row2[0]} ]  [ ${row2[1]} ]  [ ${row2[2]} ]
   第 3 行:  [ ${row3[0]} ]  [ ${row3[1]} ]  [ ${row3[2]} ]`;
 
-    const prompt = `【任务类型：图形矩阵逻辑推理】
-分析下列 3x3 抽象符号矩阵的行列守恒规律：
+    const prompt = `分析下列 3x3 抽象符号矩阵的行列守恒规律：
 
 ${gridDisplay}
 
 从选项 A、B、C、D 中推断右下角 [ ? ] 处应填入哪一个符号？`;
 
     const hint_tier1 = `宏观规律方向（1分价值）：3x3 矩阵遵循严格的“拉丁方阵行列双向守恒律”。每一行与每一列均由相同的 3 种基准符号构成且无重复出现，与图形尺寸或渐变无关，可排除重复符选项。`;
-    const hint_tier2 = `微观细节穿透（2分价值）：对比前两行全集，再观察第 3 行与第 3 列已给出的两个符号，直接求出二者交集所缺失的唯一种类；选项中未出现在矩阵全集中的符号、或已在该行该列出现的符号均可直接排除。`;
+    const hint_tier2 = `微观细节穿透（2分价值）：对比前两行全集，再观察第 3 行与第 3列已给出的两个符号，直接求出二者交集所缺失的唯一种类；选项中未出现在矩阵全集中的符号、或已在该行该列出现的符号均可直接排除。`;
 
     return this.wrapTask(
       stimulus_id,
@@ -376,28 +375,28 @@ ${gridDisplay}
     const stimulus_id = `spatial_rot_t${String(trialIndex).padStart(3, "0")}`;
     const basePatterns = [
       [
-        ["■", "■", "·", "·"],
-        ["·", "■", "·", "·"],
-        ["·", "■", "■", "■"],
-        ["·", "·", "·", "·"],
+        ["■", "■", "・", "・"],
+        ["・", "■", "・", "・"],
+        ["・", "■", "■", "■"],
+        ["・", "・", "・", "・"],
       ],
       [
-        ["·", "▲", "▲", "·"],
-        ["·", "▲", "·", "·"],
-        ["·", "▲", "▲", "▲"],
-        ["·", "·", "·", "·"],
+        ["・", "▲", "▲", "・"],
+        ["・", "▲", "・", "・"],
+        ["・", "▲", "▲", "▲"],
+        ["・", "・", "・", "・"],
       ],
       [
-        ["◆", "◆", "◆", "·"],
-        ["·", "·", "◆", "·"],
-        ["·", "◆", "◆", "·"],
-        ["·", "·", "·", "·"],
+        ["◆", "◆", "◆", "・"],
+        ["・", "・", "◆", "・"],
+        ["・", "◆", "◆", "・"],
+        ["・", "・", "・", "・"],
       ],
       [
-        ["★", "·", "·", "·"],
-        ["★", "★", "★", "·"],
-        ["·", "·", "★", "★"],
-        ["·", "·", "·", "·"],
+        ["★", "・", "・", "・"],
+        ["★", "★", "★", "・"],
+        ["・", "・", "★", "★"],
+        ["・", "・", "・", "・"],
       ],
     ];
     const baseGrid = this.choice(basePatterns);
@@ -425,7 +424,7 @@ ${gridDisplay}
     for (let i = 0; i < degStep; i++) {
       rotG = rotCw(rotG);
     }
-    const correctStr = `几何构型:\n${gridToStr(rotG)}`;
+    const correctStr = gridToStr(rotG);
 
     let m1 = mirrorH(baseGrid);
     for (let i = 0; i < this.choice([0, 1, 2, 3]); i++) m1 = rotCw(m1);
@@ -437,8 +436,8 @@ ${gridDisplay}
     let cleared = false;
     for (let r = 0; r < 4; r++) {
       for (let c = 0; c < 4; c++) {
-        if (deformed[r][c] !== "·" && !cleared) {
-          deformed[r][c] = "·";
+        if (deformed[r][c] !== "・" && !cleared) {
+          deformed[r][c] = "・";
           cleared = true;
           break;
         }
@@ -447,15 +446,14 @@ ${gridDisplay}
     }
 
     const distractors = [
-      `几何构型:\n${gridToStr(m1)}`,
-      `几何构型:\n${gridToStr(m2)}`,
-      `几何构型:\n${gridToStr(deformed)}`,
+      gridToStr(m1),
+      gridToStr(m2),
+      gridToStr(deformed),
     ];
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
 
-    const prompt = `【任务类型：空间心智旋转判别】
-基准二维几何构型如下：
+    const prompt = `基准二维几何构型如下：
 
 ${gridToStr(baseGrid)}
 
@@ -527,8 +525,8 @@ ${gridToStr(baseGrid)}
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
 
-    const prompt = `【任务类型：符号结构守恒不变量】
-以下 3 组示例序列均严格满足某种抽象结构平衡法则（合法样本）：
+    const prompt = `以下 3 组示例序列均严格满足某种抽象结构平衡法则（合法样本）：
+
   [样本 1]: ${sample1}
   [样本 2]: ${sample2}
   [样本 3]: ${sample3}
@@ -569,18 +567,22 @@ ${gridToStr(baseGrid)}
       [s0, s3], [s1, s4], [s0, s4], [s0, s2], [s1, s3]
     ];
     const targetV = this.choice(validPairs);
-    const correctAns = `命题：${targetV[0]} ▷ ${targetV[1]}`;
+    const correctAns = `${targetV[0]} ▷ ${targetV[1]}`;
 
-    const distractors = [
-      `命题：${targetV[1]} ▷ ${targetV[0]}`,
-      `命题：${s4} ▷ ${s1}`,
-      `命题：${s3} ▷ ${s0}`,
-    ];
+    // All false / invalid reversed pairs where i > j:
+    const invalidPairs: [string, string][] = [];
+    for (let i = 0; i < 5; i++) {
+      for (let j = 0; j < i; j++) {
+        invalidPairs.push([syms[i], syms[j]]);
+      }
+    }
+    const chosenInvalid = this.sample(invalidPairs, 3);
+    const distractors = chosenInvalid.map(p => `${p[0]} ▷ ${p[1]}`);
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
 
-    const prompt = `【任务类型：符号关系网络传递性推导】
-系统已知下列抽象符号之间的直接序位关系（'X ▷ Y' 表示 X 的层级严格先于 Y）：
+    const prompt = `系统已知下列抽象符号之间的直接序位关系（'X ▷ Y' 表示 X 的层级严格先于 Y）：
+
   已知前提：${pairsPresented.join(" ， ")}
 
 依据严格的传递性公理（若 X ▷ Y 且 Y ▷ Z，则 X ▷ Z），请判断下列哪一个命题必然成立？`;
@@ -629,8 +631,8 @@ ${gridToStr(baseGrid)}
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
 
-    const prompt = `【任务类型：双轨周期序列与二阶差分】
-观察下列符号与数值的双轨演化序列：
+    const prompt = `观察下列符号与数值的双轨演化序列：
+
   ${seqItems.join("  ")}  [ ? ]
 
 推断末尾 [ ? ] 处所对应的符号与数值组合。`;
@@ -659,36 +661,23 @@ ${gridToStr(baseGrid)}
     const twoLoops = ["8", "B", "⧉", "⯐", "⚯"];
 
     const kLoops = this.choice([0, 1, 2]);
-    let targetPool: string[];
-    let dPools: [string[], string[], string[]];
-
-    if (kLoops === 0) {
-      targetPool = zeroLoop;
-      dPools = [oneLoop, twoLoops, oneLoop];
-    } else if (kLoops === 1) {
-      targetPool = oneLoop;
-      dPools = [zeroLoop, twoLoops, zeroLoop];
-    } else {
-      targetPool = twoLoops;
-      dPools = [zeroLoop, oneLoop, oneLoop];
-    }
+    const loopGroups = [zeroLoop, oneLoop, twoLoops];
+    const targetPool = loopGroups[kLoops];
 
     const samples = this.sample(targetPool, Math.min(3, targetPool.length));
     const availCorrect = targetPool.filter(s => !samples.includes(s));
     const correctSym = availCorrect.length > 0 ? this.choice(availCorrect) : this.choice(targetPool);
-    const correctAns = `特征图形：[ ${correctSym} ]`;
+    const correctAns = `[ ${correctSym} ]`;
 
-    const distractorSyms = [
-      this.choice(dPools[0]),
-      this.choice(dPools[1]),
-      this.choice(dPools[2]),
-    ];
-    const distractors = distractorSyms.map(s => `特征图形：[ ${s} ]`);
+    // Distractor pool consists of symbols from the other loop categories
+    const otherPool = loopGroups.filter((_, idx) => idx !== kLoops).flat();
+    const distractorSyms = this.sample(otherPool, 3);
+    const distractors = distractorSyms.map(s => `[ ${s} ]`);
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
 
-    const prompt = `【任务类型：拓扑欧拉环路与封闭区域分析】
-下列 3 个参考样本图形共享同一种拓扑内腔特征：
+    const prompt = `下列 3 个参考样本图形共享同一种拓扑内腔特征：
+
   参考样本:  [ ${samples[0]} ]    [ ${samples[1]} ]    [ ${samples[2]} ]
 
 请从选项 A、B、C、D 中选出同样满足该拓扑特征的图形。`;

@@ -110,9 +110,9 @@ export default function Admin() {
   const [selectedSubjectReport, setSelectedSubjectReport] = useState<any | null>(null);
 
   // Scatter view controls
-  const [evalSystem, setEvalSystem] = useState<"MANIFOLD" | "PERCENTAGE">("MANIFOLD");
   const [splitLine, setSplitLine] = useState<"BASELINE" | "MEDIAN" | "MEAN">("BASELINE");
   const [hoveredSubject, setHoveredSubject] = useState<SubjectPoint | null>(null);
+  const [showThresholdRationale, setShowThresholdRationale] = useState(true);
 
   // Verify token
   const verifyToken = async (token: string) => {
@@ -246,32 +246,22 @@ export default function Admin() {
       (s.quadrant_code && s.quadrant_code.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Compute split line coordinates based on active settings
+  // Compute split line coordinates based on active settings (4D Cognitive Manifold)
   let splitXRatio = 0.60;
   let splitYRatio = 0.40; // 0.80 / 2.0 = 0.40
-  if (evalSystem === "MANIFOLD") {
-    if (splitLine === "BASELINE") {
-      splitXRatio = 0.60;
-      splitYRatio = 0.80 / 2.0;
-    } else if (splitLine === "MEDIAN" && scatterData) {
-      splitXRatio = scatterData.median_x;
-      splitYRatio = scatterData.median_y / 2.0;
-    } else if (splitLine === "MEAN" && scatterData) {
-      splitXRatio = scatterData.mean_x;
-      splitYRatio = scatterData.mean_y / 2.0;
-    }
-  } else {
-    // PERCENTAGE system
-    if (splitLine === "BASELINE") {
-      splitXRatio = 0.7071;
-      splitYRatio = 0.7071;
-    } else if (splitLine === "MEDIAN" && scatterData) {
-      splitXRatio = scatterData.median_x;
-      splitYRatio = scatterData.median_y;
-    } else if (splitLine === "MEAN" && scatterData) {
-      splitXRatio = scatterData.mean_x;
-      splitYRatio = scatterData.mean_y;
-    }
+  let splitXVal = 0.60;
+  let splitYVal = 0.80;
+
+  if (splitLine === "MEDIAN" && scatterData) {
+    splitXVal = scatterData.median_x;
+    splitYVal = scatterData.median_y;
+    splitXRatio = Math.max(0.05, Math.min(0.95, splitXVal));
+    splitYRatio = Math.max(0.05, Math.min(0.95, splitYVal / 2.0));
+  } else if (splitLine === "MEAN" && scatterData) {
+    splitXVal = scatterData.mean_x;
+    splitYVal = scatterData.mean_y;
+    splitXRatio = Math.max(0.05, Math.min(0.95, splitXVal));
+    splitYRatio = Math.max(0.05, Math.min(0.95, splitYVal / 2.0));
   }
 
   return (
@@ -286,7 +276,7 @@ export default function Admin() {
             <h1 className="text-lg font-bold text-white flex items-center gap-2">
               4D 认知流形评测控制台 (Admin Manifold Portal)
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                v2.0 临床双层架构
+                v2.0 4D认知流形
               </span>
             </h1>
             <p className="text-xs text-slate-400">群体 4D 正交相空间分布图 · 8 大画像 MECE 拓扑与双变量色彩映射</p>
@@ -351,7 +341,7 @@ export default function Admin() {
         </div>
       </div>
 
-      {/* 4D 认知流形宏观点阵散点图 */}
+      {/* 4D 认知流形宏观点阵相空间图 */}
       <div className="glass-panel rounded-3xl p-6 md:p-8 border border-white/5 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -359,9 +349,7 @@ export default function Admin() {
               <Sliders className="w-4 h-4 text-indigo-400" /> 4D 认知流形 2D 平面投影相空间 (Manifold Phase Space)
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              {evalSystem === "MANIFOLD"
-                ? "X 轴: 相变突破度 D* [0~1] · Y 轴: 元认知效率 M_ratio [0~2.0+] · 色相: 决策倾角 Bias · 纯度/辉光: 觅食杠杆 IVE"
-                : "X 轴: 原始答对率 P(correct) · Y 轴: 二元对齐度"}
+              横坐标: 相变突破度 D* [0~1.0] · 纵坐标: 元认知效率 M_ratio [0~2.0+] · 色相: 决策倾角 Bias · 纯度/外发光: 觅食杠杆 IVE
             </p>
           </div>
 
@@ -369,177 +357,351 @@ export default function Admin() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center rounded-lg bg-slate-900 border border-white/10 p-0.5 text-xs">
               <button
-                onClick={() => setEvalSystem("MANIFOLD")}
-                className={`px-2.5 py-1 rounded-md transition-colors ${
-                  evalSystem === "MANIFOLD" ? "bg-indigo-600 text-white font-medium" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                4D 认知流形 [D*, M_ratio]
-              </button>
-              <button
-                onClick={() => setEvalSystem("PERCENTAGE")}
-                className={`px-2.5 py-1 rounded-md transition-colors ${
-                  evalSystem === "PERCENTAGE" ? "bg-indigo-600 text-white font-medium" : "text-slate-400 hover:text-white"
-                }`}
-              >
-                经典胜率空间 [v1.0]
-              </button>
-            </div>
-
-            <div className="flex items-center rounded-lg bg-slate-900 border border-white/10 p-0.5 text-xs">
-              <button
                 onClick={() => setSplitLine("BASELINE")}
-                className={`px-2 py-1 rounded-md transition-colors ${
-                  splitLine === "BASELINE" ? "bg-slate-700 text-white font-medium" : "text-slate-400 hover:text-white"
-                }`}
+                className={`px-3 py-1.5 rounded-md transition-all ${splitLine === "BASELINE" ? "bg-indigo-600 text-white font-medium shadow-sm" : "text-slate-400 hover:text-white"
+                  }`}
               >
-                {evalSystem === "MANIFOLD" ? "相变阈值 (D*=0.6, M=0.8)" : "70.7% 基准"}
+                相变基准 (D*=0.60, M=0.80)
               </button>
               <button
                 onClick={() => setSplitLine("MEDIAN")}
-                className={`px-2 py-1 rounded-md transition-colors ${
-                  splitLine === "MEDIAN" ? "bg-slate-700 text-white font-medium" : "text-slate-400 hover:text-white"
-                }`}
+                className={`px-3 py-1.5 rounded-md transition-all ${splitLine === "MEDIAN" ? "bg-indigo-600 text-white font-medium shadow-sm" : "text-slate-400 hover:text-white"
+                  }`}
               >
-                中位数
+                群体中位数
               </button>
               <button
                 onClick={() => setSplitLine("MEAN")}
-                className={`px-2 py-1 rounded-md transition-colors ${
-                  splitLine === "MEAN" ? "bg-slate-700 text-white font-medium" : "text-slate-400 hover:text-white"
-                }`}
+                className={`px-3 py-1.5 rounded-md transition-all ${splitLine === "MEAN" ? "bg-indigo-600 text-white font-medium shadow-sm" : "text-slate-400 hover:text-white"
+                  }`}
               >
-                均值
+                群体均值
               </button>
             </div>
+
+            <button
+              onClick={() => setShowThresholdRationale(!showThresholdRationale)}
+              className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/10 text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Info className="w-3.5 h-3.5 text-indigo-400" />
+              {showThresholdRationale ? "收起阈值依据" : "相变阈值理论依据"}
+            </button>
           </div>
         </div>
 
-        {/* 散点图绘制画布容器 */}
-        <div className="relative w-full h-[420px] md:h-[500px] bg-slate-950/80 rounded-2xl border border-white/5 overflow-hidden p-6">
-          {/* 四象限背景水印标签 */}
-          {evalSystem === "MANIFOLD" ? (
-            <>
-              <div className="absolute top-4 right-4 text-right pointer-events-none">
-                <span className="text-xs font-bold text-emerald-400/35 uppercase tracking-widest block">
-                  Q1-CAL: 领航统帅
-                </span>
-                <span className="text-[10px] text-slate-500">高一元突破 · 知行绝对自洽</span>
-              </div>
-              <div className="absolute top-4 left-4 text-left pointer-events-none">
-                <span className="text-xs font-bold text-cyan-400/35 uppercase tracking-widest block">
-                  Q2-EVO: 潜龙在渊 / Q7-ARB: 神机策士
-                </span>
-                <span className="text-[10px] text-slate-500">高二元觉察 · 借力进化与概率套利</span>
-              </div>
-              <div className="absolute bottom-4 right-4 text-right pointer-events-none">
-                <span className="text-xs font-bold text-amber-400/35 uppercase tracking-widest block">
-                  Q3-SEN: 定海神针 / Q4-PIO: 飞龙在天
-                </span>
-                <span className="text-[10px] text-slate-500">高一元底蕴 · 审慎守舵 vs 果敢破局</span>
-              </div>
-              <div className="absolute bottom-4 left-4 text-left pointer-events-none">
-                <span className="text-xs font-bold text-rose-400/35 uppercase tracking-widest block">
-                  Q5-RET / Q6-GAM / Q8-DRI
-                </span>
-                <span className="text-[10px] text-slate-500">暗夜行者 · 无畏先锋 · 星轨漫游者</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="absolute top-4 right-4 text-right pointer-events-none">
-                <span className="text-xs font-bold text-emerald-400/30 uppercase tracking-widest block">Q1: 领航统帅</span>
-              </div>
-              <div className="absolute top-4 left-4 text-left pointer-events-none">
-                <span className="text-xs font-bold text-cyan-400/30 uppercase tracking-widest block">Q2: 潜龙在渊</span>
-              </div>
-              <div className="absolute bottom-4 right-4 text-right pointer-events-none">
-                <span className="text-xs font-bold text-amber-400/30 uppercase tracking-widest block">Q3/Q4: 定海神针 / 飞龙在天</span>
-              </div>
-              <div className="absolute bottom-4 left-4 text-left pointer-events-none">
-                <span className="text-xs font-bold text-rose-400/30 uppercase tracking-widest block">Q5/Q6: 暗夜行者 / 无畏先锋</span>
-              </div>
-            </>
-          )}
+        {/* 坐标系整体画布包装器 */}
+        <div className="relative w-full rounded-2xl bg-slate-950/95 border border-white/10 overflow-hidden pt-6 pb-12 pl-14 pr-6 select-none shadow-2xl">
+          {/* Y 轴刻度尺 (左侧) */}
+          <div className="absolute left-0 top-6 bottom-12 w-14 flex flex-col justify-between items-end pr-2.5 text-[10px] font-mono text-slate-500 pointer-events-none">
+            <span className="text-slate-400">2.0+</span>
+            <span>1.6</span>
+            <span>1.2</span>
+            <span className="text-purple-400 font-bold flex items-center gap-0.5">0.8</span>
+            <span>0.4</span>
+            <span>0.0</span>
+          </div>
 
-          {/* 分割参考虚线 */}
-          <div
-            className="absolute top-0 bottom-0 border-l border-dashed border-indigo-500/30 pointer-events-none z-0"
-            style={{ left: `${splitXRatio * 100}%` }}
-          />
-          <div
-            className="absolute left-0 right-0 border-t border-dashed border-indigo-500/30 pointer-events-none z-0"
-            style={{ bottom: `${splitYRatio * 100}%` }}
-          />
+          {/* Y 轴垂直标头 */}
+          <div className="absolute left-1.5 top-1/2 -translate-y-1/2 -rotate-90 origin-center text-[10px] tracking-wider font-semibold text-slate-400 uppercase pointer-events-none whitespace-nowrap">
+            元认知效率 M_ratio (Meta-d' / d')
+          </div>
 
-          {/* 散点渲染：严格遵循第 7 节视觉通道正交规约与双变量色彩映射 */}
-          {subjects.map((sub) => {
-            let posX = 50;
-            let posY = 50;
-            if (evalSystem === "MANIFOLD") {
-              const dStarVal = sub.d_star !== undefined ? sub.d_star : 0.5;
-              posX = Math.max(0.04, Math.min(0.96, dStarVal)) * 100;
-              posY = Math.max(0.04, Math.min(0.96, sub.m_ratio / 2.0)) * 100;
-            } else {
-              posX = Math.max(0.05, Math.min(0.95, sub.first_order_accuracy)) * 100;
-              posY = Math.max(0.05, Math.min(0.95, sub.second_order_accuracy)) * 100;
-            }
-
-            const isHovered = hoveredSubject?.id === sub.id;
-            const colorToken = computeMultivariateColor(sub.calibration_bias, sub.ive ?? 0.50);
-
-            return (
-              <div
-                key={sub.id}
-                onMouseEnter={() => setHoveredSubject(sub)}
-                onMouseLeave={() => setHoveredSubject(null)}
-                onClick={() => handleOpenReport(sub.id)}
-                className={`absolute w-3.5 h-3.5 -ml-[7px] -mb-[7px] rounded-full cursor-pointer transition-transform duration-150 z-10 flex items-center justify-center ${
-                  sub.is_current ? "scale-150 ring-4 ring-amber-400/60" : isHovered ? "scale-150 ring-2 ring-white" : ""
-                }`}
-                style={{
-                  left: `${posX}%`,
-                  bottom: `${posY}%`,
-                  backgroundColor: colorToken.backgroundColor,
-                  border: `1.5px solid ${colorToken.borderColor}`,
-                  boxShadow: colorToken.boxShadow,
-                }}
-              >
-                <div className="w-1 h-1 rounded-full bg-white/70 pointer-events-none" />
-              </div>
-            );
-          })}
-
-          {/* Hover 浮动卡片 */}
-          {hoveredSubject && (
+          {/* 内部绘图核心网格区 (0% ~ 100% 对应 X:0~1.0, Y:0~2.0) */}
+          <div className="relative w-full h-[380px] md:h-[460px] border border-white/10 rounded-xl overflow-hidden bg-slate-950/60">
+            {/* 四象限光晕背景 */}
+            {/* Q1: 人形外挂 (右上: 高D*, 高M) */}
             <div
-              className="absolute pointer-events-none glass-panel rounded-xl p-3.5 border border-indigo-500/40 text-xs shadow-2xl z-30 space-y-1.5 w-60 animate-in fade-in zoom-in-95 duration-150"
+              className="absolute pointer-events-none transition-all duration-300"
               style={{
-                left: `${Math.min(70, Math.max(5, (hoveredSubject.d_star ?? 0.5) * 100))}%`,
-                bottom: `${Math.min(65, Math.max(10, (hoveredSubject.m_ratio / 2.0) * 100))}%`,
+                left: `${splitXRatio * 100}%`,
+                bottom: `${splitYRatio * 100}%`,
+                right: 0,
+                top: 0,
+                background: "radial-gradient(ellipse at top right, rgba(16, 185, 129, 0.12), transparent 75%)",
+              }}
+            />
+            {/* Q2 / Q7: 灵窍天开 / 长袖善舞 (左上: 低D*, 高M) */}
+            <div
+              className="absolute pointer-events-none transition-all duration-300"
+              style={{
+                left: 0,
+                bottom: `${splitYRatio * 100}%`,
+                width: `${splitXRatio * 100}%`,
+                top: 0,
+                background: "radial-gradient(ellipse at top left, rgba(6, 182, 212, 0.10), transparent 75%)",
+              }}
+            />
+            {/* Q3 / Q4: 定海神针 / 飞龙在天 (右下: 高D*, 低M) */}
+            <div
+              className="absolute pointer-events-none transition-all duration-300"
+              style={{
+                left: `${splitXRatio * 100}%`,
+                bottom: 0,
+                right: 0,
+                height: `${splitYRatio * 100}%`,
+                background: "radial-gradient(ellipse at bottom right, rgba(245, 158, 11, 0.09), transparent 75%)",
+              }}
+            />
+            {/* Q5 / Q6 / Q8: 潜龙勿用 / 无畏先锋 / 暮光星灵 (左下: 低D*, 低M) */}
+            <div
+              className="absolute pointer-events-none transition-all duration-300"
+              style={{
+                left: 0,
+                bottom: 0,
+                width: `${splitXRatio * 100}%`,
+                height: `${splitYRatio * 100}%`,
+                background: "radial-gradient(ellipse at bottom left, rgba(244, 63, 94, 0.08), transparent 75%)",
+              }}
+            />
+
+            {/* 微弱坐标网格线 */}
+            {[0.2, 0.4, 0.6, 0.8].map((x) => (
+              <div
+                key={`grid-x-${x}`}
+                className="absolute top-0 bottom-0 border-l border-white/[0.04] pointer-events-none"
+                style={{ left: `${x * 100}%` }}
+              />
+            ))}
+            {[0.2, 0.4, 0.6, 0.8].map((y) => (
+              <div
+                key={`grid-y-${y}`}
+                className="absolute left-0 right-0 border-t border-white/[0.04] pointer-events-none"
+                style={{ bottom: `${y * 100}%` }}
+              />
+            ))}
+
+            {/* 象限水印标识与称号 */}
+            <div className="absolute top-3 right-4 text-right pointer-events-none z-0">
+              <span className="text-xs font-bold text-emerald-400/50 uppercase tracking-widest block flex items-center justify-end gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Q1-CAL: 人形外挂
+              </span>
+              <span className="text-[10px] text-slate-400">高一元突破 · 知行绝对自洽</span>
+            </div>
+            <div className="absolute top-3 left-4 text-left pointer-events-none z-0">
+              <span className="text-xs font-bold text-cyan-400/50 uppercase tracking-widest block flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                Q2-EVO: 灵窍天开 / Q7-ARB: 长袖善舞
+              </span>
+              <span className="text-[10px] text-slate-400">高二元觉察 · 借力进化与概率套利</span>
+            </div>
+            <div className="absolute bottom-3 right-4 text-right pointer-events-none z-0">
+              <span className="text-xs font-bold text-amber-400/50 uppercase tracking-widest block flex items-center justify-end gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                Q3-SEN: 定海神针 / Q4-PIO: 飞龙在天
+              </span>
+              <span className="text-[10px] text-slate-400">高一元底蕴 · 审慎守舵 vs 果敢破局</span>
+            </div>
+            <div className="absolute bottom-3 left-4 text-left pointer-events-none z-0">
+              <span className="text-xs font-bold text-rose-400/50 uppercase tracking-widest block flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                Q5-RET / Q6-GAM / Q8-DRI
+              </span>
+              <span className="text-[10px] text-slate-400">潜龙勿用 · 无畏先锋 · 暮光星灵</span>
+            </div>
+
+            {/* 动态相变/中位/均值 分割线 */}
+            {/* 垂直分割线 (X = D*) */}
+            <div
+              className="absolute top-0 bottom-0 border-l-2 border-indigo-400/60 pointer-events-none z-10 transition-all duration-300"
+              style={{
+                left: `${splitXRatio * 100}%`,
+                boxShadow: "0 0 12px rgba(99, 102, 241, 0.5)",
               }}
             >
-              <div className="font-bold text-white flex items-center justify-between">
-                <span>{hoveredSubject.name}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-normal">
-                  {hoveredSubject.role_title || "受测者"}
-                </span>
+              <div className="absolute top-2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-indigo-950/90 border border-indigo-400/60 text-[9px] font-mono text-indigo-300 shadow whitespace-nowrap">
+                {splitLine === "BASELINE"
+                  ? "D* = 0.60 难度相变"
+                  : splitLine === "MEDIAN"
+                    ? `中位 D*: ${splitXVal.toFixed(2)}`
+                    : `均值 D*: ${splitXVal.toFixed(2)}`}
               </div>
-              <div className="text-[11px] text-slate-300 space-y-0.5">
-                <div>突破度 D*: <span className="font-mono text-cyan-300 font-bold">{(hoveredSubject.d_star ?? 0.5).toFixed(3)}</span></div>
-                <div>元认知 M_ratio: <span className="font-mono text-purple-300 font-bold">{hoveredSubject.m_ratio}</span></div>
-                <div>决策偏向 Bias: <span className="font-mono text-slate-200">{hoveredSubject.calibration_bias > 0 ? `+${hoveredSubject.calibration_bias}` : hoveredSubject.calibration_bias}</span></div>
-                <div>觅食杠杆 IVE: <span className="font-mono text-amber-300 font-bold">{(hoveredSubject.ive ?? 0.5).toFixed(3)}</span></div>
-                <div>最终战绩: <span className="font-mono text-yellow-400 font-bold">{hoveredSubject.final_score} 分</span></div>
-              </div>
-              {hoveredSubject.clinical_summary && (
-                <div className="text-[10px] text-slate-400 border-t border-white/5 pt-1 leading-snug">
-                  {hoveredSubject.clinical_summary}
-                </div>
-              )}
             </div>
-          )}
+
+            {/* 水平分割线 (Y = M_ratio) */}
+            <div
+              className="absolute left-0 right-0 border-t-2 border-indigo-400/60 pointer-events-none z-10 transition-all duration-300"
+              style={{
+                bottom: `${splitYRatio * 100}%`,
+                boxShadow: "0 0 12px rgba(99, 102, 241, 0.5)",
+              }}
+            >
+              <div className="absolute right-2 -translate-y-1/2 px-2 py-0.5 rounded-full bg-indigo-950/90 border border-indigo-400/60 text-[9px] font-mono text-indigo-300 shadow whitespace-nowrap">
+                {splitLine === "BASELINE"
+                  ? "M = 0.80 自洽临界"
+                  : splitLine === "MEDIAN"
+                    ? `中位 M: ${splitYVal.toFixed(2)}`
+                    : `均值 M: ${splitYVal.toFixed(2)}`}
+              </div>
+            </div>
+
+            {/* 散点渲染：严格遵循第 7 节视觉通道正交规约与双变量色彩映射 */}
+            {subjects.map((sub) => {
+              const dStarVal = sub.d_star !== undefined ? sub.d_star : 0.5;
+              const posX = Math.max(0.02, Math.min(0.98, dStarVal)) * 100;
+              const posY = Math.max(0.02, Math.min(0.98, (sub.m_ratio ?? 0.8) / 2.0)) * 100;
+
+              const isHovered = hoveredSubject?.id === sub.id;
+              const colorToken = computeMultivariateColor(sub.calibration_bias, sub.ive ?? 0.50);
+
+              return (
+                <div
+                  key={sub.id}
+                  onMouseEnter={() => setHoveredSubject(sub)}
+                  onMouseLeave={() => setHoveredSubject(null)}
+                  onClick={() => handleOpenReport(sub.id)}
+                  className={`absolute w-3.5 h-3.5 -ml-[7px] -mb-[7px] rounded-full cursor-pointer transition-all duration-150 z-20 flex items-center justify-center ${sub.is_current
+                    ? "scale-150 ring-4 ring-amber-400/80 animate-pulse"
+                    : isHovered
+                      ? "scale-150 ring-2 ring-white z-30"
+                      : "hover:scale-125"
+                    }`}
+                  style={{
+                    left: `${posX}%`,
+                    bottom: `${posY}%`,
+                    backgroundColor: colorToken.backgroundColor,
+                    border: `1.5px solid ${colorToken.borderColor}`,
+                    boxShadow: colorToken.boxShadow,
+                  }}
+                >
+                  <div className="w-1 h-1 rounded-full bg-white/80 pointer-events-none" />
+                </div>
+              );
+            })}
+
+            {/* 精致悬浮浮窗 Tooltip */}
+            {hoveredSubject && (
+              <div
+                className="absolute pointer-events-none glass-panel rounded-2xl p-4 border border-indigo-500/40 text-xs shadow-2xl z-40 space-y-2.5 w-72 animate-in fade-in zoom-in-95 duration-150"
+                style={{
+                  left: `${Math.min(68, Math.max(6, (hoveredSubject.d_star ?? 0.5) * 100))}%`,
+                  bottom: `${Math.min(60, Math.max(8, ((hoveredSubject.m_ratio ?? 0.8) / 2.0) * 100))}%`,
+                }}
+              >
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <div>
+                    <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                      {hoveredSubject.name}
+                      {hoveredSubject.is_current && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300">当前</span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-400">ID: {hoveredSubject.id.slice(0, 16)}...</div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono inline-block">
+                      {hoveredSubject.role_title || "受测者"}
+                    </span>
+                    <div className="text-[9px] text-slate-400 font-mono mt-0.5">{hoveredSubject.quadrant_code || "Q1-CAL"}</div>
+                  </div>
+                </div>
+
+                {/* 4D 坐标数值九宫格 */}
+                <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-900/60 p-2.5 rounded-xl border border-white/5">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">相变突破度 D*</span>
+                    <span className="font-mono text-cyan-300 font-bold">{(hoveredSubject.d_star ?? 0.5).toFixed(3)}</span>
+                    <span className="text-[9px] ml-1 text-slate-500">
+                      {(hoveredSubject.d_star ?? 0.5) >= 0.60 ? "≥0.6 拓扑" : "<0.6 基底"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">元认知 M_ratio</span>
+                    <span className="font-mono text-purple-300 font-bold">{hoveredSubject.m_ratio}</span>
+                    <span className="text-[9px] ml-1 text-slate-500">
+                      {hoveredSubject.m_ratio >= 0.80 ? "≥0.8 自洽" : "<0.8 衰减"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">决策偏向 Bias</span>
+                    <span className="font-mono text-slate-200">
+                      {hoveredSubject.calibration_bias > 0 ? `+${hoveredSubject.calibration_bias}` : hoveredSubject.calibration_bias}
+                    </span>
+                    <span className="text-[9px] ml-1 text-slate-500">
+                      {hoveredSubject.calibration_bias > 0.12 ? "自负" : hoveredSubject.calibration_bias < -0.12 ? "谨慎" : "均衡"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">觅食杠杆 IVE</span>
+                    <span className="font-mono text-amber-300 font-bold">{(hoveredSubject.ive ?? 0.5).toFixed(3)}</span>
+                    <span className="text-[9px] ml-1 text-slate-500">
+                      {(hoveredSubject.ive ?? 0.5) >= 0.70 ? "高杠杆" : "自力"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 临床真值简评 */}
+                {hoveredSubject.clinical_summary && (
+                  <div className="text-[10px] text-slate-300 bg-white/[0.02] p-2 rounded-lg border border-white/5 leading-relaxed">
+                    <span className="text-amber-400 font-semibold mr-1">[临床真值]</span>
+                    {hoveredSubject.clinical_summary}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-[10px] pt-1 border-t border-white/5 text-slate-400">
+                  <span>最终得分: <strong className="text-yellow-400 font-mono text-xs">{hoveredSubject.final_score}</strong></span>
+                  <span className="text-indigo-400 flex items-center">点击查看画像报告 →</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* X 轴刻度尺 (底部) */}
+          <div className="absolute left-14 right-6 bottom-5 flex justify-between text-[10px] font-mono text-slate-500 pointer-events-none">
+            <span>0.0 (基底噪声)</span>
+            <span>0.2</span>
+            <span>0.4</span>
+            <span className="text-cyan-400 font-bold">0.6 (相变阈值)</span>
+            <span>0.8</span>
+            <span>1.0 (极值突破)</span>
+          </div>
+
+          {/* X 轴水平标头 */}
+          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-slate-400 tracking-wider uppercase pointer-events-none">
+            相变突破度 D* (自适应阶梯信噪比倒数: [0.85 - δ*] / 0.80)
+          </div>
         </div>
+
+        {/* 阈值心理物理学科学依据解释卡片 */}
+        {showThresholdRationale && (
+          <div className="p-5 rounded-2xl bg-indigo-950/20 border border-indigo-500/20 space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-indigo-300 flex items-center gap-2">
+                <Brain className="w-4 h-4 text-indigo-400" />
+                坐标系分割相变阈值 (D* = 0.60, M_ratio = 0.80) 心理物理学理论依据
+              </h3>
+              <span className="text-[10px] text-slate-400 font-mono">Psychophysical Derivation</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="p-4 rounded-xl bg-slate-900/60 border border-white/5 space-y-2">
+                <div className="font-bold text-cyan-400 flex items-center gap-1.5">
+                  <span>横轴阈值 D* = 0.60</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-300 font-normal">难度信噪比相变</span>
+                </div>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  系统采用 2-up-1-down 自适应阶梯算法，理论稳态收敛于 70.71% 辨别极限感阈。刺激难度区间为 δ ∈ [0.05, 0.85]，D* = (0.85 - δ*) / 0.80。
+                </p>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  当 D* ≥ 0.60 时，对应难度残差 δ* ≤ 0.37。在 4AFC 拓扑抽象感知中，δ = 0.37 是从<strong>浅层局部启发式直觉</strong>跃迁至<strong>高阶结构/拓扑不变性推理</strong>的临界信噪比（Critical SNR），标定信号检测论 d' ≥ 1.40（重测信度 r &gt; 0.82）。
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-900/60 border border-white/5 space-y-2">
+                <div className="font-bold text-purple-400 flex items-center gap-1.5">
+                  <span>纵轴阈值 M_ratio = 0.80</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-300 font-normal">知行自洽黄金分割</span>
+                </div>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  基于计算神经科学权威模型（Maniscalco &amp; Lau, 2012; Fleming &amp; Lau, 2014），M_ratio = Meta-d' / d' 衡量元认知监控系统对一阶任务信号的信息保真度。
+                </p>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  理论无损理想观察者 M_ratio = 1.0。由于人类前额叶皮层（dlPFC / aPFC）存在神经突触噪声与注意衰减，健康人类最优认知常模稳态落在 <strong>0.75 ~ 0.85</strong>。故 0.80 确立为“知行绝对自洽”与“自负/认知盲区”的临床分水岭。
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Spec §7.3 双变量色彩映射图例指南 (Bivariate Color Legend) */}
         <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 space-y-3">
@@ -629,7 +791,7 @@ export default function Admin() {
                       {sub.name}
                     </td>
                     <td className="py-3 px-3">
-                      <div className="text-amber-300 font-semibold">{sub.role_title || "领航统帅"}</div>
+                      <div className="text-amber-300 font-semibold">{sub.role_title || "人形外挂"}</div>
                       <div className="text-[10px] text-slate-500 font-mono">{sub.quadrant_code || "Q1-CAL"}</div>
                     </td>
                     <td className="py-3 px-3 font-mono text-cyan-300 font-semibold">

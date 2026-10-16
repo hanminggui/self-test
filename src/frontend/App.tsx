@@ -73,6 +73,58 @@ interface ReportData {
   };
 }
 
+const cleanOption = (text: string): string => {
+  if (!text) return "";
+  return text
+    .replace(/^(点阵区|几何构型|符号|命题|特征图形)[：:\s\n]*/g, "")
+    .replace(/·/g, "・")
+    .trim();
+};
+
+const renderPrompt = (rawPrompt: string) => {
+  if (!rawPrompt) return null;
+  // 1. Strip any residual title like "【任务类型：...】"
+  const cleaned = rawPrompt
+    .replace(/^【任务类型[：:][^】]+】\s*/g, "")
+    .replace(/·/g, "・");
+
+  // Split into paragraphs separated by double newlines
+  const paragraphs = cleaned.split(/\n\s*\n/);
+
+  return (
+    <div className="space-y-3.5">
+      {paragraphs.map((p, idx) => {
+        const trimmed = p.trim();
+        const lines = trimmed.split("\n");
+        // Check if this paragraph contains a 2D symbol grid or structured rows
+        const isSymbolGrid =
+          lines.length >= 2 &&
+          lines.every(line => /^[■▲★◆●○□△✦⬡・\s]+$/.test(line.trim()) && line.trim().length > 0);
+        const isStructuredBlock =
+          lines.length >= 2 &&
+          lines.some(line => /^(\s*第\s*\d+\s*行[:：]|\s*\[(样本|第\d步)[^\]]*\])/.test(line));
+
+        if (isSymbolGrid || isStructuredBlock) {
+          return (
+            <div
+              key={idx}
+              className="my-3 p-4 rounded-xl bg-slate-950/80 border border-indigo-500/25 font-mono text-sm md:text-base text-indigo-200 tracking-widest leading-relaxed shadow-inner overflow-x-auto select-none inline-block min-w-[220px]"
+            >
+              <pre className="font-mono whitespace-pre">{trimmed}</pre>
+            </div>
+          );
+        }
+
+        return (
+          <p key={idx} className="text-sm md:text-base text-slate-200 leading-relaxed font-sans font-medium whitespace-pre-line">
+            {trimmed}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 export default function App() {
   const [stage, setStage] = useState<"WELCOME" | "TESTING" | "REPORT">("WELCOME");
   const [subjectName, setSubjectName] = useState("");
@@ -384,9 +436,7 @@ export default function App() {
 
             {/* 核心图形与规律卡片 */}
             <div className="glass-panel rounded-2xl p-6 md:p-8 space-y-4 border border-white/10">
-              <div className="text-sm md:text-base text-slate-200 leading-relaxed whitespace-pre-line font-medium font-sans">
-                {trialData.payload.prompt}
-              </div>
+              {renderPrompt(trialData.payload.prompt)}
 
               {/* 灵感启示抽屉 (多级线索) */}
               {unlockedHints.length > 0 && (
@@ -451,8 +501,10 @@ export default function App() {
 
             {/* 2x2 选项卡片 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {Object.entries(trialData.payload.options).map(([key, val]) => {
+              {Object.entries(trialData.payload.options).map(([key, rawVal]) => {
                 const isSelected = selectedOption === key;
+                const val = cleanOption(rawVal);
+                const isMultiLine = val.includes("\n");
                 return (
                   <button
                     key={key}
@@ -471,9 +523,17 @@ export default function App() {
                     >
                       {key}
                     </span>
-                    <span className="text-xs md:text-sm text-slate-200 leading-relaxed font-mono whitespace-pre-line pt-0.5">
-                      {val}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      {isMultiLine ? (
+                        <div className="font-mono text-xs md:text-sm text-slate-200 leading-relaxed tracking-widest bg-slate-950/50 p-2.5 rounded-lg border border-white/5 inline-block select-none overflow-x-auto">
+                          <pre className="font-mono whitespace-pre">{val}</pre>
+                        </div>
+                      ) : (
+                        <span className="text-xs md:text-sm text-slate-200 leading-relaxed font-mono whitespace-pre-line pt-0.5 inline-block">
+                          {val}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}

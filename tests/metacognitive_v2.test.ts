@@ -26,7 +26,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
   // 1. MECE 超平面判别引擎单元测试 (8 大画像分支全覆盖)
   // =========================================================================
   describe("MECE Classifier §6.1 8 大认知画像拓扑全覆盖", () => {
-    test("Q8-DRI: 星轨漫游者 (高熵混沌漫游态)", () => {
+    test("Q8-DRI: 暮光星灵 (高熵混沌漫游态)", () => {
       const arch = classifyCognitiveArchetype({
         dStar: 0.30,
         dPrime: 0.80,
@@ -38,11 +38,11 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       });
       expect(arch).toBe(CognitiveArchetype.STOCHASTIC_DRIFTER);
       const def = getArchetypeDefinition(arch);
-      expect(def.role_title).toBe("星轨漫游者");
+      expect(def.role_title).toBe("暮光星灵");
       expect(def.quadrant_code).toBe("Q8-DRI");
     });
 
-    test("Q7-ARB: 神机策士 (系统性概率套利)", () => {
+    test("Q7-ARB: 长袖善舞 (系统性概率套利)", () => {
       const arch = classifyCognitiveArchetype({
         dStar: 0.55,
         dPrime: 1.20,
@@ -54,11 +54,11 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       });
       expect(arch).toBe(CognitiveArchetype.PRAGMATIC_ARBITRAGEUR);
       const def = getArchetypeDefinition(arch);
-      expect(def.role_title).toBe("神机策士");
+      expect(def.role_title).toBe("长袖善舞");
       expect(def.quadrant_code).toBe("Q7-ARB");
     });
 
-    test("Q1-CAL: 领航统帅 (高一元·高二元·知行自洽)", () => {
+    test("Q1-CAL: 人形外挂 (高一元·高二元·知行自洽)", () => {
       const arch = classifyCognitiveArchetype({
         dStar: 0.75, // >= 0.60
         dPrime: 1.80,
@@ -70,7 +70,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       });
       expect(arch).toBe(CognitiveArchetype.SOVEREIGN);
       const def = getArchetypeDefinition(arch);
-      expect(def.role_title).toBe("领航统帅");
+      expect(def.role_title).toBe("人形外挂");
       expect(def.quadrant_code).toBe("Q1-CAL");
     });
 
@@ -106,7 +106,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       expect(def.quadrant_code).toBe("Q4-PIO");
     });
 
-    test("Q2-EVO: 潜龙在渊 (低一元·高二元·高信息杠杆进化)", () => {
+    test("Q2-EVO: 灵窍天开 (低一元·高二元·高信息杠杆进化)", () => {
       const arch = classifyCognitiveArchetype({
         dStar: 0.40, // < 0.60
         dPrime: 1.00, // < 1.40
@@ -118,11 +118,11 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       });
       expect(arch).toBe(CognitiveArchetype.ADAPTIVE_LEARNER);
       const def = getArchetypeDefinition(arch);
-      expect(def.role_title).toBe("潜龙在渊");
+      expect(def.role_title).toBe("灵窍天开");
       expect(def.quadrant_code).toBe("Q2-EVO");
     });
 
-    test("Q5-RET: 暗夜行者 (低一元·审慎防御避险)", () => {
+    test("Q5-RET: 潜龙勿用 (低一元·审慎防御避险)", () => {
       // 分支 A: mRatio >= 0.60 但未购买足够线索 (hintsCount < 2)
       const archA = classifyCognitiveArchetype({
         dStar: 0.45,
@@ -135,7 +135,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       });
       expect(archA).toBe(CognitiveArchetype.ANXIOUS_RETREATER);
       const defA = getArchetypeDefinition(archA);
-      expect(defA.role_title).toBe("暗夜行者");
+      expect(defA.role_title).toBe("潜龙勿用");
       expect(defA.quadrant_code).toBe("Q5-RET");
 
       // 分支 B: 低一元、低知觉但审慎本分 (bias <= 0.15)
@@ -172,7 +172,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
   // 2. 模拟受测者全生命周期测试 (End-to-End Mock Session Lifecycle)
   // =========================================================================
   describe("8 组 Mock Agents 端到端生成与分类测试", () => {
-    test("Mock Q1 Sovereign Agent 端到端产出领航统帅报告", () => {
+    test("Mock Q1 Sovereign Agent 端到端产出人形外挂报告", () => {
       const sm = new SessionManager(":memory:");
       const session = sm.createSession({ totalTrials: 30, warmupTrials: 6, subjectName: "SovereignAgent" });
 
@@ -192,19 +192,19 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
 
       const report = sm.getReport(session.sessionId);
       expect(report.diagnostic_profile.archetype).toBe(CognitiveArchetype.SOVEREIGN);
-      expect(report.diagnostic_profile.role_title).toBe("领航统帅");
+      expect(report.diagnostic_profile.role_title).toBe("人形外挂");
       expect(report.metacognitive_metrics.d_star).toBeGreaterThan(0.60);
       expect(report.metacognitive_metrics.cognitive_manifold_vector).toBeDefined();
       expect(report.metacognitive_metrics.cognitive_manifold_vector.length).toBe(4);
     });
 
-    test("Mock Q7 Pragmatic Arbitrageur Agent 端到端产出神机策士报告", () => {
+    test("Mock Q7 Pragmatic Arbitrageur Agent 端到端产出长袖善舞报告", () => {
       const sm = new SessionManager(":memory:");
       const session = sm.createSession({ totalTrials: 30, warmupTrials: 6, subjectName: "ArbitrageurAgent" });
 
       for (let i = 1; i <= 30; i++) {
         const task = (sm as any).sessions.get(session.sessionId).currentTask;
-        
+
         if (i >= 10 && i <= 13) {
           // 购买线索并挽救成功 (4 次购买，均挽救成功)
           sm.requestHint(session.sessionId);
@@ -225,11 +225,11 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
 
       const report = sm.getReport(session.sessionId);
       expect(report.diagnostic_profile.archetype).toBe(CognitiveArchetype.PRAGMATIC_ARBITRAGEUR);
-      expect(report.diagnostic_profile.role_title).toBe("神机策士");
+      expect(report.diagnostic_profile.role_title).toBe("长袖善舞");
       expect(report.metacognitive_metrics.info_buying_efficiency).toBeGreaterThanOrEqual(0.70);
     });
 
-    test("Mock Q2 Adaptive Learner Agent 端到端产出潜龙在渊报告", () => {
+    test("Mock Q2 Adaptive Learner Agent 端到端产出灵窍天开报告", () => {
       const sm = new SessionManager(":memory:");
       const session = sm.createSession({ totalTrials: 30, warmupTrials: 6, subjectName: "AdaptiveLearnerAgent" });
 
@@ -255,7 +255,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
 
       const report = sm.getReport(session.sessionId);
       expect(report.diagnostic_profile.archetype).toBe(CognitiveArchetype.ADAPTIVE_LEARNER);
-      expect(report.diagnostic_profile.role_title).toBe("潜龙在渊");
+      expect(report.diagnostic_profile.role_title).toBe("灵窍天开");
       expect(report.diagnostic_profile.quadrant_code).toBe("Q2-EVO");
     });
 
@@ -288,7 +288,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       expect(report.metacognitive_metrics.calibration_bias).toBeLessThan(-0.12);
     });
 
-    test("Mock Q5 Anxious Retreater Agent 端到端产出暗夜行者报告", () => {
+    test("Mock Q5 Anxious Retreater Agent 端到端产出潜龙勿用报告", () => {
       const sm = new SessionManager(":memory:");
       const session = sm.createSession({ totalTrials: 30, warmupTrials: 6, subjectName: "RetreaterAgent" });
 
@@ -304,11 +304,11 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
 
       const report = sm.getReport(session.sessionId);
       expect(report.diagnostic_profile.archetype).toBe(CognitiveArchetype.ANXIOUS_RETREATER);
-      expect(report.diagnostic_profile.role_title).toBe("暗夜行者");
+      expect(report.diagnostic_profile.role_title).toBe("潜龙勿用");
       expect(report.diagnostic_profile.quadrant_code).toBe("Q5-RET");
     });
 
-    test("Mock Q8 Stochastic Drifter Agent 端到端产出星轨漫游者报告", () => {
+    test("Mock Q8 Stochastic Drifter Agent 端到端产出暮光星灵报告", () => {
       const sm = new SessionManager(":memory:");
       const session = sm.createSession({ totalTrials: 30, warmupTrials: 6, subjectName: "DrifterAgent" });
 
@@ -320,7 +320,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
 
       const report = sm.getReport(session.sessionId);
       expect(report.diagnostic_profile.archetype).toBe(CognitiveArchetype.STOCHASTIC_DRIFTER);
-      expect(report.diagnostic_profile.role_title).toBe("星轨漫游者");
+      expect(report.diagnostic_profile.role_title).toBe("暮光星灵");
       expect(report.metacognitive_metrics.brier_score).toBeGreaterThan(0.28);
     });
   });
@@ -456,7 +456,7 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       const def = ARCHETYPE_MATRIX[CognitiveArchetype.SOVEREIGN];
       expect(def.archetype).toBe(CognitiveArchetype.SOVEREIGN);
       expect(def.clinical_summary).toContain("高一元·高二元·知行自洽");
-      expect(def.role_title).toBe("领航统帅");
+      expect(def.role_title).toBe("人形外挂");
       expect(def.skills.length).toBe(4);
     });
 

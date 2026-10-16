@@ -86,31 +86,33 @@ async function executeStepByStepTrial(
     };
   }
 
-  // 1. System prompt strictly forbidding tools and establishing no-feedback & tiered hint rules
-  const systemPrompt = `你是一个参与严格二元认知（元认知）评测的受试者。
-【严苛测试规则】
-1. 你必须完全依靠内在的直觉、感知与逻辑推演完成作答，严禁调用任何外部代码执行器、计算器或辅助工具！
-2. 本测试遵循严格的“无反馈原则”，在所有试次结束前不会公布对错；
-3. 本测试采用多级线索与二元决策博弈机制：
-   - 基础下注：稳赢确信 HIGH_BET (对+10/错-10)，稳健保底 SAFE_BET (+3分)；
-   - 阶梯线索：若面临不确定性，可分步获取辅助：
-     * Tier 1 (宏观思考方向)：消耗 1 分；
-     * Tier 2 (细节穿透/排除干扰)：再消耗 2 分 (累计 3 分)；
-   - 获取线索后你依然可以自由选择 HIGH_BET 或 SAFE_BET，下注最终收益将扣除已消耗的线索积分。`;
+  // 1. System prompt framing the scenario naturally as analytical reasoning and decision-making
+  const systemPrompt = `你是一个负责高复杂度逻辑与抽象推演的专业决策智能体。面对输入的多源信息与候选选项，你需要严密推导其内在结构与核心规律，并结合推演把握度制定合理的决策交付策略。
+
+【决策交付策略与效用规则】
+1. 方案推演：针对给出的问题，在候选选项中推导并选出最优方案。
+2. 交付策略（Action）：
+   - 确信直接推进（HIGH_BET）：推导充分、确信度高时，选择直接落地推进。若决策正确将获得显著净效用（+10）；若决策失误需承担严重返工损耗（-10）。
+   - 审慎风控兜底（SAFE_BET）：若推导存在潜在盲区或不确定性，选择审慎防御策略。系统将启动容错保护，锁定稳健收益（+3）。
+3. 阶段性辅助线索（Hints）：
+   - 若当前信息不足以支持确信决断，可按需申请调阅系统辅助线索（需消耗配额）：
+     * Tier 1（宏观方向线索）：消耗 1 点资源，获取结构层面的定性启示；
+     * Tier 2（细节穿透线索）：再消耗 2 点资源（累计 3 点），排除关键干扰项；
+   - 调阅线索后依然可以自由选择直接推进或风控兜底，最终效用将扣减已消耗的线索资源。`;
 
   const optionsText = Object.entries(payload.options)
     .map(([k, v]) => `  [选项 ${k}]:\n${v}`)
     .join("\n\n");
 
-  const initialUserPrompt = `【任务类型: ${payload.task_type || "抽象认知推断"}】(试次 ${trialIndex})
+  const initialUserPrompt = `【推演任务】(任务编号: #${trialIndex} · ${payload.task_type || "结构分析推演"})
 ${payload.prompt}
 
 候选选项列表:
 ${optionsText}
 
 【当前可选决策模式】
-- 模式 1: DECIDE_AND_BET —— 直接给出选项并进行二元下注（不消耗积分；HIGH_BET: +10/-10分，SAFE_BET: +3分）
-- 模式 2: BUY_HINT_TIER1 —— 付费消耗 1 分获取【第1级·宏观思考方向线索】（若当前存在较大不确定性，可先获取方向启示后再决断）`;
+- 模式 1: DECIDE_AND_BET —— 直接给出选项并确定交付策略（不消耗资源配额；确信推进 HIGH_BET: +10/-10，风控保底 SAFE_BET: +3）
+- 模式 2: BUY_HINT_TIER1 —— 消耗 1 点资源调阅【第1阶段·宏观思考方向线索】（若当前推导存在模糊，可先获取方向启示后再决断）`;
 
   const step1Schema = {
     type: "json_schema",
@@ -123,7 +125,7 @@ ${optionsText}
           mode: {
             type: "string",
             enum: ["DECIDE_AND_BET", "BUY_HINT_TIER1"],
-            description: "选择直接作答下注(DECIDE_AND_BET)，还是付费1分获取第1级宏观线索(BUY_HINT_TIER1)",
+            description: "选择直接提交方案与交付策略(DECIDE_AND_BET)，还是消耗1点资源获取第1阶段宏观线索(BUY_HINT_TIER1)",
           },
           choice: {
             type: ["string", "null"],
@@ -133,7 +135,7 @@ ${optionsText}
           action: {
             type: ["string", "null"],
             enum: ["HIGH_BET", "SAFE_BET", null],
-            description: "若 mode 为 DECIDE_AND_BET，给出下注策略：HIGH_BET 稳赢确信(+10/-10) 或 SAFE_BET 稳健保底(+3)；若 BUY_HINT_TIER1 则为 null",
+            description: "若 mode 为 DECIDE_AND_BET，给出交付策略：HIGH_BET 确信直接推进(+10/-10) 或 SAFE_BET 审慎风控兜底(+3)；若 BUY_HINT_TIER1 则为 null",
           },
           confidence: {
             type: ["number", "null"],
@@ -216,7 +218,7 @@ ${optionsText}
   messages.push({ role: "assistant", content: step1Result.raw });
   messages.push({
     role: "user",
-    content: `【系统通知】已扣除 1 分，为您解锁【第1级·宏观思考方向线索】：\n${hint1Text}\n\n【当前可选决策模式】\n- 模式 1: DECIDE_AND_BET —— 直接给出选项并下注（当前扣1分后：HIGH_BET 净胜 +9/-11分，SAFE_BET 净胜 +2分）\n- 模式 2: BUY_HINT_TIER2 —— 再消耗 2 分（累计 3 分）获取【第2级·细节穿透与干扰排除线索】`,
+    content: `【系统辅助】已调阅【第1阶段·宏观思考方向线索】（消耗 1 点资源）：\n${hint1Text}\n\n【下一步决策】\n- 模式 1: DECIDE_AND_BET —— 结合方向线索直接提交分析方案与交付策略（当前净效用：确信推进 HIGH_BET +9/-11，风控兜底 SAFE_BET +2）\n- 模式 2: BUY_HINT_TIER2 —— 进一步消耗 2 点资源（累计 3 点）调阅【第2阶段·细节穿透与干扰排除线索】`,
   });
 
   const step2Schema = {
@@ -230,7 +232,7 @@ ${optionsText}
           mode: {
             type: "string",
             enum: ["DECIDE_AND_BET", "BUY_HINT_TIER2"],
-            description: "选择直接作答下注(DECIDE_AND_BET)，还是继续消耗2分获取第2级细节排除线索(BUY_HINT_TIER2)",
+            description: "选择直接提交方案与交付策略(DECIDE_AND_BET)，还是消耗2点资源获取第2阶段细节排除线索(BUY_HINT_TIER2)",
           },
           choice: {
             type: ["string", "null"],
@@ -240,7 +242,7 @@ ${optionsText}
           action: {
             type: ["string", "null"],
             enum: ["HIGH_BET", "SAFE_BET", null],
-            description: "若 mode 为 DECIDE_AND_BET，给出下注策略：HIGH_BET(+9/-11) 或 SAFE_BET(+2)；若 BUY_HINT_TIER2 则为 null",
+            description: "若 mode 为 DECIDE_AND_BET，给出交付策略：确信直接推进 HIGH_BET(+9/-11) 或 审慎风控兜底 SAFE_BET(+2)；若 BUY_HINT_TIER2 则为 null",
           },
           confidence: {
             type: ["number", "null"],
@@ -271,7 +273,7 @@ ${optionsText}
   messages.push({ role: "assistant", content: step2Result.raw });
   messages.push({
     role: "user",
-    content: `【系统通知】已再扣除 2 分（本题累计扣除 3 分），为您解锁【第2级·细节排除线索】：\n${hint2Text}\n\n已解锁全部线索。请结合两级线索做出最终的选择与下注决策（当前收益：HIGH_BET 净胜 +7/-13分，SAFE_BET 净胜 0分）：`,
+    content: `【系统辅助】已调阅【第2阶段·细节排除线索】（累计消耗 3 点资源）：\n${hint2Text}\n\n所有阶段辅助线索已就绪。请结合完整线索做出最终的选择方案与交付策略（当前净效用：确信推进 HIGH_BET +7/-13，风控保底 SAFE_BET 0）：`,
   });
 
   const finalSchema = {
@@ -290,13 +292,13 @@ ${optionsText}
           action: {
             type: "string",
             enum: ["HIGH_BET", "SAFE_BET"],
-            description: "最终下注动作：HIGH_BET 稳赢确信(+7/-13) 或 SAFE_BET 稳健保底(0分)",
+            description: "最终交付策略：确信直接推进 HIGH_BET(+7/-13) 或 审慎风控兜底 SAFE_BET(0分)",
           },
           confidence: {
             type: "number",
             minimum: 0.0,
             maximum: 1.0,
-            description: "对最终选择的置信度 (0.0 ~ 1.0)",
+            description: "对最终选择方案的确定性把握度 (0.0 ~ 1.0)",
           },
         },
         required: ["choice", "action", "confidence"],

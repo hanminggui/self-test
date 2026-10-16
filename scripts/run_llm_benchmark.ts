@@ -70,8 +70,7 @@ export async function runBenchmark(options: BenchmarkOptions = {}) {
       .join("\n\n");
 
     const promptText = `
-【题目 ${trial}/${totalTrials}】${isWarmup ? " (阶梯预热期)" : " (正式评定期)"}
-难度系数 Delta: ${payload.difficulty_level.toFixed(4)}
+【推演任务 #${trial}】
 ${payload.prompt}
 
 候选选项:
