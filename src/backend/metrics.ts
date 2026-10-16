@@ -291,7 +291,12 @@ export class PsychometricScorer {
     if (h2Star < fa2Star) {
       mRatio = 0.05;
     } else {
-      mRatio = Math.round((metaD / Math.max(0.20, dPrime)) * 10000) / 10000;
+      // 1. 低一元基底衰减：当 d' < 0.50 (做题接近随机猜测) 时，抑制极小样本噪声引起的虚高二阶敏感度
+      const signalModulation = Math.min(1.0, Math.max(0.05, dPrime / 0.50));
+      const rawRatio = (metaD / Math.max(0.40, dPrime)) * signalModulation;
+      // 2. 严格遵循 4D 相空间理论极限，物理硬上限截断为 [0.01, 2.00]
+      const clampedRatio = Math.max(0.01, Math.min(2.0, rawRatio));
+      mRatio = Math.round(clampedRatio * 10000) / 10000;
     }
 
     const bias = this.computeCalibrationBias(targetRecords);

@@ -110,18 +110,35 @@ export function normPpf(p: number): number {
 }
 
 /**
- * Calculates 4AFC d' from proportion correct (P_c).
- * Uses standard Macmillan & Creelman / Green & Swets tables approximation:
- *   d' ≈ sqrt(2) * normPpf(Pc) for m=4
+ * Precomputed 4AFC (4-Alternative Forced Choice) psychometric response curve.
+ * Generated via numerical integration of P_c(d') = \int \phi(x - d') * [\Phi(x)]^3 dx
+ * Complies with Macmillan & Creelman (2004) Detection Theory Table A5.2.
  */
+const TABLE_4AFC: [number, number][] = [
+  [0, 0.25], [0.1, 0.27641], [0.2, 0.30408], [0.3, 0.33289], [0.4, 0.3627],
+  [0.5, 0.39332], [0.6, 0.42458], [0.7, 0.45628], [0.8, 0.48823], [0.9, 0.52022],
+  [1.0, 0.55203], [1.1, 0.58348], [1.2, 0.61436], [1.3, 0.64449], [1.4, 0.67371],
+  [1.5, 0.70186], [1.6, 0.72882], [1.7, 0.75447], [1.8, 0.77872], [1.9, 0.80151],
+  [2.0, 0.82279], [2.1, 0.84255], [2.2, 0.86077], [2.3, 0.87748], [2.4, 0.89271],
+  [2.5, 0.9065], [2.6, 0.91892], [2.7, 0.93003], [2.8, 0.93992], [2.9, 0.94866],
+  [3.0, 0.95634], [3.1, 0.96305], [3.2, 0.96887], [3.3, 0.97388], [3.4, 0.97817],
+  [3.5, 0.9818], [3.6, 0.98485], [3.7, 0.98736], [3.8, 0.98939], [3.9, 0.99097],
+  [4.0, 0.9922],
+];
+
 export function compute4AFCdPrime(pc: number): number {
-  const boundedPc = Math.max(0.2501, Math.min(0.9999, pc));
-  // Exact empirical correction for 4AFC
-  // When Pc = 0.7071: d' ≈ 1.25 ~ 1.35
-  const z = normPpf(boundedPc);
-  // Empirical expansion polynomial for 4 alternatives
-  const dPrime = Math.SQRT2 * z + 0.28 * Math.max(0, z - 0.5);
-  return Math.max(0.01, dPrime);
+  if (pc <= 0.25) return 0.01;
+  if (pc >= 0.9922) return 4.0;
+
+  for (let i = 0; i < TABLE_4AFC.length - 1; i++) {
+    const [d0, p0] = TABLE_4AFC[i];
+    const [d1, p1] = TABLE_4AFC[i + 1];
+    if (pc >= p0 && pc <= p1) {
+      const t = (pc - p0) / (p1 - p0);
+      return Math.max(0.01, Math.round((d0 + t * (d1 - d0)) * 10000) / 10000);
+    }
+  }
+  return 0.01;
 }
 
 /**
