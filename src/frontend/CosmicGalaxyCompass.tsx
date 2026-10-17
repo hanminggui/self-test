@@ -27,9 +27,45 @@ const STARFIELD_STARS = Array.from({ length: 64 }).map((_, i) => {
     id: `star-${i}`,
     x: Math.abs(seed1 - Math.floor(seed1)) * 880,
     y: Math.abs(seed2 - Math.floor(seed2)) * 560,
-    r: 0.6 + Math.abs(seed3 - Math.floor(seed3)) * 1.4,
-    opacity: 0.15 + (i % 5) * 0.16,
+    r: 0.5 + Math.abs(seed3 - Math.floor(seed3)) * 1.0,
+    opacity: 0.12 + (i % 5) * 0.12,
     duration: 3 + (i % 4) * 2,
+  };
+});
+
+// 银河吸积盘微星尘群：随星系 3D 盘面旋转，呈现淡淡的一小点颜色 (天青、柔紫、暖金、微粉、冰蓝与纯白)
+// 围绕着核心外缘 (R: 56~120) 与中盘吸积带 (R: 120~246) 自然聚拢，如同真实银河可见光
+const GALACTIC_STARDUST = Array.from({ length: 140 }).map((_, i) => {
+  const seed1 = Math.sin(i * 127.31) * 10000;
+  const seed2 = Math.cos(i * 311.83) * 10000;
+  const seed3 = Math.sin(i * 571.19) * 10000;
+
+  const r1 = Math.abs(seed1 - Math.floor(seed1));
+  const r2 = Math.abs(seed2 - Math.floor(seed2));
+  const r3 = Math.abs(seed3 - Math.floor(seed3));
+
+  // 极径分布：偏向核心外缘与吸积盘 (R: 56 ~ 246)
+  const radius = 56 + Math.pow(r1, 1.35) * 190;
+  const angle = r2 * 360;
+
+  // 6 种微星光谱色：淡淡的一小点颜色
+  const colors = [
+    "rgba(56, 189, 248, 0.70)",  // 淡淡的天青
+    "rgba(192, 132, 252, 0.65)", // 淡淡的柔紫
+    "rgba(253, 224, 71, 0.60)",  // 淡淡的暖星金
+    "rgba(244, 114, 182, 0.55)", // 淡淡的星云粉
+    "rgba(255, 255, 255, 0.80)", // 晶莹纯白
+    "rgba(147, 197, 253, 0.65)", // 淡淡的冰蓝
+  ];
+  const color = colors[i % colors.length];
+
+  return {
+    id: `dust-${i}`,
+    r: radius,
+    deg: angle,
+    baseR: 0.55 + r3 * 0.95, // 0.55px ~ 1.50px 淡淡的一小点
+    color,
+    baseOpacity: 0.28 + (i % 5) * 0.11,
   };
 });
 
@@ -293,6 +329,19 @@ export default function CosmicGalaxyCompass({
     return list.sort((a, b) => a.proj.depth - b.proj.depth);
   }, [subjectPolars, rotation, hoveredSubject]);
 
+  // 计算当前帧银河吸积盘微星尘的 3D 投影坐标 (随星盘自转，产生真实银河微星尘流光)
+  const projectedStardust = useMemo(() => {
+    return GALACTIC_STARDUST.map((star) => {
+      const proj = project3D(star.r, star.deg, rotation, 440, 280, 45, 680);
+      return {
+        ...star,
+        proj,
+        screenR: Math.max(0.4, star.baseR * proj.scale),
+        opacity: Math.min(1.0, Math.max(0.18, star.baseOpacity * proj.scale * 0.9)),
+      };
+    });
+  }, [rotation]);
+
   // 生成同心透视椭圆路径 (采样 36 个点平滑连线)
   const getPerspectiveEllipsePath = (r: number) => {
     const points: string[] = [];
@@ -338,13 +387,13 @@ export default function CosmicGalaxyCompass({
         </button>
       </div>
 
-      {/* 无边界深空视口容器 (彻底去除生硬矩形边框) */}
+      {/* 无边界深空视口容器 (彻底去除生硬矩形边框与淡光底色) */}
       <div
         ref={containerRef}
         onPointerDown={handlePointerDown}
         className="relative w-full aspect-[880/560] max-h-[700px] flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
         style={{
-          background: "radial-gradient(ellipse at 50% 50%, rgba(15, 23, 42, 0.7) 0%, rgba(2, 6, 23, 0.95) 75%, transparent 100%)",
+          background: "transparent",
         }}
         title="支持触控板双指滑动旋转，或按住鼠标左键手势拨动星系"
       >
@@ -358,13 +407,13 @@ export default function CosmicGalaxyCompass({
               <stop offset="100%" stopColor="#090a0f" stopOpacity="0" />
             </radialGradient>
 
-            {/* 2. 吸积盘星云气团背景渐变 */}
-            <radialGradient id="nebula-dust" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(99, 102, 241, 0.18)" />
-              <stop offset="45%" stopColor="rgba(168, 85, 247, 0.08)" />
-              <stop offset="80%" stopColor="rgba(6, 182, 212, 0.04)" />
-              <stop offset="100%" stopColor="transparent" />
-            </radialGradient>
+            {/* 2. 宇宙射线高能模糊滤镜 (打造模糊发光的宇宙射线光晕与光束) */}
+            <filter id="cosmic-ray-blur-wide" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="4.0" />
+            </filter>
+            <filter id="cosmic-ray-blur-mid" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" />
+            </filter>
 
             {/* 3. 星球 3D 立体球体材质渐变 (左上光源) */}
             <radialGradient id="planet-rose" cx="35%" cy="32%" r="65%">
@@ -409,102 +458,162 @@ export default function CosmicGalaxyCompass({
           </defs>
 
           {/* ============================================================== */}
-          {/* A. 深空背景星辰与星云吸积盘 (无界漂浮)                        */}
+          {/* A. 银河可见微星尘与深空背景 (淡淡的一小点颜色，围绕星盘聚拢)  */}
           {/* ============================================================== */}
           <g className="pointer-events-none select-none">
+            {/* 1. 远深空背景恒星点 (极淡微星背景) */}
             {STARFIELD_STARS.map((star) => (
               <circle
                 key={star.id}
                 cx={star.x}
                 cy={star.y}
-                r={star.r}
+                r={star.r * 0.7}
                 fill="#ffffff"
-                opacity={star.opacity}
+                opacity={star.opacity * 0.55}
               />
             ))}
 
-            <ellipse
-              cx="440"
-              cy="280"
-              rx="400"
-              ry="240"
-              fill="url(#nebula-dust)"
-              filter="url(#soft-glow)"
-            />
+            {/* 2. 银河星盘微星光点群：淡淡的一小点颜色，围绕着银河吸积带自然聚集 */}
+            {projectedStardust.map((star) => (
+              <circle
+                key={star.id}
+                cx={star.proj.x.toFixed(1)}
+                cy={star.proj.y.toFixed(1)}
+                r={star.screenR}
+                fill={star.color}
+                opacity={star.opacity}
+              />
+            ))}
           </g>
 
           {/* ============================================================== */}
-          {/* B. 45° 透视能级光环轨道 (椭圆吸积轨道)                          */}
+          {/* B. 45° 透视能级轨道 (已去除最外侧圆线，呈现无边界深空)          */}
           {/* ============================================================== */}
           <g className="pointer-events-none select-none">
-            {/* 被动防御环 R=115 */}
+            {/* 被动防御环 R=115 (极淡虚线指引) */}
             <path
               d={getPerspectiveEllipsePath(115)}
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.08)"
-              strokeWidth="0.8"
-              strokeDasharray="4 4"
-            />
-            {/* 核心自洽环 R=180 */}
-            <path
-              d={getPerspectiveEllipsePath(180)}
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.14)"
-              strokeWidth="0.9"
-              strokeDasharray="6 4"
-            />
-            {/* 觉醒突破主光环 R=248 */}
-            <path
-              d={getPerspectiveEllipsePath(248)}
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.35)"
-              strokeWidth="1.2"
-            />
-            {/* 最外侧星际护圈 R=308 */}
-            <path
-              d={getPerspectiveEllipsePath(308)}
               fill="none"
               stroke="rgba(255, 255, 255, 0.06)"
               strokeWidth="0.8"
               strokeDasharray="3 5"
             />
+            {/* 核心自洽环 R=180 (极淡虚线指引) */}
+            <path
+              d={getPerspectiveEllipsePath(180)}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.08)"
+              strokeWidth="0.8"
+              strokeDasharray="4 6"
+            />
           </g>
 
           {/* ============================================================== */}
-          {/* C. 4 条主轴线 (x, y 与对角轴: 无色实线，彻底跳过中央真空区)     */}
+          {/* C. 4 条主轴线 (宇宙射线样式：带模糊色彩光晕，跳过中央真空区)     */}
           {/* ============================================================== */}
           <g className="select-none">
             {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
-              // 起点位于中央真空区边缘 R=52，终点位于刻度主环 R=248
+              // 起点位于中央真空区边缘 R=52，终点延伸至 R=250
               const pInner = project3D(52, deg, rotation, 440, 280, 45, 680);
-              const pOuter = project3D(248, deg, rotation, 440, 280, 45, 680);
+              const pOuter = project3D(250, deg, rotation, 440, 280, 45, 680);
 
               const axisInfo = AXIS_DETAILED_INFO[deg];
-              // 刻度数值位置 (紧贴主刻度环外侧 R=256)
-              const pNum = project3D(256, deg, rotation, 440, 280, 45, 680);
-              // 轴线简单名称位置 (再外侧 R=296，留出 40px 间距，绝不挤撞)
-              const pName = project3D(296, deg, rotation, 440, 280, 45, 680);
+              // 刻度数值位置 (紧贴射线外端 R=258)
+              const pNum = project3D(258, deg, rotation, 440, 280, 45, 680);
+              // 轴线简单名称位置 (再外侧 R=298，留出 40px 间距，绝不挤撞)
+              const pName = project3D(298, deg, rotation, 440, 280, 45, 680);
+
+              // 动态生成沿当前射线方向的能量渐变 ID
+              const gradIdGlow = `cosmic-ray-glow-${deg}`;
+              const gradIdCore = `cosmic-ray-core-${deg}`;
 
               return (
                 <g key={`galaxy-axis-${deg}`}>
-                  {/* 无色实线半轴 (从真空边缘射向刻度环，跳过真空区) */}
+                  <defs>
+                    {/* 射线外层弥散光晕渐变 (天青 -> 苍紫 -> 散逸) */}
+                    <linearGradient
+                      id={gradIdGlow}
+                      x1={pInner.x}
+                      y1={pInner.y}
+                      x2={pOuter.x}
+                      y2={pOuter.y}
+                      gradientUnits="userSpaceOnUse"
+                    >
+                      <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.85" />
+                      <stop offset="35%" stopColor="#818cf8" stopOpacity="0.70" />
+                      <stop offset="70%" stopColor="#a855f7" stopOpacity="0.45" />
+                      <stop offset="100%" stopColor="#c084fc" stopOpacity="0" />
+                    </linearGradient>
+
+                    {/* 射线中层高能聚焦束渐变 (白炽核 -> 高能青紫 -> 柔和边缘) */}
+                    <linearGradient
+                      id={gradIdCore}
+                      x1={pInner.x}
+                      y1={pInner.y}
+                      x2={pOuter.x}
+                      y2={pOuter.y}
+                      gradientUnits="userSpaceOnUse"
+                    >
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                      <stop offset="25%" stopColor="#67e8f9" stopOpacity="0.85" />
+                      <stop offset="65%" stopColor="#818cf8" stopOpacity="0.65" />
+                      <stop offset="100%" stopColor="#a855f7" stopOpacity="0.05" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* 1. 外层宽幅模糊彩色射线晕 (比较模糊的宇宙射线彩色光芒) */}
                   <line
                     x1={pInner.x}
                     y1={pInner.y}
                     x2={pOuter.x}
                     y2={pOuter.y}
-                    stroke="rgba(255, 255, 255, 0.42)"
-                    strokeWidth="1.2"
+                    stroke={`url(#${gradIdGlow})`}
+                    strokeWidth={8 * pInner.scale}
+                    strokeLinecap="round"
+                    filter="url(#cosmic-ray-blur-wide)"
+                    opacity={0.7}
                   />
 
-                  {/* 刻度端点微节点 */}
+                  {/* 2. 中层粒子束流彩色模糊光线 */}
+                  <line
+                    x1={pInner.x}
+                    y1={pInner.y}
+                    x2={pOuter.x}
+                    y2={pOuter.y}
+                    stroke={`url(#${gradIdCore})`}
+                    strokeWidth={3 * pInner.scale}
+                    strokeLinecap="round"
+                    filter="url(#cosmic-ray-blur-mid)"
+                    opacity={0.85}
+                  />
+
+                  {/* 3. 内层高能白炽粒子中心流 */}
+                  <line
+                    x1={pInner.x}
+                    y1={pInner.y}
+                    x2={pOuter.x}
+                    y2={pOuter.y}
+                    stroke="rgba(255, 255, 255, 0.85)"
+                    strokeWidth={1.0 * pInner.scale}
+                    strokeLinecap="round"
+                    opacity={0.75}
+                  />
+
+                  {/* 射线末端微光能量节点 */}
                   <circle
                     cx={pOuter.x}
                     cy={pOuter.y}
-                    r={2.4 * pOuter.scale}
+                    r={2.2 * pOuter.scale}
+                    fill="#38bdf8"
+                    opacity={0.7}
+                    filter="url(#cosmic-ray-blur-mid)"
+                  />
+                  <circle
+                    cx={pOuter.x}
+                    cy={pOuter.y}
+                    r={1.0 * pOuter.scale}
                     fill="#ffffff"
-                    stroke="rgba(255,255,255,0.7)"
-                    strokeWidth="0.8"
+                    opacity={0.9}
                   />
 
                   {/* 最外侧刻度展示纯数字 (随透视近大远小) */}
