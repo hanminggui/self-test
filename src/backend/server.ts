@@ -19,7 +19,7 @@ app.use("*", cors({
 }));
 
 // Admin credentials
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || Math.random().toString(36).substring(2, 10);
+export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin888";
 const HOST = process.env.HOST || "0.0.0.0";
 const PORT = parseInt(process.env.PORT || "8000", 10);
 

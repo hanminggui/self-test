@@ -213,6 +213,9 @@ export class SessionManager {
           options: { A: "COMPLETED", B: "COMPLETED" },
           has_hint: false,
           hint_cost: 0,
+          hint_tier1_cost: 1,
+          hint_tier2_cost: 2,
+          hints_unlocked: 0,
           task_type: "COMPLETED",
         },
       };

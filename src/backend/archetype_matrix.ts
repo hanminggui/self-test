@@ -390,19 +390,25 @@ export function classifyCognitiveArchetype(x: {
     }
     return CognitiveArchetype.AUDACIOUS_PIONEER; // Q4-PIO
   } else {
-    // 低一元分支：自省进化 vs 审慎避险 vs 达克盲赌
-    if (x.mRatio >= 0.60) {
-      if (x.hintsCount >= 2 && x.ive >= 0.60) {
-        return CognitiveArchetype.ADAPTIVE_LEARNER; // Q2-EVO
-      }
-      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 大音希声)
-    } else {
-      if (x.bias > 0.15 && x.mRatio < 0.50) {
-        return CognitiveArchetype.BLIND_GAMBLER; // Q6-GAM (展示为: 无畏先锋)
-      }
-      // 审慎本分且无盲赌恶习的低一元者，安全归入 Q5 避险守护，严禁打入 Q8
-      return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 大音希声)
+    // 低一元分支 (D* < 0.60 且 d' < 1.40)：自省进化 vs 达克盲赌 vs 审慎避险
+    // 1. 具有高二元线索借力能力与进化潜力的自省者 (主动借助外部工具穿透盲区)
+    if (x.hintsCount >= 2 && x.ive >= 0.60 && x.mRatio >= 0.60) {
+      return CognitiveArchetype.ADAPTIVE_LEARNER; // Q2-EVO (展示为: 灵窍天开)
     }
+
+    // 2. 达克盲赌者截断：低一元且显著过度自信 (bias > 0.15)
+    // 既不积极借力工具，又盲目押注，无论其小样本下 mRatio 数学计算是否因极小分母偶发偏高，其行为本质均为达克盲赌
+    if (x.bias > 0.15) {
+      return CognitiveArchetype.BLIND_GAMBLER; // Q6-GAM (展示为: 无畏先锋)
+    }
+
+    // 3. 高二元自照者 (bias <= 0.15 且 mRatio >= 0.80)：无需线索也能清醒知己不知
+    if (x.mRatio >= 0.80) {
+      return CognitiveArchetype.ADAPTIVE_LEARNER; // Q2-EVO (展示为: 灵窍天开)
+    }
+
+    // 4. 审慎本分且无盲赌恶习的低一元防御者 (bias <= 0.15 且 mRatio < 0.80)
+    return CognitiveArchetype.ANXIOUS_RETREATER; // Q5-RET (展示为: 大音希声)
   }
 }
 

@@ -166,6 +166,22 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       expect(def.role_title).toBe("无畏先锋");
       expect(def.quadrant_code).toBe("Q6-GAM");
     });
+
+    test("Q6-GAM: 极度过度自信盲赌者即使因小分母偶然计算出高 mRatio (果果真实数据模式)，也必须截断归入 Q6", () => {
+      const arch = classifyCognitiveArchetype({
+        dStar: 0.205, // 答对率仅 36%
+        dPrime: 0.4031, // 极小一元分母
+        mRatio: 1.2684, // 离散噪声放大的高 Y 轴数值
+        bias: 0.4727,  // > +0.15 极度自负冒进
+        brier: 0.4268,
+        ive: 0.50,
+        hintsCount: 0,
+      });
+      expect(arch).toBe(CognitiveArchetype.BLIND_GAMBLER);
+      const def = getArchetypeDefinition(arch);
+      expect(def.role_title).toBe("无畏先锋");
+      expect(def.quadrant_code).toBe("Q6-GAM");
+    });
   });
 
   // =========================================================================
