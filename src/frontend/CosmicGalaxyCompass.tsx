@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Sparkles, Sliders, Pause, Play, Compass, ExternalLink } from "lucide-react";
+import SubjectHoverCard from "./components/admin/SubjectHoverCard";
 import {
   SubjectPoint,
   OCTANT_SECTOR_CONFIGS,
-  OCTANT_DETAILED_INFO,
   AXIS_DETAILED_INFO,
   AxisDetailInfo,
   computeMultivariateColor,
@@ -16,7 +15,14 @@ interface CosmicGalaxyCompassProps {
     string,
     { count: number; percentage: string; avgDStar: string; avgMRatio: string; avgScore: number }
   >;
+  isRotating?: boolean;
+  onToggleRotating?: () => void;
+  onHoverStatusChange?: (statusText: string | null) => void;
+  onActiveSectorChange?: (octantCode: string) => void;
 }
+
+export const GALAXY_CX = 440;
+export const GALAXY_CY = 230; // 上移星图中心位置 (原 280 -> 230)
 
 // 固定种子生成深空星尘粒子 (64 颗恒星背景，固定不闪烁变形)
 const STARFIELD_STARS = Array.from({ length: 64 }).map((_, i) => {
@@ -35,7 +41,7 @@ const STARFIELD_STARS = Array.from({ length: 64 }).map((_, i) => {
 
 // 银河吸积盘微星尘群：随星系 3D 盘面旋转，呈现淡淡的一小点颜色 (天青、柔紫、暖金、微粉、冰蓝与纯白)
 // 围绕着核心外缘 (R: 56~120) 与中盘吸积带 (R: 120~246) 自然聚拢，如同真实银河可见光
-const GALACTIC_STARDUST = Array.from({ length: 140 }).map((_, i) => {
+const GALACTIC_STARDUST = Array.from({ length: 72 }).map((_, i) => {
   const seed1 = Math.sin(i * 127.31) * 10000;
   const seed2 = Math.cos(i * 311.83) * 10000;
   const seed3 = Math.sin(i * 571.19) * 10000;
@@ -44,9 +50,14 @@ const GALACTIC_STARDUST = Array.from({ length: 140 }).map((_, i) => {
   const r2 = Math.abs(seed2 - Math.floor(seed2));
   const r3 = Math.abs(seed3 - Math.floor(seed3));
 
-  // 极径分布：偏向核心外缘与吸积盘 (R: 56 ~ 246)
-  const radius = 56 + Math.pow(r1, 1.35) * 190;
-  const angle = r2 * 360;
+  // 极径分布：沿旋臂从 16px 自然延伸到 235px
+  const radius = 16 + Math.pow(r1, 1.15) * 219;
+  // 4 条对数螺旋旋臂基底相位 (0°, 90°, 180°, 270°)
+  const armBase = (i % 4) * 90;
+  // 旋臂随半径外旋的角度 (约 260°) + 适度随机散射 (+- 14度)
+  const armCurl = (radius / 235) * 260;
+  const scatter = (r2 - 0.5) * 28;
+  const angle = (armBase + armCurl + scatter + 360) % 360;
 
   // 6 种微星光谱色：淡淡的一小点颜色
   const colors = [
@@ -70,6 +81,146 @@ const GALACTIC_STARDUST = Array.from({ length: 140 }).map((_, i) => {
 });
 
 /**
+ * 4 条主轴（8 个半轴方向）定向高能电磁辐射能谱色彩配置
+ * 四条射线理论颜色各不相同：
+ * - 0° & 180°: 元认知效率轴 (M_ratio) -> 量子电磁紫 (Violet)
+ * - 45° & 225°: 决策倾角轴 (Calibration Bias) -> 高能电离绯红 (Crimson)
+ * - 90° & 270°: 相变突破度轴 (D*) -> 宇宙电磁天青蓝 (Cyan)
+ * - 135° & 315°: 信息觅食杠杆轴 (IVE) -> 日冕辐射琥珀金 (Amber / Gold)
+ */
+export interface AxisRayColorConfig {
+  coreWhite: string;
+  primary: string;
+  beamGlow: string;
+  beamCore: string;
+  wavepacketDash: string; // 电磁波节/波包脉动虚线纹理
+}
+
+export const AXIS_RAY_COLOR_CONFIGS: Record<number, AxisRayColorConfig> = {
+  // 轴 1 (M_ratio 轴): 量子电磁紫
+  0: {
+    coreWhite: "#f3e8ff",
+    primary: "#c084fc",
+    beamGlow: "rgba(192, 132, 252, 0.75)",
+    beamCore: "#a855f7",
+    wavepacketDash: "6 12",
+  },
+  180: {
+    coreWhite: "#f3e8ff",
+    primary: "#c084fc",
+    beamGlow: "rgba(168, 85, 247, 0.75)",
+    beamCore: "#9333ea",
+    wavepacketDash: "6 12",
+  },
+
+  // 轴 2 (Bias 轴): 高能电离绯红
+  45: {
+    coreWhite: "#ffe4e6",
+    primary: "#fb7185",
+    beamGlow: "rgba(251, 113, 133, 0.75)",
+    beamCore: "#f43f5e",
+    wavepacketDash: "10 16",
+  },
+  225: {
+    coreWhite: "#ffe4e6",
+    primary: "#fb7185",
+    beamGlow: "rgba(244, 63, 94, 0.75)",
+    beamCore: "#e11d48",
+    wavepacketDash: "10 16",
+  },
+
+  // 轴 3 (D* 轴): 宇宙电磁天青蓝
+  90: {
+    coreWhite: "#e0f2fe",
+    primary: "#38bdf8",
+    beamGlow: "rgba(56, 189, 248, 0.75)",
+    beamCore: "#0284c7",
+    wavepacketDash: "8 14",
+  },
+  270: {
+    coreWhite: "#e0f2fe",
+    primary: "#38bdf8",
+    beamGlow: "rgba(14, 165, 233, 0.75)",
+    beamCore: "#0369a1",
+    wavepacketDash: "8 14",
+  },
+
+  // 轴 4 (IVE 轴): 日冕辐射琥珀金
+  135: {
+    coreWhite: "#fef3c7",
+    primary: "#fbbf24",
+    beamGlow: "rgba(251, 191, 36, 0.75)",
+    beamCore: "#f59e0b",
+    wavepacketDash: "7 13",
+  },
+  315: {
+    coreWhite: "#fef3c7",
+    primary: "#fbbf24",
+    beamGlow: "rgba(245, 158, 11, 0.75)",
+    beamCore: "#d97706",
+    wavepacketDash: "7 13",
+  },
+};
+
+/**
+ * 8 个象区相邻两根高能射线的能谱色彩对 (按旋转相邻关系提取)
+ * 用于象区名称字体颜色能谱取值及空心外发光效果
+ */
+export const OCTANT_RAY_COLOR_PAIRS: Record<
+  string,
+  { color1: string; color2: string; glow1: string; glow2: string }
+> = {
+  "Q1-CAL": {
+    color1: "#c084fc", // 0° M 轴 (量子紫)
+    color2: "#fb7185", // 45° Bias 轴 (电离绯红)
+    glow1: "rgba(192, 132, 252, 0.7)",
+    glow2: "rgba(251, 113, 133, 0.7)",
+  },
+  "Q4-PIO": {
+    color1: "#fb7185", // 45° Bias 轴 (电离绯红)
+    color2: "#38bdf8", // 90° D* 轴 (天青蓝)
+    glow1: "rgba(251, 113, 133, 0.7)",
+    glow2: "rgba(56, 189, 248, 0.7)",
+  },
+  "Q3-SEN": {
+    color1: "#38bdf8", // 90° D* 轴 (天青蓝)
+    color2: "#fbbf24", // 135° IVE 轴 (琥珀金)
+    glow1: "rgba(56, 189, 248, 0.7)",
+    glow2: "rgba(251, 191, 36, 0.7)",
+  },
+  "Q5-RET": {
+    color1: "#fbbf24", // 135° IVE 轴 (琥珀金)
+    color2: "#c084fc", // 180° M 轴 (量子紫)
+    glow1: "rgba(251, 191, 36, 0.7)",
+    glow2: "rgba(192, 132, 252, 0.7)",
+  },
+  "Q6-GAM": {
+    color1: "#c084fc", // 180° M 轴 (量子紫)
+    color2: "#fb7185", // 225° Bias 轴 (电离绯红)
+    glow1: "rgba(192, 132, 252, 0.7)",
+    glow2: "rgba(251, 113, 133, 0.7)",
+  },
+  "Q8-DRI": {
+    color1: "#fb7185", // 225° Bias 轴 (电离绯红)
+    color2: "#38bdf8", // 270° D* 轴 (天青蓝)
+    glow1: "rgba(251, 113, 133, 0.7)",
+    glow2: "rgba(56, 189, 248, 0.7)",
+  },
+  "Q2-EVO": {
+    color1: "#38bdf8", // 270° D* 轴 (天青蓝)
+    color2: "#fbbf24", // 315° IVE 轴 (琥珀金)
+    glow1: "rgba(56, 189, 248, 0.7)",
+    glow2: "rgba(251, 191, 36, 0.7)",
+  },
+  "Q7-ARB": {
+    color1: "#fbbf24", // 315° IVE 轴 (琥珀金)
+    color2: "#c084fc", // 0° M 轴 (量子紫)
+    glow1: "rgba(251, 191, 36, 0.7)",
+    glow2: "rgba(192, 132, 252, 0.7)",
+  },
+};
+
+/**
  * 3D 斜上方 45 度透视投影数学引擎
  * 将极坐标 (r, angleDeg) 经过盘面自转 rotation 投影到 45° 斜视摄像机屏幕坐标
  */
@@ -77,8 +228,8 @@ function project3D(
   r: number,
   angleDeg: number,
   rotation: number,
-  cx: number = 440,
-  cy: number = 280,
+  cx: number = GALAXY_CX,
+  cy: number = GALAXY_CY,
   tiltDeg: number = 45,
   dist: number = 680
 ) {
@@ -157,26 +308,54 @@ function getSubjectPolar(sub: SubjectPoint) {
 }
 
 /**
+ * 计算星盘在极径 r 处的引力滞后与角动量向心弯曲偏移角 (度)
+ * 全程导数连续光滑，彻底消除硬截断导致的折角/转角瑕疵
+ * 根据旋转速度计算射线展示出的扭曲度，拖拽时随向心力变化 8 个区域随射线弯曲变成同等级形变
+ */
+export function getCurvatureOffsetDeg(r: number, angularVelocity: number): number {
+  if (r <= 0) return 0;
+  const speedSign = Math.sign(angularVelocity || 1);
+  const speedAbs = Math.abs(angularVelocity);
+
+  // 基础巡航引力微弯 (约 7.5°) + 拖拽/高速时向心力平滑动态弯曲 (平滑最大至 ~30°)
+  const dynamicBend = Math.min(22, speedAbs * 6.5);
+  const totalBend = 7.5 + dynamicBend;
+
+  // 使用无截断平滑 S 型饱和函数：在 r=0 处值为 0 且一阶导为 0；随 r 增大平滑单调展开并柔和饱和至渐近线
+  // 杜绝任何 Math.min 硬折点！
+  const u = r / 280;
+  const smoothRadial = (2.2 * Math.pow(u, 1.35)) / (1 + 0.38 * Math.pow(u, 1.35));
+
+  // 负号为向旋转后方滞后
+  return -speedSign * totalBend * smoothRadial;
+}
+
+/**
  * 4D 认知流形全息星系组件 (Cosmic Manifold Galaxy)
  * - 最外侧无边界星空展示
  * - 斜上方 45 度视角查看
  * - 近大远小透视缩放
  * - 每个人为一颗 3D 球体行星 (高杠杆配备土星光环)
- * - 4 条主轴无色实线，跳过中央真空区
- * - 外侧刻度展示数字，再外侧展示轴线简单名称
- * - 鼠标悬浮展示画像与轴线明细卡片
- * - 原生 60fps 动能手势引擎，兼容鼠标拖拽与触控板双指滑动
+ * - 4 条高能射线随中心旋转并伴随引力向心弯曲
+ * - 射线端点文字紧凑包裹，字形吞光黑洞剪影，外部高能发光衬托轮廓
+ * - 8 个区域随射线弯曲保持同等级形变
  */
 export default function CosmicGalaxyCompass({
   subjects,
   onOpenReport,
   octantStatsMap,
+  isRotating: externalIsRotating,
+  onToggleRotating,
+  onHoverStatusChange,
+  onActiveSectorChange,
 }: CosmicGalaxyCompassProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 动画与手势状态 (使用轻量 React State 驱动 3D 投影帧更新)
+  // 动画与手势状态
   const [rotation, setRotation] = useState(0);
-  const [isRotating, setIsRotating] = useState(true);
+  const [velocity, setVelocity] = useState(0.16);
+  const [internalIsRotating, setInternalIsRotating] = useState(true);
+  const isRotating = externalIsRotating !== undefined ? externalIsRotating : internalIsRotating;
 
   // 悬浮状态
   const [hoveredSubject, setHoveredSubject] = useState<SubjectPoint | null>(null);
@@ -184,15 +363,29 @@ export default function CosmicGalaxyCompass({
   const [hoveredAxis, setHoveredAxis] = useState<AxisDetailInfo | null>(null);
   const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | null>(null);
 
+  // 同步悬停状态给父组件 (供右侧面板动态展示)
+  useEffect(() => {
+    if (!onHoverStatusChange) return;
+    if (hoveredOctant) {
+      onHoverStatusChange(`【${OCTANT_SECTOR_CONFIGS[hoveredOctant]?.name}】: ${OCTANT_SECTOR_CONFIGS[hoveredOctant]?.desc}`);
+    } else if (hoveredAxis) {
+      onHoverStatusChange(`【${hoveredAxis.shortName}】: ${hoveredAxis.dimension}`);
+    } else {
+      onHoverStatusChange(null);
+    }
+  }, [hoveredOctant, hoveredAxis, onHoverStatusChange]);
+
   // 动能物理引擎 Ref
   const rotationRef = useRef(0);
-  const angularVelocityRef = useRef(0.04);
+  const lastRenderedRotRef = useRef(-999);
+  const lastRenderedVelRef = useRef(-999);
+  const angularVelocityRef = useRef(0.16);
   const isInteractingRef = useRef(false);
   const lastPointerXRef = useRef(0);
   const lastPointerTimeRef = useRef(0);
   const wheelTimeoutRef = useRef<number | null>(null);
 
-  // 物理惯性动能循环 (RAF)
+  // 物理惯性动能循环 (单源 RAF 驱动，60fps 统一分发自转与速度更新)
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -204,14 +397,26 @@ export default function CosmicGalaxyCompass({
       const isPausedByHover = Boolean(hoveredSubject || hoveredOctant || hoveredAxis);
 
       if (!isInteractingRef.current && isRotating && !isPausedByHover) {
-        if (Math.abs(angularVelocityRef.current) > 0.05) {
-          angularVelocityRef.current *= 0.94; // 惯性阻尼
+        if (Math.abs(angularVelocityRef.current) > 0.18) {
+          angularVelocityRef.current *= 0.95; // 惯性阻尼
         } else {
-          angularVelocityRef.current = 0.04 * Math.sign(angularVelocityRef.current || 1); // 匀速巡航
+          angularVelocityRef.current = 0.16 * Math.sign(angularVelocityRef.current || 1); // 匀速巡航速度
         }
 
         rotationRef.current = (rotationRef.current + angularVelocityRef.current + 360) % 360;
-        setRotation(rotationRef.current);
+      }
+
+      // 仅在角度或速度发生实质变化时提交 React 渲染
+      const curRot = rotationRef.current;
+      const curVel = angularVelocityRef.current;
+      if (
+        Math.abs(curRot - lastRenderedRotRef.current) > 0.001 ||
+        Math.abs(curVel - lastRenderedVelRef.current) > 0.01
+      ) {
+        lastRenderedRotRef.current = curRot;
+        lastRenderedVelRef.current = curVel;
+        setRotation(curRot);
+        setVelocity(curVel);
       }
 
       animId = requestAnimationFrame(updatePhysics);
@@ -221,19 +426,17 @@ export default function CosmicGalaxyCompass({
     return () => cancelAnimationFrame(animId);
   }, [isRotating, hoveredSubject, hoveredOctant, hoveredAxis]);
 
-  // 原生触控板双指手势 (wheel) 监听：横滑或纵滑平滑旋转
+  // 原生触控板双指手势 (wheel) 监听：横滑或纵滑平滑旋转 (仅更新 ref，由 RAF 批量消费)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
-      e.preventDefault(); // 阻止页面滚动
+      e.preventDefault();
       const dominantDelta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       const angleDelta = dominantDelta * 0.28;
 
       rotationRef.current = (rotationRef.current + angleDelta + 360) % 360;
-      setRotation(rotationRef.current);
-
       angularVelocityRef.current = Math.max(-10, Math.min(10, angleDelta * 0.45));
       isInteractingRef.current = true;
 
@@ -249,7 +452,7 @@ export default function CosmicGalaxyCompass({
     };
   }, []);
 
-  // 鼠标原生拖拽拨盘
+  // 鼠标原生拖拽拨盘 (仅在 PointerMove 中累加角位移，由 RAF 统一渲染，消除拖拽卡顿)
   const handlePointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
     if (
@@ -278,8 +481,8 @@ export default function CosmicGalaxyCompass({
       lastPointerXRef.current = ev.clientX;
       lastPointerTimeRef.current = now;
 
+      // 仅更新角度数值，不触发高频 setRotation！
       rotationRef.current = (rotationRef.current + angleDelta + 360) % 360;
-      setRotation(rotationRef.current);
     };
 
     const handleWindowPointerUp = () => {
@@ -302,17 +505,15 @@ export default function CosmicGalaxyCompass({
     }));
   }, [subjects]);
 
-  // 计算当前帧所有星球的 3D 屏幕投影并按深度排序 (Z-Sort: 远的先画，近的后画)
+  // 计算当前帧所有星球的 3D 屏幕投影并按深度排序 (8 个区域随射线弯曲同等级形变)
   const projectedPlanets = useMemo(() => {
     const list = subjectPolars.map(({ sub, polar }) => {
-      const proj = project3D(polar.r, polar.deg, rotation, 440, 280, 45, 680);
-      const isHovered = hoveredSubject?.id === sub.id;
+      const curveOffset = getCurvatureOffsetDeg(polar.r, velocity);
+      const currentDeg = polar.deg + rotation + curveOffset;
+      const proj = project3D(polar.r, currentDeg, 0, GALAXY_CX, GALAXY_CY, 45, 680);
       const colorToken = computeMultivariateColor(sub.calibration_bias, sub.ive ?? 0.5);
 
-      // 近大远小：基础半径 4.8px，随透视 scale 缩放
-      const baseR = isHovered ? 7.5 : 5.0;
-      const screenR = baseR * proj.scale;
-      // 深度光泽透明度
+      const screenR = 4.8 * proj.scale;
       const opacity = Math.min(1.0, Math.max(0.4, 0.45 + (proj.depth + 180) / 360));
 
       return {
@@ -320,19 +521,40 @@ export default function CosmicGalaxyCompass({
         proj,
         screenR,
         opacity,
-        isHovered,
         colorToken,
       };
     });
 
     // 深度排序：depth 小的在远处，先渲染；depth 大的在近处，后渲染
     return list.sort((a, b) => a.proj.depth - b.proj.depth);
-  }, [subjectPolars, rotation, hoveredSubject]);
+  }, [subjectPolars, rotation, velocity]);
 
-  // 计算当前帧银河吸积盘微星尘的 3D 投影坐标 (随星盘自转，产生真实银河微星尘流光)
+  // 生成随自转旋转及速度引力弯曲的高能射线路径 (从中心原点直射深空 R=440，密集 32 步采样平滑无折角，快速数值舍入零 GC 开销)
+  const getCurvedRayPath = useCallback(
+    (baseDeg: number) => {
+      const points: string[] = [];
+      const steps = 32;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const r = t * 440;
+        const curveOffset = getCurvatureOffsetDeg(r, velocity);
+        const finalAngle = baseDeg + rotation + curveOffset;
+        const p = project3D(r, finalAngle, 0, GALAXY_CX, GALAXY_CY, 45, 680);
+        const px = Math.round(p.x * 10) / 10;
+        const py = Math.round(p.y * 10) / 10;
+        points.push(i === 0 ? `M${px} ${py}` : `L${px} ${py}`);
+      }
+      return points.join("");
+    },
+    [rotation, velocity]
+  );
+
+  // 计算当前帧银河吸积盘微星尘的 3D 投影坐标 (随引力弯曲同等级形变)
   const projectedStardust = useMemo(() => {
     return GALACTIC_STARDUST.map((star) => {
-      const proj = project3D(star.r, star.deg, rotation, 440, 280, 45, 680);
+      const curveOffset = getCurvatureOffsetDeg(star.r, velocity);
+      const currentDeg = star.deg + rotation + curveOffset;
+      const proj = project3D(star.r, currentDeg, 0, GALAXY_CX, GALAXY_CY, 45, 680);
       return {
         ...star,
         proj,
@@ -340,64 +562,29 @@ export default function CosmicGalaxyCompass({
         opacity: Math.min(1.0, Math.max(0.18, star.baseOpacity * proj.scale * 0.9)),
       };
     });
-  }, [rotation]);
+  }, [rotation, velocity]);
 
   // 生成同心透视椭圆路径 (采样 36 个点平滑连线)
   const getPerspectiveEllipsePath = (r: number) => {
     const points: string[] = [];
     for (let i = 0; i <= 36; i++) {
       const deg = (i / 36) * 360;
-      const p = project3D(r, deg, 0, 440, 280, 45, 680);
+      const p = project3D(r, deg, 0, GALAXY_CX, GALAXY_CY, 45, 680);
       points.push(`${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
     }
     return points.join(" ") + " Z";
   };
 
   return (
-    <div className="relative w-full overflow-hidden select-none py-2">
-      {/* 顶部自转控制与状态微条 */}
-      <div className="w-full flex items-center justify-between text-xs text-slate-400 pb-2 px-2 border-b border-white/5 mb-1">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-          <span className="text-[11px] sm:text-xs">
-            {hoveredOctant
-              ? `【${OCTANT_SECTOR_CONFIGS[hoveredOctant]?.name}】: ${OCTANT_SECTOR_CONFIGS[hoveredOctant]?.desc}`
-              : hoveredAxis
-              ? `【${hoveredAxis.shortName}】: ${hoveredAxis.dimension}`
-              : "斜上方 45° 星系全景 · 每个受测者为一颗认知星球 · 支持触控板双指/鼠标平滑转盘"}
-          </span>
-        </div>
-
-        <button
-          onClick={() => setIsRotating(!isRotating)}
-          className="px-2.5 py-1 rounded-full bg-slate-900/80 border border-white/10 hover:border-white/20 text-[11px] text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer backdrop-blur"
-          title={isRotating ? "点击暂停星系自转" : "点击启动星系自转"}
-        >
-          {isRotating ? (
-            <>
-              <Pause className="w-3 h-3 text-amber-400" />
-              <span>自转巡航中</span>
-            </>
-          ) : (
-            <>
-              <Play className="w-3 h-3 text-emerald-400" />
-              <span>星系已定格</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* 无边界深空视口容器 (彻底去除生硬矩形边框与淡光底色) */}
-      <div
-        ref={containerRef}
-        onPointerDown={handlePointerDown}
-        className="relative w-full aspect-[880/560] max-h-[700px] flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
-        style={{
-          background: "transparent",
-        }}
-        title="支持触控板双指滑动旋转，或按住鼠标左键手势拨动星系"
-      >
-        <svg viewBox="0 0 880 560" className="w-full h-full overflow-visible pointer-events-auto">
+    <div
+      ref={containerRef}
+      onPointerDown={handlePointerDown}
+      className="relative w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing touch-none overflow-hidden select-none"
+      style={{
+        background: "transparent",
+      }}
+    >
+      <svg viewBox="0 0 880 560" className="w-full h-full max-h-full max-w-full aspect-[880/560] object-contain overflow-visible pointer-events-auto">
           <defs>
             {/* 1. 恒星引力核心光晕 */}
             <radialGradient id="galactic-core-glow" cx="50%" cy="50%" r="50%">
@@ -407,13 +594,13 @@ export default function CosmicGalaxyCompass({
               <stop offset="100%" stopColor="#090a0f" stopOpacity="0" />
             </radialGradient>
 
-            {/* 2. 宇宙射线高能模糊滤镜 (打造模糊发光的宇宙射线光晕与光束) */}
-            <filter id="cosmic-ray-blur-wide" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="4.0" />
-            </filter>
-            <filter id="cosmic-ray-blur-mid" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" />
-            </filter>
+            {/* 2. 8 个象区相邻高能射线双色能谱融合渐变 (用于象区名称空心发光描边) */}
+            {Object.entries(OCTANT_RAY_COLOR_PAIRS).map(([code, pair]) => (
+              <linearGradient key={`octant-grad-${code}`} id={`octant-grad-${code}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor={pair.color1} />
+                <stop offset="100%" stopColor={pair.color2} />
+              </linearGradient>
+            ))}
 
             {/* 3. 星球 3D 立体球体材质渐变 (左上光源) */}
             <radialGradient id="planet-rose" cx="35%" cy="32%" r="65%">
@@ -509,131 +696,126 @@ export default function CosmicGalaxyCompass({
           </g>
 
           {/* ============================================================== */}
-          {/* C. 4 条主轴线 (宇宙射线样式：带模糊色彩光晕，跳过中央真空区)     */}
+          {/* C. 4 条高能定向电磁辐射射线 (随自转旋转并伴随引力弯曲，向心力动态形变) */}
+          {/* 四个射线的颜色理论上各不相同：紫(M) / 红(Bias) / 蓝(D*) / 金(IVE)  */}
           {/* ============================================================== */}
           <g className="select-none">
             {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
-              // 起点位于中央真空区边缘 R=52，终点延伸至 R=250
-              const pInner = project3D(52, deg, rotation, 440, 280, 45, 680);
-              const pOuter = project3D(250, deg, rotation, 440, 280, 45, 680);
-
+              const rayConf = AXIS_RAY_COLOR_CONFIGS[deg] || AXIS_RAY_COLOR_CONFIGS[0];
               const axisInfo = AXIS_DETAILED_INFO[deg];
-              // 刻度数值位置 (紧贴射线外端 R=258)
-              const pNum = project3D(258, deg, rotation, 440, 280, 45, 680);
-              // 轴线简单名称位置 (再外侧 R=298，留出 40px 间距，绝不挤撞)
-              const pName = project3D(298, deg, rotation, 440, 280, 45, 680);
 
-              // 动态生成沿当前射线方向的能量渐变 ID
-              const gradIdGlow = `cosmic-ray-glow-${deg}`;
-              const gradIdCore = `cosmic-ray-core-${deg}`;
+              // 关键性能优化：每方向仅计算一次 32 步投影曲线，5 层光晕流束直接复用
+              const rayPath = getCurvedRayPath(deg);
+
+              // 1. 中心交叉原点坐标 (在 r=0 处四线恒等交叉交汇，绝对不留空)
+              const pZero = project3D(0, 0, 0, GALAXY_CX, GALAXY_CY, 45, 680);
+
+              // 2. 标定刻度位置 R=250 (随旋转与引力弯曲同动)
+              const curveTick = getCurvatureOffsetDeg(250, velocity);
+              const pTick = project3D(250, deg + rotation + curveTick, 0, GALAXY_CX, GALAXY_CY, 45, 680);
+
+              // 3. 刻度数值位置 R=262
+              const curveNum = getCurvatureOffsetDeg(262, velocity);
+              const pNum = project3D(262, deg + rotation + curveNum, 0, GALAXY_CX, GALAXY_CY, 45, 680);
+
+              // 4. 轴线两端文字徽章位置 R=292
+              const curveName = getCurvatureOffsetDeg(292, velocity);
+              const pName = project3D(292, deg + rotation + curveName, 0, GALAXY_CX, GALAXY_CY, 45, 680);
+
+              // 标定刻度切向微线角度
+              const tickAngleRad = (((deg + rotation + curveTick) - 90) * Math.PI) / 180;
+              const perpX = -Math.sin(tickAngleRad) * 4.5 * pTick.scale;
+              const perpY = Math.cos(tickAngleRad) * 4.5 * pTick.scale * 0.7071;
 
               return (
                 <g key={`galaxy-axis-${deg}`}>
-                  <defs>
-                    {/* 射线外层弥散光晕渐变 (天青 -> 苍紫 -> 散逸) */}
-                    <linearGradient
-                      id={gradIdGlow}
-                      x1={pInner.x}
-                      y1={pInner.y}
-                      x2={pOuter.x}
-                      y2={pOuter.y}
-                      gradientUnits="userSpaceOnUse"
-                    >
-                      <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.85" />
-                      <stop offset="35%" stopColor="#818cf8" stopOpacity="0.70" />
-                      <stop offset="70%" stopColor="#a855f7" stopOpacity="0.45" />
-                      <stop offset="100%" stopColor="#c084fc" stopOpacity="0" />
-                    </linearGradient>
-
-                    {/* 射线中层高能聚焦束渐变 (白炽核 -> 高能青紫 -> 柔和边缘) */}
-                    <linearGradient
-                      id={gradIdCore}
-                      x1={pInner.x}
-                      y1={pInner.y}
-                      x2={pOuter.x}
-                      y2={pOuter.y}
-                      gradientUnits="userSpaceOnUse"
-                    >
-                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
-                      <stop offset="25%" stopColor="#67e8f9" stopOpacity="0.85" />
-                      <stop offset="65%" stopColor="#818cf8" stopOpacity="0.65" />
-                      <stop offset="100%" stopColor="#a855f7" stopOpacity="0.05" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* 1. 外层宽幅模糊彩色射线晕 (比较模糊的宇宙射线彩色光芒) */}
-                  <line
-                    x1={pInner.x}
-                    y1={pInner.y}
-                    x2={pOuter.x}
-                    y2={pOuter.y}
-                    stroke={`url(#${gradIdGlow})`}
-                    strokeWidth={8 * pInner.scale}
+                  {/* 层次 1: 广域外圈弥散电磁辐射光晕 (复用 rayPath，零丢帧) */}
+                  <path
+                    d={rayPath}
+                    fill="none"
+                    stroke={rayConf.primary}
+                    strokeWidth={22 * pZero.scale}
                     strokeLinecap="round"
-                    filter="url(#cosmic-ray-blur-wide)"
-                    opacity={0.7}
+                    opacity={0.08}
                   />
 
-                  {/* 2. 中层粒子束流彩色模糊光线 */}
-                  <line
-                    x1={pInner.x}
-                    y1={pInner.y}
-                    x2={pOuter.x}
-                    y2={pOuter.y}
-                    stroke={`url(#${gradIdCore})`}
-                    strokeWidth={3 * pInner.scale}
+                  {/* 层次 2: 次级聚束高能辐射辉光 */}
+                  <path
+                    d={rayPath}
+                    fill="none"
+                    stroke={rayConf.primary}
+                    strokeWidth={10 * pZero.scale}
                     strokeLinecap="round"
-                    filter="url(#cosmic-ray-blur-mid)"
+                    opacity={0.24}
+                  />
+
+                  {/* 层次 3: 准直高能辐射粒子弯曲束流 */}
+                  <path
+                    d={rayPath}
+                    fill="none"
+                    stroke={rayConf.beamCore}
+                    strokeWidth={3.8 * pZero.scale}
+                    strokeLinecap="round"
+                    opacity={0.72}
+                  />
+
+                  {/* 层次 4: 定向电磁波包节律脉冲 */}
+                  <path
+                    d={rayPath}
+                    fill="none"
+                    stroke={rayConf.primary}
+                    strokeWidth={1.8 * pZero.scale}
+                    strokeDasharray={rayConf.wavepacketDash}
+                    strokeLinecap="round"
+                    opacity={0.88}
+                  />
+
+                  {/* 层次 5: 白炽高能中心超导芯 */}
+                  <path
+                    d={rayPath}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth={1.0 * pZero.scale}
+                    strokeLinecap="round"
+                    opacity={0.96}
+                  />
+
+                  {/* 标定刻度点 (R=250 精密刻度横线) */}
+                  <line
+                    x1={pTick.x - perpX}
+                    y1={pTick.y - perpY}
+                    x2={pTick.x + perpX}
+                    y2={pTick.y + perpY}
+                    stroke={rayConf.primary}
+                    strokeWidth={1.5 * pTick.scale}
                     opacity={0.85}
                   />
-
-                  {/* 3. 内层高能白炽粒子中心流 */}
-                  <line
-                    x1={pInner.x}
-                    y1={pInner.y}
-                    x2={pOuter.x}
-                    y2={pOuter.y}
-                    stroke="rgba(255, 255, 255, 0.85)"
-                    strokeWidth={1.0 * pInner.scale}
-                    strokeLinecap="round"
-                    opacity={0.75}
-                  />
-
-                  {/* 射线末端微光能量节点 */}
                   <circle
-                    cx={pOuter.x}
-                    cy={pOuter.y}
-                    r={2.2 * pOuter.scale}
-                    fill="#38bdf8"
-                    opacity={0.7}
-                    filter="url(#cosmic-ray-blur-mid)"
-                  />
-                  <circle
-                    cx={pOuter.x}
-                    cy={pOuter.y}
-                    r={1.0 * pOuter.scale}
-                    fill="#ffffff"
+                    cx={pTick.x}
+                    cy={pTick.y}
+                    r={2.0 * pTick.scale}
+                    fill={rayConf.primary}
                     opacity={0.9}
                   />
 
-                  {/* 最外侧刻度展示纯数字 (随透视近大远小) */}
+                  {/* 刻度数值展示 */}
                   <g transform={`translate(${pNum.x.toFixed(1)}, ${pNum.y.toFixed(1)})`}>
                     <text
                       x="0"
                       y="3"
                       textAnchor="middle"
-                      fill="#cbd5e1"
+                      fill="#e2e8f0"
                       fontSize={Math.max(7.5, 9 * pNum.scale)}
                       fontFamily="monospace"
                       fontWeight="bold"
                       letterSpacing="0.3"
-                      opacity={Math.min(1, Math.max(0.4, pNum.scale * 0.8))}
+                      opacity={Math.min(1, Math.max(0.45, pNum.scale * 0.85))}
                     >
                       {axisInfo.value}
                     </text>
                   </g>
 
-                  {/* 再外侧展示轴线简单名称 (支持指针悬浮展示明细) */}
+                  {/* 轴线两端文字：字心严格限制为宇宙背景色 #090a0f，外部分光晕为射线光色 */}
                   <g
                     className="galaxy-badge cursor-pointer"
                     transform={`translate(${pName.x.toFixed(1)}, ${pName.y.toFixed(1)})`}
@@ -648,24 +830,45 @@ export default function CosmicGalaxyCompass({
                       setHoveredAxis(null);
                     }}
                   >
+                    {/* 透明交互感应热区 */}
                     <rect
-                      x={-30 * pName.scale}
-                      y={-8.5 * pName.scale}
-                      width={60 * pName.scale}
-                      height={17 * pName.scale}
-                      rx={8.5 * pName.scale}
-                      fill="rgba(15, 23, 42, 0.92)"
-                      stroke="rgba(255, 255, 255, 0.25)"
-                      strokeWidth="0.8"
+                      x={-28 * pName.scale}
+                      y={-10 * pName.scale}
+                      width={56 * pName.scale}
+                      height={20 * pName.scale}
+                      fill="transparent"
                       pointerEvents="all"
                     />
+
+                    {/* 1. 外部分光晕层：射线高能专属色纯矢量多层描边 (无 textShadow，彻底消除运动抖动) */}
                     <text
                       x="0"
-                      y={3.2 * pName.scale}
+                      y={3.8 * pName.scale}
                       textAnchor="middle"
-                      fill="#e2e8f0"
-                      fontSize={Math.max(8, 9.5 * pName.scale)}
-                      fontWeight="bold"
+                      fill="none"
+                      stroke={rayConf.primary}
+                      strokeWidth={2.6 * pName.scale}
+                      strokeLinejoin="round"
+                      opacity={0.92}
+                      fontSize={Math.max(8.5, 10.5 * pName.scale)}
+                      fontWeight="900"
+                      fontFamily="system-ui, -apple-system, sans-serif"
+                      letterSpacing="0.4"
+                      pointerEvents="none"
+                    >
+                      {axisInfo.shortName}
+                    </text>
+
+                    {/* 2. 顶层字心：严格限制为宇宙背景色 #090a0f (实体黑字，被射线外部分纯矢量光晕勾勒轮廓) */}
+                    <text
+                      x="0"
+                      y={3.8 * pName.scale}
+                      textAnchor="middle"
+                      fill="#090a0f"
+                      fontSize={Math.max(8.5, 10.5 * pName.scale)}
+                      fontWeight="900"
+                      fontFamily="system-ui, -apple-system, sans-serif"
+                      letterSpacing="0.4"
                       pointerEvents="none"
                     >
                       {axisInfo.shortName}
@@ -677,12 +880,14 @@ export default function CosmicGalaxyCompass({
           </g>
 
           {/* ============================================================== */}
-          {/* D. 8 个相室画像名称 (仅展示名称，彻底移除数量统计)            */}
+          {/* D. 8 个相室画像名称 (字体颜色固定为宇宙背景色，半透明白光外包围晕染，无抖动纯矢量) */}
           {/* ============================================================== */}
           <g className="select-none">
             {Object.values(OCTANT_SECTOR_CONFIGS).map((conf) => {
-              // 位于各相室中心角，半径 R=296 与轴线名称交替错开 22.5°
-              const pOctant = project3D(296, conf.centerAngle, rotation, 440, 280, 45, 680);
+              // 位于各相室中心角，半径 R=296，随旋转与向心力引力弯曲同等级形变
+              const curveOffset = getCurvatureOffsetDeg(296, velocity);
+              const pOctant = project3D(296, conf.centerAngle + rotation + curveOffset, 0, GALAXY_CX, GALAXY_CY, 45, 680);
+              const isHovered = hoveredOctant === conf.code;
 
               return (
                 <g
@@ -695,32 +900,65 @@ export default function CosmicGalaxyCompass({
                     setHoveredAxis(null);
                     setHoveredSubject(null);
                     setAnchorPos({ x: pOctant.x, y: pOctant.y });
+                    if (onActiveSectorChange) onActiveSectorChange(conf.code);
                   }}
                   onMouseLeave={() => {
                     setHoveredOctant(null);
                   }}
                 >
-                  {/* 画像胶囊底框 */}
+                  {/* 透明交互热区 (无外边框) */}
                   <rect
-                    x={-36 * pOctant.scale}
-                    y={-9.5 * pOctant.scale}
-                    width={72 * pOctant.scale}
-                    height={19 * pOctant.scale}
-                    rx={9.5 * pOctant.scale}
-                    fill="rgba(15, 23, 42, 0.94)"
-                    stroke="rgba(255, 255, 255, 0.22)"
-                    strokeWidth="0.9"
+                    x={-42 * pOctant.scale}
+                    y={-14 * pOctant.scale}
+                    width={84 * pOctant.scale}
+                    height={28 * pOctant.scale}
+                    fill="transparent"
                     pointerEvents="all"
                   />
-                  {/* 仅展示画像名称 */}
+
+                  {/* 1. 半透明白光外包围晕染：外层柔和白光纯矢量描边 (无 textShadow 滤镜，零抖动) */}
                   <text
                     x="0"
-                    y={3.5 * pOctant.scale}
+                    y={4 * pOctant.scale}
                     textAnchor="middle"
-                    fill={conf.primaryColor}
-                    fontSize={Math.max(8.5, 10.5 * pOctant.scale)}
-                    fontWeight="bold"
-                    letterSpacing="0.5"
+                    fill="none"
+                    stroke="rgba(255, 255, 255, 0.40)"
+                    strokeWidth={(isHovered ? 3.6 : 2.6) * pOctant.scale}
+                    strokeLinejoin="round"
+                    fontSize={Math.max(9.5, 12 * pOctant.scale)}
+                    fontWeight="900"
+                    letterSpacing="1.2"
+                    pointerEvents="none"
+                  >
+                    {conf.name}
+                  </text>
+
+                  {/* 2. 半透明白光外包围晕染：内层清晰聚束白光轮廓 */}
+                  <text
+                    x="0"
+                    y={4 * pOctant.scale}
+                    textAnchor="middle"
+                    fill="none"
+                    stroke="rgba(255, 255, 255, 0.85)"
+                    strokeWidth={1.2 * pOctant.scale}
+                    strokeLinejoin="round"
+                    fontSize={Math.max(9.5, 12 * pOctant.scale)}
+                    fontWeight="900"
+                    letterSpacing="1.2"
+                    pointerEvents="none"
+                  >
+                    {conf.name}
+                  </text>
+
+                  {/* 3. 区域字体颜色：固定为宇宙背景色 #090a0f (实体黑字，被半透明白光外包围衬出) */}
+                  <text
+                    x="0"
+                    y={4 * pOctant.scale}
+                    textAnchor="middle"
+                    fill="#090a0f"
+                    fontSize={Math.max(9.5, 12 * pOctant.scale)}
+                    fontWeight="900"
+                    letterSpacing="1.2"
                     pointerEvents="none"
                   >
                     {conf.name}
@@ -731,27 +969,22 @@ export default function CosmicGalaxyCompass({
           </g>
 
           {/* ============================================================== */}
-          {/* E. 中央真空平衡带与恒星相变奇点                               */}
+          {/* E. 中心四线交叉原点与相变奇点 (四色射线在此交汇相交，绝不留空)    */}
           {/* ============================================================== */}
           <g className="pointer-events-none select-none">
-            {/* 中央真空区 R=52 (椭圆护盾边界) */}
-            <path
-              d={getPerspectiveEllipsePath(52)}
-              fill="rgba(2, 6, 23, 0.6)"
-              stroke="rgba(148, 163, 184, 0.28)"
-              strokeWidth="1"
-              strokeDasharray="3 3"
-            />
-            {/* 核心相变白星引力源 */}
-            <circle cx="440" cy="280" r="16" fill="url(#galactic-core-glow)" />
-            <circle cx="440" cy="280" r="3" fill="#ffffff" className="animate-pulse" />
+            {/* 核心微晕 (不遮挡线条，透出射线交汇的白炽能量光) */}
+            <circle cx={GALAXY_CX} cy={GALAXY_CY} r="9" fill="url(#galactic-core-glow)" opacity="0.85" />
+            {/* 4 条高能射线相交之极密白炽奇点 (静态超密核，无跳动动画) */}
+            <circle cx={GALAXY_CX} cy={GALAXY_CY} r="2.8" fill="#ffffff" />
           </g>
 
           {/* ============================================================== */}
           {/* F. 受测者 3D 星球渲染 (近大远小、立体球体渐变、土星环、Z-Sort)  */}
           {/* ============================================================== */}
           <g>
-            {projectedPlanets.map(({ sub, proj, screenR, opacity, isHovered }) => {
+            {projectedPlanets.map(({ sub, proj, screenR, opacity }) => {
+              const isHovered = hoveredSubject?.id === sub.id;
+              const planetR = isHovered ? screenR * 1.45 : screenR;
               // 根据画像类型或偏差选择行星材质渐变
               let planetGrad = "url(#planet-emerald)";
               if (sub.quadrant_code === "Q6-GAM") planetGrad = "url(#planet-rose)";
@@ -791,7 +1024,7 @@ export default function CosmicGalaxyCompass({
                     <circle
                       cx={proj.x}
                       cy={proj.y}
-                      r={screenR * 2.2}
+                      r={planetR * 2.2}
                       fill="none"
                       stroke={sub.is_current ? "#f59e0b" : "#ffffff"}
                       strokeWidth="1.5"
@@ -804,8 +1037,8 @@ export default function CosmicGalaxyCompass({
                     <ellipse
                       cx={proj.x}
                       cy={proj.y}
-                      rx={screenR * 2.1}
-                      ry={screenR * 0.7}
+                      rx={planetR * 2.1}
+                      ry={planetR * 0.7}
                       fill="none"
                       stroke="rgba(245, 158, 11, 0.75)"
                       strokeWidth="1.2"
@@ -817,7 +1050,7 @@ export default function CosmicGalaxyCompass({
                   <circle
                     cx={proj.x}
                     cy={proj.y}
-                    r={screenR}
+                    r={planetR}
                     fill={planetGrad}
                     stroke="rgba(255, 255, 255, 0.4)"
                     strokeWidth={0.8}
@@ -825,9 +1058,9 @@ export default function CosmicGalaxyCompass({
 
                   {/* 行星高光微反射点 */}
                   <circle
-                    cx={proj.x - screenR * 0.32}
-                    cy={proj.y - screenR * 0.32}
-                    r={screenR * 0.24}
+                    cx={proj.x - planetR * 0.32}
+                    cy={proj.y - planetR * 0.32}
+                    r={planetR * 0.24}
                     fill="#ffffff"
                     opacity={0.85}
                   />
@@ -835,262 +1068,18 @@ export default function CosmicGalaxyCompass({
               );
             })}
           </g>
+          {/* ============================================================== */}
+          {/* G. 通用受测者悬浮预览卡片 (与其它视图完全统一规范)            */}
+          {/* ============================================================== */}
+          {hoveredSubject && anchorPos && (
+            <SubjectHoverCard
+              subject={hoveredSubject}
+              anchorPos={anchorPos}
+              canvasWidth={880}
+              canvasHeight={560}
+            />
+          )}
         </svg>
-
-        {/* ============================================================== */}
-        {/* Tooltip 1: 星球悬浮卡片 (4D 坐标、临床真值、点击调阅报告)      */}
-        {/* ============================================================== */}
-        {hoveredSubject && anchorPos && (
-          <div
-            className="galaxy-tooltip absolute pointer-events-auto glass-panel rounded-2xl p-4 border border-indigo-500/50 text-xs shadow-2xl z-50 space-y-2.5 w-72 md:w-80 backdrop-blur-xl bg-slate-950/95 animate-in fade-in zoom-in-95 duration-150"
-            onPointerDown={(e) => e.stopPropagation()}
-            style={{
-              ...(anchorPos.x > 440
-                ? { right: `calc(${100 - (anchorPos.x / 880) * 100}% + 14px)` }
-                : { left: `calc(${(anchorPos.x / 880) * 100}% + 14px)` }),
-              ...(anchorPos.y > 280
-                ? { bottom: `calc(${100 - (anchorPos.y / 560) * 100}% + 14px)` }
-                : { top: `calc(${(anchorPos.y / 560) * 100}% + 14px)` }),
-            }}
-          >
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <div>
-                <div className="font-bold text-white text-sm flex items-center gap-1.5">
-                  {hoveredSubject.name}
-                  {hoveredSubject.is_current && (
-                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300">当前</span>
-                  )}
-                </div>
-                <div className="text-[10px] text-slate-400">ID: {hoveredSubject.id.slice(0, 16)}...</div>
-              </div>
-              <div className="text-right">
-                <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono inline-block">
-                  {hoveredSubject.role_title || "受测者"}
-                </span>
-                <div className="text-[9px] text-slate-400 font-mono mt-0.5">{hoveredSubject.quadrant_code || "Q1-CAL"}</div>
-              </div>
-            </div>
-
-            {/* 4D 坐标数值 */}
-            <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-900/60 p-2.5 rounded-xl border border-white/5">
-              <div>
-                <span className="text-slate-400 block text-[10px]">相变突破度 D*</span>
-                <span className="font-mono text-cyan-300 font-bold">{(hoveredSubject.d_star ?? 0.5).toFixed(3)}</span>
-                <span className="text-[9px] ml-1 text-slate-500">
-                  {(hoveredSubject.d_star ?? 0.5) >= 0.6 ? "≥0.6 拓扑" : "<0.6 基底"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">元认知 M_ratio</span>
-                <span className="font-mono text-purple-300 font-bold">{hoveredSubject.m_ratio}</span>
-                <span className="text-[9px] ml-1 text-slate-500">
-                  {hoveredSubject.m_ratio >= 0.8 ? "≥0.8 自洽" : "<0.8 衰减"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">决策偏向 Bias</span>
-                <span className="font-mono text-slate-200">
-                  {hoveredSubject.calibration_bias > 0 ? `+${hoveredSubject.calibration_bias}` : hoveredSubject.calibration_bias}
-                </span>
-                <span className="text-[9px] ml-1 text-slate-500">
-                  {hoveredSubject.calibration_bias > 0.12 ? "自负" : hoveredSubject.calibration_bias < -0.12 ? "谨慎" : "均衡"}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[10px]">觅食杠杆 IVE</span>
-                <span className="font-mono text-amber-300 font-bold">{(hoveredSubject.ive ?? 0.5).toFixed(3)}</span>
-                <span className="text-[9px] ml-1 text-slate-500">
-                  {(hoveredSubject.ive ?? 0.5) >= 0.7 ? "高杠杆" : "自力"}
-                </span>
-              </div>
-            </div>
-
-            {/* 临床真值简评 */}
-            {hoveredSubject.clinical_summary && (
-              <div className="text-[10px] text-slate-300 bg-white/[0.02] p-2 rounded-lg border border-white/5 leading-relaxed">
-                <span className="text-amber-400 font-semibold mr-1">[临床真值]</span>
-                {hoveredSubject.clinical_summary}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between text-[10px] pt-1 border-t border-white/5 text-slate-400">
-              <span>最终得分: <strong className="text-yellow-400 font-mono text-xs">{hoveredSubject.final_score}</strong></span>
-            </div>
-
-            <button
-              onClick={() => onOpenReport(hoveredSubject.id)}
-              className="w-full mt-2 py-2 px-3 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/60 border border-indigo-500/40 text-indigo-200 text-xs font-semibold flex items-center justify-between cursor-pointer transition-all shadow-md hover:shadow-indigo-500/20"
-            >
-              <span>调阅该受测者画像报告</span>
-              <span>打开预览 →</span>
-            </button>
-          </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* Tooltip 2: 画像明细卡片 (核心定义、特征、分级体系、群体统计)   */}
-        {/* ============================================================== */}
-        {hoveredOctant && OCTANT_DETAILED_INFO[hoveredOctant] && anchorPos && (
-          <div
-            className="galaxy-tooltip absolute pointer-events-auto glass-panel rounded-2xl p-4 border border-cyan-500/50 text-xs shadow-2xl z-50 space-y-3 w-80 md:w-96 backdrop-blur-xl bg-slate-950/95 animate-in fade-in zoom-in-95 duration-150"
-            onPointerDown={(e) => e.stopPropagation()}
-            style={{
-              ...(anchorPos.x > 440
-                ? { right: `calc(${100 - (anchorPos.x / 880) * 100}% + 14px)` }
-                : { left: `calc(${(anchorPos.x / 880) * 100}% + 14px)` }),
-              ...(anchorPos.y > 280
-                ? { bottom: `calc(${100 - (anchorPos.y / 560) * 100}% + 14px)` }
-                : { top: `calc(${(anchorPos.y / 560) * 100}% + 14px)` }),
-            }}
-          >
-            {/* 头部标题与所属相区 */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: OCTANT_SECTOR_CONFIGS[hoveredOctant].primaryColor }}
-                />
-                <span className="font-bold text-white text-sm">
-                  【{OCTANT_DETAILED_INFO[hoveredOctant].name}】
-                </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-slate-300">
-                  {hoveredOctant}
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-400">
-                {OCTANT_SECTOR_CONFIGS[hoveredOctant].quadrantName}
-              </span>
-            </div>
-
-            {/* 群体统计数据条 */}
-            {octantStatsMap[hoveredOctant] && (
-              <div className="grid grid-cols-4 gap-1.5 p-2 rounded-xl bg-slate-900/80 border border-white/5 text-center">
-                <div>
-                  <div className="text-[9px] text-slate-400">参测人数</div>
-                  <div className="text-xs font-bold font-mono text-white">
-                    {octantStatsMap[hoveredOctant].count} 人
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[9px] text-slate-400">群体占比</div>
-                  <div className="text-xs font-bold font-mono text-cyan-400">
-                    {octantStatsMap[hoveredOctant].percentage}%
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[9px] text-slate-400">平均 D*</div>
-                  <div className="text-xs font-bold font-mono text-amber-400">
-                    {octantStatsMap[hoveredOctant].avgDStar}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[9px] text-slate-400">平均 M_ratio</div>
-                  <div className="text-xs font-bold font-mono text-purple-400">
-                    {octantStatsMap[hoveredOctant].avgMRatio}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 画像认知流形定义 */}
-            <div className="space-y-1">
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-cyan-400" /> 画像核心定义
-              </div>
-              <div className="text-[11px] text-slate-200 bg-white/[0.03] p-2 rounded-lg border border-white/5 leading-relaxed">
-                {OCTANT_DETAILED_INFO[hoveredOctant].definition}
-              </div>
-            </div>
-
-            {/* 核心相变特征 */}
-            <div className="space-y-1">
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                相空间指标特征
-              </div>
-              <div className="text-[10px] text-slate-300 font-mono bg-slate-900/60 p-2 rounded-lg border border-white/5 leading-relaxed">
-                {OCTANT_DETAILED_INFO[hoveredOctant].features}
-              </div>
-            </div>
-
-            {/* 流形分级体系 */}
-            <div className="space-y-1 pt-1 border-t border-white/5">
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                流形能级分阶
-              </div>
-              <div className="space-y-1 text-[10px]">
-                <div className="text-amber-300 bg-amber-950/20 px-2 py-0.5 rounded border border-amber-500/20">
-                  {OCTANT_DETAILED_INFO[hoveredOctant].tiers.awakened}
-                </div>
-                <div className="text-cyan-300 bg-cyan-950/20 px-2 py-0.5 rounded border border-cyan-500/20">
-                  {OCTANT_DETAILED_INFO[hoveredOctant].tiers.core}
-                </div>
-                <div className="text-slate-400 bg-slate-900/40 px-2 py-0.5 rounded border border-white/5">
-                  {OCTANT_DETAILED_INFO[hoveredOctant].tiers.passive}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* Tooltip 3: 轴线明细卡片 (维度定义、行为特征、相变临界基准)     */}
-        {/* ============================================================== */}
-        {hoveredAxis && anchorPos && (
-          <div
-            className="galaxy-tooltip absolute pointer-events-auto glass-panel rounded-2xl p-4 border border-purple-500/50 text-xs shadow-2xl z-50 space-y-3 w-80 md:w-96 backdrop-blur-xl bg-slate-950/95 animate-in fade-in zoom-in-95 duration-150"
-            onPointerDown={(e) => e.stopPropagation()}
-            style={{
-              ...(anchorPos.x > 440
-                ? { right: `calc(${100 - (anchorPos.x / 880) * 100}% + 14px)` }
-                : { left: `calc(${(anchorPos.x / 880) * 100}% + 14px)` }),
-              ...(anchorPos.y > 280
-                ? { bottom: `calc(${100 - (anchorPos.y / 560) * 100}% + 14px)` }
-                : { top: `calc(${(anchorPos.y / 560) * 100}% + 14px)` }),
-            }}
-          >
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <div>
-                <div className="font-bold text-white text-sm flex items-center gap-1.5">
-                  【{hoveredAxis.shortName}】
-                  <span className="text-xs font-mono text-purple-300">刻度 {hoveredAxis.value}</span>
-                </div>
-                <div className="text-[10px] text-slate-400 font-mono mt-0.5">{hoveredAxis.axisName}</div>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
-                {hoveredAxis.deg}° 端点
-              </span>
-            </div>
-
-            <div className="p-2 rounded-xl bg-slate-900/80 border border-white/5">
-              <span className="text-[10px] text-slate-400 block">认知测量维度</span>
-              <span className="text-xs font-mono font-bold text-slate-200">{hoveredAxis.dimension}</span>
-            </div>
-
-            <div className="space-y-1">
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                <Sliders className="w-3 h-3 text-purple-400" /> 指标测量定义
-              </div>
-              <div className="text-[11px] text-slate-200 bg-white/[0.03] p-2 rounded-lg border border-white/5 leading-relaxed">
-                {hoveredAxis.definition}
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                认知流形行为特征
-              </div>
-              <div className="text-[11px] text-slate-300 bg-slate-900/60 p-2 rounded-lg border border-white/5 leading-relaxed">
-                {hoveredAxis.features}
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
-              <span className="text-slate-400">相变临界基准</span>
-              <span className="font-mono text-indigo-300 font-semibold">{hoveredAxis.thresholdNote}</span>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
   );
 }
