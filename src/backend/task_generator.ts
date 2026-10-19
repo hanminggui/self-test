@@ -20,6 +20,12 @@
  */
 
 import { TrialPayload } from "./models";
+import { getLocale, type SupportedLocale } from "../i18n";
+
+export interface BilingualText {
+  "zh-CN": string;
+  "en-US": string;
+}
 
 export interface GeneratedTask {
   stimulus_id: string;
@@ -32,7 +38,12 @@ export interface GeneratedTask {
   hint_tier2: string; // Tier 2: 微观细节穿透与二选一收敛（绝不直接剧透答案）
   hint: string;
   stimulus_data: Record<string, any>;
-  toSafePayload(unlockedTier?: number): TrialPayload;
+  bilingual?: {
+    prompt: BilingualText;
+    hint_tier1: BilingualText;
+    hint_tier2: BilingualText;
+  };
+  toSafePayload(unlockedTier?: number, locale?: SupportedLocale): TrialPayload;
 }
 
 export type CognitiveTheme = "GEOMETRIC" | "CYBERNETIC" | "ARCHAEOLOGICAL" | "STELLAR";
@@ -192,51 +203,94 @@ export class TaskGenerator {
    */
   private buildDiagnosticHints(
     correctOption: string,
-    macroRuleDesc: string,
-    microConstraintDesc: string
-  ): { hint_tier1: string; hint_tier2: string } {
+    macroRuleDesc: string | BilingualText,
+    microConstraintDesc: string | BilingualText
+  ): { hint_tier1: BilingualText; hint_tier2: BilingualText } {
     const wrongKeys = ["A", "B", "C", "D"].filter(k => k !== correctOption);
     const eliminated = this.sample(wrongKeys, 2);
     const elim1 = eliminated[0];
     const elim2 = eliminated[1];
 
-    const hint_tier1 = `宏观规律方向（1分价值）：${macroRuleDesc} 据此可先行排除明显违背宏观结构的选项 ${elim1}。`;
-    const hint_tier2 = `微观细节穿透（2分价值）：${microConstraintDesc} 结合局部边界校验可进一步排除选项 ${elim1} 与选项 ${elim2}，请在剩余两个候选项中完成最终验证。`;
+    const macroZH = typeof macroRuleDesc === "string" ? macroRuleDesc : macroRuleDesc["zh-CN"];
+    const macroEN = typeof macroRuleDesc === "string" ? macroRuleDesc : macroRuleDesc["en-US"];
+
+    const microZH = typeof microConstraintDesc === "string" ? microConstraintDesc : microConstraintDesc["zh-CN"];
+    const microEN = typeof microConstraintDesc === "string" ? microConstraintDesc : microConstraintDesc["en-US"];
+
+    const hint_tier1: BilingualText = {
+      "zh-CN": `宏观规律方向（1分价值）：${macroZH} 据此可先行排除明显违背宏观结构的选项 ${elim1}。`,
+      "en-US": `Macro Direction (1-pt value): ${macroEN} This safely eliminates distractor option ${elim1} which clearly violates macro structure.`,
+    };
+    const hint_tier2: BilingualText = {
+      "zh-CN": `微观细节穿透（2分价值）：${microZH} 结合局部边界校验可进一步排除选项 ${elim1} 与选项 ${elim2}，请在剩余两个候选项中完成最终验证。`,
+      "en-US": `Micro Constraint (2-pt value): ${microEN} Local boundary verification further eliminates options ${elim1} and ${elim2}; complete final validation between the two remaining options.`,
+    };
     return { hint_tier1, hint_tier2 };
   }
 
   private wrapTask(
     stimulus_id: string,
     difficulty_level: number,
-    prompt: string,
+    prompt: string | BilingualText,
     options: Record<string, string>,
     correct_option: string,
     signal_type: "S1" | "S2",
-    hint_tier1: string,
-    hint_tier2: string,
+    hint_tier1: string | BilingualText,
+    hint_tier2: string | BilingualText,
     stimulus_data: Record<string, any>
   ): GeneratedTask {
-    const combinedHint = `【第一级线索 (宏观思维)】\n${hint_tier1}\n\n【第二级线索 (细节穿透)】\n${hint_tier2}`;
+    const promptBilingual: BilingualText = typeof prompt === "string" ? { "zh-CN": prompt, "en-US": prompt } : prompt;
+    const hint1Bilingual: BilingualText = typeof hint_tier1 === "string" ? { "zh-CN": hint_tier1, "en-US": hint_tier1 } : hint_tier1;
+    const hint2Bilingual: BilingualText = typeof hint_tier2 === "string" ? { "zh-CN": hint_tier2, "en-US": hint_tier2 } : hint_tier2;
+
+    const resolveField = (field: BilingualText, targetLocale?: SupportedLocale): string => {
+      const loc = targetLocale || getLocale();
+      return field[loc] || field["zh-CN"];
+    };
+
     return {
       stimulus_id,
       difficulty_level,
-      prompt,
+      get prompt(): string {
+        return resolveField(promptBilingual);
+      },
       options,
       correct_option,
       signal_type,
-      hint_tier1,
-      hint_tier2,
-      hint: combinedHint,
+      get hint_tier1(): string {
+        return resolveField(hint1Bilingual);
+      },
+      get hint_tier2(): string {
+        return resolveField(hint2Bilingual);
+      },
+      get hint(): string {
+        const h1 = resolveField(hint1Bilingual);
+        const h2 = resolveField(hint2Bilingual);
+        const loc = getLocale();
+        const header1 = loc === "en-US" ? "【Tier 1 Clue (Macro Structure)】" : "【第一级线索 (宏观思维)】";
+        const header2 = loc === "en-US" ? "【Tier 2 Clue (Micro Constraint)】" : "【第二级线索 (细节穿透)】";
+        return `${header1}\n${h1}\n\n${header2}\n${h2}`;
+      },
       stimulus_data,
-      toSafePayload(unlockedTier: number = 0): TrialPayload {
+      bilingual: {
+        prompt: promptBilingual,
+        hint_tier1: hint1Bilingual,
+        hint_tier2: hint2Bilingual,
+      },
+      toSafePayload(unlockedTier: number = 0, locale?: SupportedLocale): TrialPayload {
+        const loc = locale || getLocale();
+        const p = resolveField(promptBilingual, loc);
+        const h1 = resolveField(hint1Bilingual, loc);
+        const h2 = resolveField(hint2Bilingual, loc);
+
         const unlocked_hints: { tier1?: string; tier2?: string } = {};
-        if (unlockedTier >= 1) unlocked_hints.tier1 = hint_tier1;
-        if (unlockedTier >= 2) unlocked_hints.tier2 = hint_tier2;
+        if (unlockedTier >= 1) unlocked_hints.tier1 = h1;
+        if (unlockedTier >= 2) unlocked_hints.tier2 = h2;
 
         return {
           stimulus_id,
           difficulty_level: Math.round(difficulty_level * 10000) / 10000,
-          prompt,
+          prompt: p,
           options,
           has_hint: true,
           hint_cost: unlockedTier === 0 ? 1 : 2,
@@ -304,31 +358,55 @@ export class TaskGenerator {
 
     let evolveStep: (seq: string[], stepIdx: number) => string[];
     let ruleName = "";
-    let macroDesc = "";
-    let microDesc = "";
+    let macroDesc: BilingualText;
+    let microDesc: BilingualText;
 
     if (tier === 1) {
       ruleName = "双元镜像互换";
-      macroDesc = "序列仅包含 2 个符号，每一阶段执行简单的左右位置互换（[X Y] ⇄ [Y X]）。";
-      microDesc = "偶数阶段恢复初始次序，奇数阶段与第 1 阶段完全同构。";
+      macroDesc = {
+        "zh-CN": "序列仅包含 2 个符号，每一阶段执行简单的左右位置互换（[X Y] ⇄ [Y X]）。",
+        "en-US": "The sequence contains only 2 symbols, executing a simple left-right swap at each stage ([X Y] ⇄ [Y X]).",
+      };
+      microDesc = {
+        "zh-CN": "偶数阶段恢复初始次序，奇数阶段与第 1 阶段完全同构。",
+        "en-US": "Even stages restore the initial order; odd stages are strictly isomorphic to Stage 1.",
+      };
       evolveStep = (seq) => [...seq].reverse();
     } else if (tier === 2) {
       ruleName = "右移 1 位循环平移";
-      macroDesc = "符号本身不发生字典改变，每一阶段整体向右循环平移 1 个槽位（末尾符号移至首位）。";
-      microDesc = "核对第 3 阶段的末尾符号，它在第 4 阶段必定移动到第 1 个位置。";
+      macroDesc = {
+        "zh-CN": "符号本身不发生字典改变，每一阶段整体向右循环平移 1 个槽位（末尾符号移至首位）。",
+        "en-US": "Symbols undergo no dictionary change, cyclically shifting 1 slot to the right at each stage (end symbol moves to front).",
+      };
+      microDesc = {
+        "zh-CN": "核对第 3 阶段的末尾符号，它在第 4 阶段必定移动到第 1 个位置。",
+        "en-US": "Check the last symbol of Stage 3; it must shift to position 1 in Stage 4.",
+      };
       evolveStep = (seq) => [seq[seq.length - 1], ...seq.slice(0, -1)];
     } else if (tier === 3) {
       ruleName = "左移 1 位 + 5元环字典递进";
-      macroDesc = "每阶段先将序列整体向左循环平移 1 位，随后每个符号沿固定字典环（▲→◆→●→■→★→▲）向后置换一步。";
-      microDesc = "追踪第 3 阶段第 2 位符号的字典后继，它对应第 4 阶段的首位符号；同时校验末位符号是否由第 3 阶段首位转换而来。";
+      macroDesc = {
+        "zh-CN": "每阶段先将序列整体向左循环平移 1 位，随后每个符号沿固定字典环（▲→◆→●→■→★→▲）向后置换一步。",
+        "en-US": "Shift 1 slot left each stage, then advance each symbol 1 step along the cyclic permutation (▲→◆→●→■→★→▲).",
+      };
+      microDesc = {
+        "zh-CN": "追踪第 3 阶段第 2 位符号的字典后继，它对应第 4 阶段的首位符号；同时校验末位符号是否由第 3 阶段首位转换而来。",
+        "en-US": "Trace the successor of Stage 3's 2nd symbol, which maps to Stage 4's 1st symbol; verify the last symbol maps from Stage 3's first.",
+      };
       evolveStep = (seq) => {
         const rot = [...seq.slice(1), seq[0]];
         return rot.map(s => TaskGenerator.MAPPINGS_A[s] || s);
       };
     } else if (tier === 4) {
       ruleName = "全序列镜像反转 + 奇偶槽位双轨字典分流";
-      macroDesc = "每阶段先将序列整体首尾镜像翻转，再按翻转后的槽位索引分流：偶数索引（0,2,4）沿正字典环置换，奇数索引（1,3）沿逆字典环置换。";
-      microDesc = "重点核对翻转后中心槽位（索引 2）与次末槽位（索引 3）的符号转换方向相反，高仿干扰项通常在索引 1 或 2 处混用了同向字典。";
+      macroDesc = {
+        "zh-CN": "每阶段先将序列整体首尾镜像翻转，再按翻转后的槽位索引分流：偶数索引（0,2,4）沿正字典环置换，奇数索引（1,3）沿逆字典环置换。",
+        "en-US": "Mirror-reverse the sequence, then bifurcate: even indices (0,2,4) advance forward, odd indices (1,3) advance in reverse.",
+      };
+      microDesc = {
+        "zh-CN": "重点核对翻转后中心槽位（索引 2）与次末槽位（索引 3）的符号转换方向相反，高仿干扰项通常在索引 1 或 2 处混用了同向字典。",
+        "en-US": "Verify the opposite permutation directions at center (idx 2) and penultimate (idx 3) slots; distractors often use the same direction.",
+      };
       evolveStep = (seq) => {
         const rev = [...seq].reverse();
         return rev.map((s, idx) =>
@@ -337,8 +415,14 @@ export class TaskGenerator {
       };
     } else {
       ruleName = "阶数递增循环移位 + 邻位奇偶耦合状态机";
-      macroDesc = "从第 k 阶段到第 k+1 阶段：先向左循环移位 k 步（分别移 1、2、3 步），再根据移位后槽位索引与阶段号之和 (idx + k) 的奇偶性选择正/逆字典映射。";
-      microDesc = "高迷惑性干扰项保持了正确的首尾两端符号，但篡改了中间第 3、4 槽位的正逆字典分流结果，需逐一比对第 2 至第 5 槽位的耦合映射。";
+      macroDesc = {
+        "zh-CN": "从第 k 阶段到第 k+1 阶段：先向左循环移位 k 步（分别移 1、2、3 步），再根据移位后槽位索引与阶段号之和 (idx + k) 的奇偶性选择正/逆字典映射。",
+        "en-US": "From stage k to k+1: cyclic shift left by k steps, then bifurcate forward/reverse dictionary mapping based on (idx + k) parity.",
+      };
+      microDesc = {
+        "zh-CN": "高迷惑性干扰项保持了正确的首尾两端符号，但篡改了中间第 3、4 槽位的正逆字典分流结果，需逐一比对第 2 至第 5 槽位的耦合映射。",
+        "en-US": "Distractors preserve ends but corrupt inner slot mappings; verify coupled states at slots 2 through 5.",
+      };
       evolveStep = (seq, stepIdx) => {
         const shift = stepIdx % seq.length;
         const rot = [...seq.slice(shift), ...seq.slice(0, shift)];
@@ -415,26 +499,30 @@ export class TaskGenerator {
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
     const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-    let promptPrefix = "观察抽象符号序列的动态演化规则：";
+    let promptPrefixZh = "观察抽象符号序列的动态演化规则：";
+    let promptPrefixEn = "Observe the dynamic evolution rules of the abstract symbol sequence:";
     if (theme === "CYBERNETIC") {
-      promptPrefix = "【数字总线数据包传输分析】检测到数据流在不同时钟周期的特征寄存器序列状态：";
+      promptPrefixZh = "【数字总线数据包传输分析】检测到数据流在不同时钟周期的特征寄存器序列状态：";
+      promptPrefixEn = "[Digital Bus Packet Analysis] Detected register sequence states of data stream across clock cycles:";
     } else if (theme === "ARCHAEOLOGICAL") {
-      promptPrefix = "【古遗迹神庙符文铭文推演】破译石板上逐层递进演化的古老符文序列：";
+      promptPrefixZh = "【古遗迹神庙符文铭文推演】破译石板上逐层递进演化的古老符文序列：";
+      promptPrefixEn = "[Ancient Temple Rune Deduction] Decipher the progressive ancient rune sequence on the stone tablet:";
     } else if (theme === "STELLAR") {
-      promptPrefix = "【脉冲星信标引力波位移分析】观测到空间站阵列在各扫描阶段的特征信标排列：";
+      promptPrefixZh = "【脉冲星信标引力波位移分析】观测到空间站阵列在各扫描阶段的特征信标排列：";
+      promptPrefixEn = "[Pulsar Beacon Analysis] Observed feature beacon arrangement across scan stages:";
     }
 
-    const extraRuleNote = tier >= 4
+    const extraRuleNoteZh = tier >= 4
       ? `\n（基准置换环参考：正环 ▲→◆→●→■→★→▲，▼→◇→○→▼，✦→✖→✚→⬡→✦；逆环方向相反）`
       : "";
+    const extraRuleNoteEn = tier >= 4
+      ? `\n(Baseline permutation cycle: Forward ▲→◆→●→■→★→▲, ▼→◇→○→▼, ✦→✖→✚→⬡→✦; reverse cycle is opposite)`
+      : "";
 
-    const prompt = `${promptPrefix}${extraRuleNote}
-
-[第 1 阶段]: ${step1.join(" ")}
-[第 2 阶段]: ${step2.join(" ")}
-[第 3 阶段]: ${step3.join(" ")}
-
-从选项 A、B、C、D 中推断第 4 阶段的精确演化序列。`;
+    const prompt: BilingualText = {
+      "zh-CN": `${promptPrefixZh}${extraRuleNoteZh}\n\n[第 1 阶段]: ${step1.join(" ")}\n[第 2 阶段]: ${step2.join(" ")}\n[第 3 阶段]: ${step3.join(" ")}\n\n从选项 A、B、C、D 中推断第 4 阶段的精确演化序列。`,
+      "en-US": `${promptPrefixEn}${extraRuleNoteEn}\n\n[Stage 1]: ${step1.join(" ")}\n[Stage 2]: ${step2.join(" ")}\n[Stage 3]: ${step3.join(" ")}\n\nInfer the exact Stage 4 sequence from options A, B, C, and D.`,
+    };
 
     return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
       task_type: "SYNTHETIC_CIPHER",
@@ -533,23 +621,47 @@ export class TaskGenerator {
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
 
-    const macroDesc = tier >= 4
-      ? `注意剥离伪装干扰符（${decoySyms.join("、")}）：总填充率最高的区域未必是目标微元（${chosenSym}）最多的区域，应逐行过滤非目标噪声符号。`
-      : `观察各区域的视觉留白比例，目标高密度区域的背景空位（・）占比显著偏低。`;
-    const microDesc = `按行累计仅属于目标特征微元（${chosenSym}）的精确频次，最高密度区域的计数值比次高候选项多出至少 ${targetCount - Math.max(...dCounts)} 个单位。`;
+    const macroDesc: BilingualText = tier >= 4
+      ? {
+          "zh-CN": `注意剥离伪装干扰符（${decoySyms.join("、")}）：总填充率最高的区域未必是目标微元（${chosenSym}）最多的区域，应逐行过滤非目标噪声符号。`,
+          "en-US": `Filter out decoy distractors (${decoySyms.join(", ")}): the highest overall fill does not imply the most target units (${chosenSym}); filter out noise row by row.`,
+        }
+      : {
+          "zh-CN": `观察各区域的视觉留白比例，目标高密度区域的背景空位（・）占比显著偏低。`,
+          "en-US": `Observe empty space proportion across regions; target high-density regions have significantly fewer blank cells (・).`,
+        };
+
+    const microDesc: BilingualText = {
+      "zh-CN": `按行累计仅属于目标特征微元（${chosenSym}）的精确频次，最高密度区域的计数值比次高候选项多出至少 ${targetCount - Math.max(...dCounts)} 个单位。`,
+      "en-US": `Count exact occurrences of target unit (${chosenSym}) row by row; the top region exceeds the second highest by at least ${targetCount - Math.max(...dCounts)} units.`,
+    };
+
     const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-    let skinTitle = "4 个点阵检测区域";
-    if (theme === "CYBERNETIC") skinTitle = "4 组传感芯片像素传感器分布";
-    else if (theme === "STELLAR") skinTitle = "4 组星系深空探测视场";
-    else if (theme === "ARCHAEOLOGICAL") skinTitle = "4 块古城沙盘遗存标记点阵";
+    let skinTitleZh = "4 个点阵检测区域";
+    let skinTitleEn = "4 dot-array inspection regions";
+    if (theme === "CYBERNETIC") {
+      skinTitleZh = "4 组传感芯片像素传感器分布";
+      skinTitleEn = "4 sensor chip pixel detector arrays";
+    } else if (theme === "STELLAR") {
+      skinTitleZh = "4 组星系深空探测视场";
+      skinTitleEn = "4 deep-space telescopic fields of view";
+    } else if (theme === "ARCHAEOLOGICAL") {
+      skinTitleZh = "4 块古城沙盘遗存标记点阵";
+      skinTitleEn = "4 ancient ruins sand-table marker arrays";
+    }
 
-    const noiseWarning = tier >= 4
+    const noiseWarningZh = tier >= 4
       ? `\n（注意：视场中混有伪装干扰微元 ${decoySyms.join(" 与 ")}，请严格仅统计目标微元 ${chosenSym} 的数量！）`
       : "";
+    const noiseWarningEn = tier >= 4
+      ? `\n(Note: The field contains decoy elements ${decoySyms.join(" and ")}; count ONLY the target element ${chosenSym}!)`
+      : "";
 
-    const prompt = `分析下列 ${skinTitle}（选项 A、B、C、D，网格大小 ${gridW}x${gridH}）。${noiseWarning}
-请判断：哪一个区域包含【最高数量】的目标特征微元 (${chosenSym})？`;
+    const prompt: BilingualText = {
+      "zh-CN": `分析下列 ${skinTitleZh}（选项 A、B、C、D，网格大小 ${gridW}x${gridH}）。${noiseWarningZh}\n请判断：哪一个区域包含【最高数量】的目标特征微元 (${chosenSym})？`,
+      "en-US": `Analyze the following ${skinTitleEn} (options A, B, C, D, grid size ${gridW}x${gridH}).${noiseWarningEn}\nDetermine: which region contains the HIGHEST count of target element (${chosenSym})?`,
+    };
 
     return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
       task_type: "DOT_DENSITY",
@@ -585,14 +697,27 @@ export class TaskGenerator {
       const distractors = [isRowIdentity ? s1 : s2, s3, s4];
 
       const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-      const macroDesc = isRowIdentity
-        ? "2x2 矩阵遵循同行恒等复制律：每一行的左右两个单元格保持完全一致。"
-        : "2x2 矩阵遵循行列互异与主对角线守恒律：每行每列均由两个不同符号组成。";
-      const microDesc = "核对第 2 行左侧已知符号与第 1 行的对应关系即可唯一确定右下角缺失项。";
+      const macroDesc: BilingualText = isRowIdentity
+        ? {
+            "zh-CN": "2x2 矩阵遵循同行恒等复制律：每一行的左右两个单元格保持完全一致。",
+            "en-US": "The 2x2 matrix follows row-wise identity: left and right cells in each row are identical.",
+          }
+        : {
+            "zh-CN": "2x2 矩阵遵循行列互异与主对角线守恒律：每行每列均由两个不同符号组成。",
+            "en-US": "The 2x2 matrix follows distinctness and main diagonal conservation: each row and column consists of two distinct symbols.",
+          };
+      const microDesc: BilingualText = {
+        "zh-CN": "核对第 2 行左侧已知符号与第 1 行的对应关系即可唯一确定右下角缺失项。",
+        "en-US": "Check the mapping between the 2nd row's known left symbol and the 1st row to uniquely determine the missing bottom-right cell.",
+      };
       const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-      const gridDisplay = `第 1 行:  [ ${r1c1} ]  [ ${r1c2} ]\n第 2 行:  [ ${r2c1} ]  [ ? ]`;
-      const prompt = `分析下列 2x2 基础矩阵的守恒规律：\n\n${gridDisplay}\n\n从选项 A、B、C、D 中选出右下角 [ ? ] 处最合理的符号。`;
+      const gridDisplayZh = `第 1 行:  [ ${r1c1} ]  [ ${r1c2} ]\n第 2 行:  [ ${r2c1} ]  [ ? ]`;
+      const gridDisplayEn = `Row 1:  [ ${r1c1} ]  [ ${r1c2} ]\nRow 2:  [ ${r2c1} ]  [ ? ]`;
+      const prompt: BilingualText = {
+        "zh-CN": `分析下列 2x2 基础矩阵的守恒规律：\n\n${gridDisplayZh}\n\n从选项 A、B、C、D 中选出右下角 [ ? ] 处最合理的符号。`,
+        "en-US": `Analyze the conservation rule of the following 2x2 base matrix:\n\n${gridDisplayEn}\n\nSelect the most reasonable symbol for the bottom-right [ ? ] from options A, B, C, and D.`,
+      };
 
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "MATRIX_REASONING",
@@ -622,19 +747,31 @@ export class TaskGenerator {
       const correctSym = syms[symLatin[2][2]];
       const distractors = [syms[symLatin[2][0]], syms[symLatin[2][1]], s4];
       const { options, correctOption, signalType } = this.assembleFourOptions(correctSym, distractors);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "矩阵遵循 3x3 拉丁方阵封闭守恒律：每一行与每一列均恰好包含全部 3 种基准符号且互不重复。",
-        "同时比对第 3 行已出现的两个符号与第 3 列已出现的两个符号，取其唯一补集元素。"
-      );
+      const macroDesc: BilingualText = {
+        "zh-CN": "矩阵遵循 3x3 拉丁方阵封闭守恒律：每一行与每一列均恰好包含全部 3 种基准符号且互不重复。",
+        "en-US": "The matrix follows 3x3 Latin square closed conservation: each row and column contains exactly all 3 base symbols without repetition.",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": "同时比对第 3 行已出现的两个符号与第 3 列已出现的两个符号，取其唯一补集元素。",
+        "en-US": "Compare the two symbols in Row 3 and Column 3 to identify the unique complement element.",
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-      const gridDisplay = [
+      const gridDisplayZh = [
         `第 1 行:  [ ${syms[symLatin[0][0]]} ]  [ ${syms[symLatin[0][1]]} ]  [ ${syms[symLatin[0][2]]} ]`,
         `第 2 行:  [ ${syms[symLatin[1][0]]} ]  [ ${syms[symLatin[1][1]]} ]  [ ${syms[symLatin[1][2]]} ]`,
         `第 3 行:  [ ${syms[symLatin[2][0]]} ]  [ ${syms[symLatin[2][1]]} ]  [ ? ]`,
       ].join("\n");
+      const gridDisplayEn = [
+        `Row 1:  [ ${syms[symLatin[0][0]]} ]  [ ${syms[symLatin[0][1]]} ]  [ ${syms[symLatin[0][2]]} ]`,
+        `Row 2:  [ ${syms[symLatin[1][0]]} ]  [ ${syms[symLatin[1][1]]} ]  [ ${syms[symLatin[1][2]]} ]`,
+        `Row 3:  [ ${syms[symLatin[2][0]]} ]  [ ${syms[symLatin[2][1]]} ]  [ ? ]`,
+      ].join("\n");
 
-      const prompt = `推导下列 3x3 抽象符号矩阵的行列守恒机制：\n\n${gridDisplay}\n\n从选项 A、B、C、D 中推断右下角 [ ? ] 处应填入的符号。`;
+      const prompt: BilingualText = {
+        "zh-CN": `推导下列 3x3 抽象符号矩阵的行列守恒机制：\n\n${gridDisplayZh}\n\n从选项 A、B、C、D 中推断右下角 [ ? ] 处应填入的符号。`,
+        "en-US": `Deduce the row and column conservation of the following 3x3 abstract symbol matrix:\n\n${gridDisplayEn}\n\nInfer the symbol to fill in the bottom-right [ ? ] from options A, B, C, and D.`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "MATRIX_REASONING",
         difficulty_tier: tier,
@@ -663,19 +800,31 @@ export class TaskGenerator {
       ];
 
       const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "矩阵由两个正交的 3x3 拉丁方阵叠加而成：【符号种类】与【符号重复个数 (1/2/3)】在每一行、每一列均独立满足不重复守恒。",
-        "先由第 3 行前两格确定缺失的符号种类，再独立由第 3 行前两格的元素个数确定缺失的重复次数，切勿将两个维度混为一谈。"
-      );
+      const macroDesc: BilingualText = {
+        "zh-CN": "矩阵由两个正交的 3x3 拉丁方阵叠加而成：【符号种类】与【符号重复个数 (1/2/3)】在每一行、每一列均独立满足不重复守恒。",
+        "en-US": "The matrix is composed of two orthogonal 3x3 Latin squares: symbol type and count (1/2/3) independently satisfy non-repeating conservation in each row and column.",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": "先由第 3 行前两格确定缺失的符号种类，再独立由第 3 行前两格的元素个数确定缺失的重复次数，切勿将两个维度混为一谈。",
+        "en-US": "First determine the missing symbol type from the first two cells of Row 3, then determine repeat count from their quantities.",
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-      const gridDisplay = [
+      const gridDisplayZh = [
         `第 1 行:  ${formatCell(0, 0)}  ${formatCell(0, 1)}  ${formatCell(0, 2)}`,
         `第 2 行:  ${formatCell(1, 0)}  ${formatCell(1, 1)}  ${formatCell(1, 2)}`,
         `第 3 行:  ${formatCell(2, 0)}  ${formatCell(2, 1)}  [ ? ]`,
       ].join("\n");
+      const gridDisplayEn = [
+        `Row 1:  ${formatCell(0, 0)}  ${formatCell(0, 1)}  ${formatCell(0, 2)}`,
+        `Row 2:  ${formatCell(1, 0)}  ${formatCell(1, 1)}  ${formatCell(1, 2)}`,
+        `Row 3:  ${formatCell(2, 0)}  ${formatCell(2, 1)}  [ ? ]`,
+      ].join("\n");
 
-      const prompt = `推导下列 3x3 双维复合矩阵的行列正交守恒机制：\n\n${gridDisplay}\n\n从选项 A、B、C、D 中推断右下角 [ ? ] 处应填入的组合。`;
+      const prompt: BilingualText = {
+        "zh-CN": `推导下列 3x3 双维复合矩阵的行列正交守恒机制：\n\n${gridDisplayZh}\n\n从选项 A、B、C、D 中推断右下角 [ ? ] 处应填入的组合。`,
+        "en-US": `Deduce the orthogonal conservation of the following 3x3 dual-attribute matrix:\n\n${gridDisplayEn}\n\nInfer the combination to fill in the bottom-right [ ? ] from options A, B, C, and D.`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "MATRIX_REASONING",
         difficulty_tier: tier,
@@ -724,19 +873,31 @@ export class TaskGenerator {
     ];
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-      correctOption,
-      "三维超拉丁矩阵包含三个独立正交特征：1. 外框括号类型 [] / () / {} 满足行列拉丁守恒；2. 核心符号满足行列拉丁守恒；3. 每行第 3 格的符号个数等于前两格个数之和对 3 取模再加 1（即 ((N₁+N₂) mod 3) + 1）。",
-      "先通过外框括号与符号种类的拉丁方阵唯一确定括号形态和符号类别，再用前两格计数代入公式 ((N₁+N₂) mod 3) + 1 计算出精确重复次数。"
-    );
+    const macroDesc: BilingualText = {
+      "zh-CN": "三维超拉丁矩阵包含三个独立正交特征：1. 外框括号类型 [] / () / {} 满足行列拉丁守恒；2. 核心符号满足行列拉丁守恒；3. 每行第 3 格的符号个数等于前两格个数之和对 3 取模再加 1（即 ((N₁+N₂) mod 3) + 1）。",
+      "en-US": "The 3D hyper-Latin matrix comprises 3 orthogonal features: 1. outer brackets []/()/{} follow Latin conservation; 2. core symbols follow Latin conservation; 3. 3rd cell count equals ((N1+N2) mod 3) + 1.",
+    };
+    const microDesc: BilingualText = {
+      "zh-CN": "先通过外框括号与符号种类的拉丁方阵唯一确定括号形态和符号类别，再用前两格计数代入公式 ((N₁+N₂) mod 3) + 1 计算出精确重复次数。",
+      "en-US": "Determine outer bracket and symbol type via Latin conservation, then calculate exact repeat count via ((N1+N2) mod 3) + 1.",
+    };
+    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-    const gridDisplay = [
+    const gridDisplayZh = [
       `第 1 行:  ${formatCellT5(0, 0)}   ${formatCellT5(0, 1)}   ${formatCellT5(0, 2)}`,
       `第 2 行:  ${formatCellT5(1, 0)}   ${formatCellT5(1, 1)}   ${formatCellT5(1, 2)}`,
       `第 3 行:  ${formatCellT5(2, 0)}   ${formatCellT5(2, 1)}   ?`,
     ].join("\n");
+    const gridDisplayEn = [
+      `Row 1:  ${formatCellT5(0, 0)}   ${formatCellT5(0, 1)}   ${formatCellT5(0, 2)}`,
+      `Row 2:  ${formatCellT5(1, 0)}   ${formatCellT5(1, 1)}   ${formatCellT5(1, 2)}`,
+      `Row 3:  ${formatCellT5(2, 0)}   ${formatCellT5(2, 1)}   ?`,
+    ].join("\n");
 
-    const prompt = `推导下列 3x3 三维复合超矩阵（外框括号 × 内部符号 × 数量递推）的深层守恒机制：\n\n${gridDisplay}\n\n从选项 A、B、C、D 中推断右下角 ? 处应填入的精确表达式。`;
+    const prompt: BilingualText = {
+      "zh-CN": `推导下列 3x3 三维复合超矩阵（外框括号 × 内部符号 × 数量递推）的深层守恒机制：\n\n${gridDisplayZh}\n\n从选项 A、B、C、D 中推断右下角 ? 处应填入的精确表达式。`,
+      "en-US": `Deduce the deep conservation of the following 3x3 3-dimensional hyper-matrix (brackets × symbols × recurrence):\n\n${gridDisplayEn}\n\nInfer the exact expression for the bottom-right ? from options A, B, C, and D.`,
+    };
     return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
       task_type: "MATRIX_REASONING",
       difficulty_tier: tier,
@@ -800,12 +961,19 @@ export class TaskGenerator {
         gridToStr(correctGrid),
         [gridToStr(dist1), gridToStr(dist2), gridToStr(dist3)]
       );
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        `刚体旋转保持微元总数（3 个 '${sym}'）与直线拓扑形态不变。`,
-        `左侧竖直 3 连杆顺时针旋转 90° 后变为顶行水平 3 连杆。`
-      );
-      const prompt = `基准二维几何构型如下（3x3 网格）：\n\n${gridToStr(baseGrid)}\n\n请从选项 A、B、C、D 中选出由基准构型顺时针旋转 90° 得到的图形。`;
+      const macroDesc: BilingualText = {
+        "zh-CN": `刚体旋转保持微元总数（3 个 '${sym}'）与直线拓扑形态不变。`,
+        "en-US": `Rigid body rotation preserves total element count (3 '${sym}') and linear topology.`,
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": `左侧竖直 3 连杆顺时针旋转 90° 后变为顶行水平 3 连杆。`,
+        "en-US": `The left vertical 3-bar rotates 90° clockwise into a top-row horizontal 3-bar.`,
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
+      const prompt: BilingualText = {
+        "zh-CN": `基准二维几何构型如下（3x3 网格）：\n\n${gridToStr(baseGrid)}\n\n请从选项 A、B、C、D 中选出由基准构型顺时针旋转 90° 得到的图形。`,
+        "en-US": `Base 2D geometric configuration (3x3 grid):\n\n${gridToStr(baseGrid)}\n\nSelect the figure resulting from rotating the base configuration 90° clockwise from options A, B, C, and D.`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "SPATIAL_ROTATION",
         difficulty_tier: tier,
@@ -833,12 +1001,19 @@ export class TaskGenerator {
         gridToStr(correctGrid),
         [gridToStr(d1), gridToStr(d2), gridToStr(d3)]
       );
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "刚体旋转保持『★ 端点 — ■ 拐角 — ▲ 端点』的顺时针手性连接次序不变。",
-        "定位特殊锚点符号 ★ 与 ▲ 相对于直角拐点的朝向，镜像翻转选项会使拐角左右手性反转。"
-      );
-      const prompt = `基准二维几何构型如下（3x3 网格）：\n\n${gridToStr(baseGrid)}\n\n请从选项 A、B、C、D 中判断：哪一个图形是由基准构型在平面内通过【纯顺时针旋转】得到的？`;
+      const macroDesc: BilingualText = {
+        "zh-CN": "刚体旋转保持『★ 端点 — ■ 拐角 — ▲ 端点』的顺时针手性连接次序不变。",
+        "en-US": "Rigid rotation preserves the clockwise chiral order '★ tip — ■ corner — ▲ tip'.",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": "定位特殊锚点符号 ★ 与 ▲ 相对于直角拐点的朝向，镜像翻转选项会使拐角左右手性反转。",
+        "en-US": "Track anchor symbols ★ and ▲ relative to the right-angle corner; mirrored options invert chiral orientation.",
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
+      const prompt: BilingualText = {
+        "zh-CN": `基准二维几何构型如下（3x3 网格）：\n\n${gridToStr(baseGrid)}\n\n请从选项 A、B、C、D 中判断：哪一个图形是由基准构型在平面内通过【纯顺时针旋转】得到的？`,
+        "en-US": `Base 2D geometric configuration (3x3 grid):\n\n${gridToStr(baseGrid)}\n\nDetermine: which figure is obtained from the base configuration via PURE clockwise rotation in the plane (options A, B, C, D)?`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "SPATIAL_ROTATION",
         difficulty_tier: tier,
@@ -899,13 +1074,20 @@ export class TaskGenerator {
         gridToStr(correctGrid),
         [gridToStr(d1), gridToStr(d2), gridToStr(d3)]
       );
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "复合二面体变换分两步执行：第一步顺时针旋转 270°（等价于逆时针旋转 90°），第二步沿垂直中轴做左右水平镜像翻转。",
-        "先追踪四角锚点（★ 与 ▲）经逆时针 90° 旋转并左右翻转后的精确行列坐标，再校验内部异质节点（◆ 与 ✦）是否发生非法互换。"
-      );
+      const macroDesc: BilingualText = {
+        "zh-CN": "复合二面体变换分两步执行：第一步顺时针旋转 270°（等价于逆时针旋转 90°），第二步沿垂直中轴做左右水平镜像翻转。",
+        "en-US": "The composite dihedral transform executes in two steps: first rotate 270° clockwise (90° counterclockwise), second mirror horizontally.",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": "先追踪四角锚点（★ 与 ▲）经逆时针 90° 旋转并左右翻转后的精确行列坐标，再校验内部异质节点（◆ 与 ✦）是否发生非法互换。",
+        "en-US": "Track corner anchors (★ and ▲) after 270° rotation and horizontal mirror; verify internal chiral markers (◆ and ✦) are not swapped.",
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-      const prompt = `基准二维异质几何构型如下（${dim}x${dim} 网格）：\n\n${gridToStr(baseGrid)}\n\n请从选项 A、B、C、D 中推断：哪一个构型是由基准构型先执行【顺时针旋转 270°】，随后再执行【水平左右镜像翻转】得到的精确结果？`;
+      const prompt: BilingualText = {
+        "zh-CN": `基准二维异质几何构型如下（${dim}x${dim} 网格）：\n\n${gridToStr(baseGrid)}\n\n请从选项 A、B、C、D 中推断：哪一个构型是由基准构型先执行【顺时针旋转 270°】，随后再执行【水平左右镜像翻转】得到的精确结果？`,
+        "en-US": `Base 2D heterogeneous geometric configuration (${dim}x${dim} grid):\n\n${gridToStr(baseGrid)}\n\nInfer from options A, B, C, and D: which configuration is the exact result of rotating 270° clockwise then mirroring horizontally?`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "SPATIAL_ROTATION",
         difficulty_tier: tier,
@@ -936,13 +1118,20 @@ export class TaskGenerator {
       gridToStr(correctGrid),
       [gridToStr(d1), gridToStr(d2), gridToStr(d3)]
     );
-    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-      correctOption,
-      "刚体平面纯旋转严格保持构型的手性（顺/逆时针拐向）以及各异质锚点（★、▲、◆）之间的相对拓扑邻接关系。",
-      "部分高仿干扰项复刻了旋转后的外轮廓，但互换了首尾特征锚点（★ 与 ▲）或引入了手性镜像，需同时核对轮廓手性与锚点符号位置。"
-    );
+    const macroDesc: BilingualText = {
+      "zh-CN": "刚体平面纯旋转严格保持构型的手性（顺/逆时针拐向）以及各异质锚点（★、▲、◆）之间的相对拓扑邻接关系。",
+      "en-US": "Rigid planar rotation strictly preserves chirality (clockwise/counter-clockwise bends) and topological adjacency between anchors (★, ▲, ◆).",
+    };
+    const microDesc: BilingualText = {
+      "zh-CN": "部分高仿干扰项复刻了旋转后的外轮廓，但互换了首尾特征锚点（★ 与 ▲）或引入了手性镜像，需同时核对轮廓手性与锚点符号位置。",
+      "en-US": "Distractors mimic the outer silhouette but swap feature anchors (★ and ▲) or introduce mirror chirality; verify both contour chirality and anchor locations.",
+    };
+    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-    const prompt = `基准二维几何构型如下（${dim}x${dim} 网格）：\n\n${gridToStr(baseGrid)}\n\n请从选项 A、B、C、D 中判断：哪一个构型是由基准构型在平面内通过【纯顺时针旋转】得到的？\n（注：其余选项为手性镜像体或锚点错位畸变体）`;
+    const prompt: BilingualText = {
+      "zh-CN": `基准二维几何构型如下（${dim}x${dim} 网格）：\n\n${gridToStr(baseGrid)}\n\n请从选项 A、B、C、D 中判断：哪一个构型是由基准构型在平面内通过【纯顺时针旋转】得到的？\n（注：其余选项为手性镜像体或锚点错位畸变体）`,
+      "en-US": `Base 2D geometric configuration (${dim}x${dim} grid):\n\n${gridToStr(baseGrid)}\n\nDetermine from options A, B, C, and D: which configuration is obtained via PURE clockwise rotation?\n(Note: remaining options are chiral reflections or anchor-swapped aberrations)`,
+    };
     return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
       task_type: "SPATIAL_ROTATION",
       difficulty_tier: tier,
@@ -982,12 +1171,19 @@ export class TaskGenerator {
         ["★", "★", "★"].join(" "),
       ];
       const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "统计序列中特征星号（★）的出现频次，与具体排列位置无关。",
-        "合法样本均恰好包含 1 个 '★'，含 0 个或多个 '★' 的选项均违背守恒律。"
-      );
-      const prompt = `以下 3 组示例序列均严格满足某种抽象结构平衡法则（合法样本）：\n\n[样本 1]: ${samples[0]}\n[样本 2]: ${samples[1]}\n[样本 3]: ${samples[2]}\n\n请从选项 A、B、C、D 中选出同样满足该守恒法则的序列。`;
+      const macroDesc: BilingualText = {
+        "zh-CN": "统计序列中特征星号（★）的出现频次，与具体排列位置无关。",
+        "en-US": "Count the frequency of the feature star (★) in the sequence, independent of position.",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": "合法样本均恰好包含 1 个 '★'，含 0 个或多个 '★' 的选项均违背守恒律。",
+        "en-US": "All valid samples contain exactly 1 '★'; options with 0 or multiple '★' violate the invariant.",
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
+      const prompt: BilingualText = {
+        "zh-CN": `以下 3 组示例序列均严格满足某种抽象结构平衡法则（合法样本）：\n\n[样本 1]: ${samples[0]}\n[样本 2]: ${samples[1]}\n[样本 3]: ${samples[2]}\n\n请从选项 A、B、C、D 中选出同样满足该守恒法则的序列。`,
+        "en-US": `The following 3 example sequences all strictly satisfy an abstract structural balance rule (valid samples):\n\n[Sample 1]: ${samples[0]}\n[Sample 2]: ${samples[1]}\n[Sample 3]: ${samples[2]}\n\nSelect the sequence from options A, B, C, and D that satisfies the same invariant.`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "PARITY_INVARIANT",
         difficulty_tier: tier,
@@ -1022,12 +1218,19 @@ export class TaskGenerator {
       const correctStr = makeValid();
       const distractors = [makeInvalid(0), makeInvalid(1), makeInvalid(2)];
       const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, distractors);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "分类统计序列中『实心几何图形 (●/■/▲)』与『空心几何图形 (○/□/△)』的各自总数。",
-        `所有合法样本均严格包含 ${nSolid} 个实心图形与 ${nHollow} 个空心图形。`
-      );
-      const prompt = `以下 3 组示例序列均严格满足某种抽象结构平衡法则（合法样本）：\n\n[样本 1]: ${samples[0]}\n[样本 2]: ${samples[1]}\n[样本 3]: ${samples[2]}\n\n请从选项 A、B、C、D 中判断：哪一个序列同样严格满足该守恒法则？`;
+      const macroDesc: BilingualText = {
+        "zh-CN": "分类统计序列中『实心几何图形 (●/■/▲)』与『空心几何图形 (○/□/△)』的各自总数。",
+        "en-US": "Classify and count solid symbols (●/■/▲) and hollow symbols (○/□/△) in the sequence.",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": `所有合法样本均严格包含 ${nSolid} 个实心图形与 ${nHollow} 个空心图形。`,
+        "en-US": `All valid samples strictly contain ${nSolid} solid symbols and ${nHollow} hollow symbols.`,
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
+      const prompt: BilingualText = {
+        "zh-CN": `以下 3 组示例序列均严格满足某种抽象结构平衡法则（合法样本）：\n\n[样本 1]: ${samples[0]}\n[样本 2]: ${samples[1]}\n[样本 3]: ${samples[2]}\n\n请从选项 A、B、C、D 中判断：哪一个序列同样严格满足该守恒法则？`,
+        "en-US": `The following 3 example sequences strictly satisfy an abstract structural balance rule (valid samples):\n\n[Sample 1]: ${samples[0]}\n[Sample 2]: ${samples[1]}\n[Sample 3]: ${samples[2]}\n\nDetermine from options A, B, C, and D: which sequence strictly satisfies the same invariant?`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "PARITY_INVARIANT",
         difficulty_tier: tier,
@@ -1077,13 +1280,20 @@ export class TaskGenerator {
       const samples = [makeT4Valid(), makeT4Valid(), makeT4Valid()];
       const correctStr = makeT4Valid();
       const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, [d1, d2, d3]);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "复合守恒律同时约束『三类符号（实心/空心/星形）的奇偶配比』与『首尾边界符号的类别对称性』。",
-        "合法序列满足：首尾两端同为实心符号，且序列总计包含 4 个实心（偶）、3 个空心（奇）与 1 个星形（奇）。"
-      );
+      const macroDesc: BilingualText = {
+        "zh-CN": "复合守恒律同时约束『三类符号（实心/空心/星形）的奇偶配比』与『首尾边界符号的类别对称性』。",
+        "en-US": "The composite invariant constrains both parity of 3 symbol categories (solid/hollow/star) and boundary symmetry.",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": "合法序列满足：首尾两端同为实心符号，且序列总计包含 4 个实心（偶）、3 个空心（奇）与 1 个星形（奇）。",
+        "en-US": "Valid sequences require: both ends solid, with exactly 4 solids (even), 3 hollows (odd), and 1 star (odd).",
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-      const prompt = `以下 3 组示例序列（长度均为 8）均严格满足某种复合结构守恒法则（合法样本）：\n\n[样本 1]: ${samples[0]}\n[样本 2]: ${samples[1]}\n[样本 3]: ${samples[2]}\n\n请从选项 A、B、C、D 中推断：哪一个序列同样严格满足全部守恒约束？`;
+      const prompt: BilingualText = {
+        "zh-CN": `以下 3 组示例序列（长度均为 8）均严格满足某种复合结构守恒法则（合法样本）：\n\n[样本 1]: ${samples[0]}\n[样本 2]: ${samples[1]}\n[样本 3]: ${samples[2]}\n\n请从选项 A、B、C、D 中推断：哪一个序列同样严格满足全部守恒约束？`,
+        "en-US": `The following 3 example sequences (length 8) strictly satisfy a composite structural invariant:\n\n[Sample 1]: ${samples[0]}\n[Sample 2]: ${samples[1]}\n[Sample 3]: ${samples[2]}\n\nInfer from options A, B, C, and D: which sequence satisfies all invariant constraints?`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "PARITY_INVARIANT",
         difficulty_tier: tier,
@@ -1128,13 +1338,20 @@ export class TaskGenerator {
     const samples = [makeT5Valid(), makeT5Valid(), makeT5Valid()];
     const correctStr = makeT5Valid();
     const { options, correctOption, signalType } = this.assembleFourOptions(correctStr, [d1, d2, d3]);
-    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-      correctOption,
-      "除全局满足『3 实心 + 3 空心 + 3 星形』外，序列还受局部滑窗守恒约束：将长度 9 的序列等分为前、中、后三个三元组（位置 1-3、4-6、7-9）。",
-      "每一个独立三元组内部都必须恰好包含 1 个实心符号、1 个空心符号与 1 个星形符号；全局总数正确但局部三元组失衡的伪装项需排除。"
-    );
+    const macroDesc: BilingualText = {
+      "zh-CN": "除全局满足『3 实心 + 3 空心 + 3 星形』外，序列还受局部滑窗守恒约束：将长度 9 的序列等分为前、中、后三个三元组（位置 1-3、4-6、7-9）。",
+      "en-US": "In addition to global 3 solid + 3 hollow + 3 star balance, sequence satisfies local triad balance across slots 1-3, 4-6, and 7-9.",
+    };
+    const microDesc: BilingualText = {
+      "zh-CN": "每一个独立三元组内部都必须恰好包含 1 个实心符号、1 个空心符号与 1 个星形符号；全局总数正确但局部三元组失衡的伪装项需排除。",
+      "en-US": "Each independent 3-symbol triad must contain exactly 1 solid, 1 hollow, and 1 star; exclude disguises with unbalanced triads.",
+    };
+    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-    const prompt = `以下 3 组长度为 9 的示例序列均严格满足某种全局与局部双重结构守恒法则（合法样本）：\n\n[样本 1]: ${samples[0]}\n[样本 2]: ${samples[1]}\n[样本 3]: ${samples[2]}\n\n请从选项 A、B、C、D 中判断：哪一个序列同样严格满足该双重守恒法则？`;
+    const prompt: BilingualText = {
+      "zh-CN": `以下 3 组长度为 9 的示例序列均严格满足某种全局与局部双重结构守恒法则（合法样本）：\n\n[样本 1]: ${samples[0]}\n[样本 2]: ${samples[1]}\n[样本 3]: ${samples[2]}\n\n请从选项 A、B、C、D 中判断：哪一个序列同样严格满足该双重守恒法则？`,
+      "en-US": `The following 3 example sequences (length 9) strictly satisfy dual global and local structural invariants:\n\n[Sample 1]: ${samples[0]}\n[Sample 2]: ${samples[1]}\n[Sample 3]: ${samples[2]}\n\nDetermine from options A, B, C, and D: which sequence strictly satisfies the dual invariant rule?`,
+    };
     return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
       task_type: "PARITY_INVARIANT",
       difficulty_tier: tier,
@@ -1161,12 +1378,19 @@ export class TaskGenerator {
       const correctAns = `${s0} ▷ ${s2}`;
       const distractors = [`${s2} ▷ ${s0}`, `${s1} ▷ ${s0}`, `${s2} ▷ ${s1}`];
       const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        `沿单向传递链条从起点 '${s0}' 顺延至终点 '${s2}'。`,
-        `根据传递律，首尾必然满足前驱先于后继，反向命题均不成立。`
-      );
-      const prompt = `已知下列抽象符号之间的直接序位关系（'X ▷ Y' 表示 X 的层级严格先于 Y）：\n\n前提条件：${premise}\n\n依据传递性公理（若 X ▷ Y 且 Y ▷ Z，则 X ▷ Z），下列哪一个命题必然成立？`;
+      const macroDesc: BilingualText = {
+        "zh-CN": `沿单向传递链条从起点 '${s0}' 顺延至终点 '${s2}'。`,
+        "en-US": `Follow the unidirectional transitivity chain from '${s0}' to '${s2}'.`,
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": `根据传递律，首尾必然满足前驱先于后继，反向命题均不成立。`,
+        "en-US": `By the transitivity axiom, the predecessor precedes the successor; reverse assertions are invalid.`,
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
+      const prompt: BilingualText = {
+        "zh-CN": `已知下列抽象符号之间的直接序位关系（'X ▷ Y' 表示 X 的层级严格先于 Y）：\n\n前提条件：${premise}\n\n依据传递性公理（若 X ▷ Y 且 Y ▷ Z，则 X ▷ Z），下列哪一个命题必然成立？`,
+        "en-US": `Given the direct precedence relations among abstract symbols ('X ▷ Y' denotes X strictly precedes Y):\n\nPremises: ${premise}\n\nAccording to the transitivity axiom (if X ▷ Y and Y ▷ Z, then X ▷ Z), which proposition MUST hold (options A, B, C, D)?`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "RELATIONAL_TRANSITIVITY",
         difficulty_tier: tier,
@@ -1196,13 +1420,20 @@ export class TaskGenerator {
       }
       const distractors = this.sample(invalidPairs, 3);
       const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "将打乱的二元关系首尾拼接，还原唯一的单向全序链。",
-        "核对各候选项左右两端符号在全序链中的前后次序，逆序断言可直接排除。"
-      );
+      const macroDesc: BilingualText = {
+        "zh-CN": "将打乱的二元关系首尾拼接，还原唯一的单向全序链。",
+        "en-US": "Splice the scrambled binary relations head-to-tail to reconstruct the unique unidirectional total order chain.",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": "核对各候选项左右两端符号在全序链中的前后次序，逆序断言可直接排除。",
+        "en-US": "Check the order of symbols in each candidate against the total order chain; inverted assertions can be safely eliminated.",
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-      const prompt = `系统已知下列抽象符号之间的直接序位关系（'X ▷ Y' 表示 X 的层级严格先于 Y）：\n\n已知前提：${pairsPresented.join(" ， ")}\n\n依据传递性公理（若 X ▷ Y 且 Y ▷ Z，则 X ▷ Z），判断下列哪一个命题必然成立？`;
+      const prompt: BilingualText = {
+        "zh-CN": `系统已知下列抽象符号之间的直接序位关系（'X ▷ Y' 表示 X 的层级严格先于 Y）：\n\n已知前提：${pairsPresented.join(" ， ")}\n\n依据传递性公理（若 X ▷ Y 且 Y ▷ Z，则 X ▷ Z），判断下列哪一个命题必然成立？`,
+        "en-US": `Given the direct precedence relations among abstract symbols ('X ▷ Y' denotes X strictly precedes Y):\n\nKnown premises: ${pairsPresented.join(", ")}\n\nAccording to the transitivity axiom (if X ▷ Y and Y ▷ Z, then X ▷ Z), which proposition MUST hold (options A, B, C, D)?`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "RELATIONAL_TRANSITIVITY",
         difficulty_tier: tier,
@@ -1253,15 +1484,25 @@ export class TaskGenerator {
     ];
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-      correctOption,
-      "先把所有逆向关系『Y ◁ X』统一改写为等价的顺向关系『X ▷ Y』，再沿有向边追踪可达路径。",
-      tier === 5
-        ? "注意区分主干传递链与同源分叉旁支（若 A ▷ B 且 A ▷ C，B 与 C 之间并不存在传递序关系），仅在存在完整有向路径的节点对之间断言。"
-        : "还原主干拓扑序后，重点核对候选项中中间节点对的前后可达方向。"
-    );
+    const macroDesc: BilingualText = {
+      "zh-CN": "先把所有逆向关系『Y ◁ X』统一改写为等价的顺向关系『X ▷ Y』，再沿有向边追踪可达路径。",
+      "en-US": "First rewrite all reverse relations 'Y ◁ X' into forward form 'X ▷ Y', then trace reachable paths along directed edges.",
+    };
+    const microDesc: BilingualText = tier === 5
+      ? {
+          "zh-CN": "注意区分主干传递链与同源分叉旁支（若 A ▷ B 且 A ▷ C，B 与 C 之间并不存在传递序关系），仅在存在完整有向路径的节点对之间断言。",
+          "en-US": "Distinguish the main backbone from forked branches (if A ▷ B and A ▷ C, B and C have no transitive order); assert only where a complete directed path exists.",
+        }
+      : {
+          "zh-CN": "还原主干拓扑序后，重点核对候选项中中间节点对的前后可达方向。",
+          "en-US": "After reconstructing the backbone topological order, check reachable directions between candidate node pairs.",
+        };
+    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-    const prompt = `系统已知下列抽象符号之间的直接序位关系（其中 'X ▷ Y' 表示 X 先于 Y；而 'Y ◁ X' 表示 Y 后于 X，即等价于 X ▷ Y）：\n\n已知前提：${premises.join(" ， ")}\n\n依据严格偏序传递性公理，判断下列哪一个命题必然成立？`;
+    const prompt: BilingualText = {
+      "zh-CN": `系统已知下列抽象符号之间的直接序位关系（其中 'X ▷ Y' 表示 X 先于 Y；而 'Y ◁ X' 表示 Y 后于 X，即等价于 X ▷ Y）：\n\n已知前提：${premises.join(" ， ")}\n\n依据严格偏序传递性公理，判断下列哪一个命题必然成立？`,
+      "en-US": `Given the direct precedence relations among abstract symbols ('X ▷ Y' means X precedes Y; 'Y ◁ X' means Y follows X, i.e., X ▷ Y):\n\nKnown premises: ${premises.join(", ")}\n\nAccording to strict partial order transitivity axioms, which proposition MUST hold (options A, B, C, D)?`,
+    };
     return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
       task_type: "RELATIONAL_TRANSITIVITY",
       difficulty_tier: tier,
@@ -1296,12 +1537,19 @@ export class TaskGenerator {
         `[${sym} ${startNum + 10}]`,
       ];
       const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "符号保持恒定不变，数值构成公差为 +2 的简单等差数列。",
-        "在第 4 项数值基础上加 2 即可确定第 5 项。"
-      );
-      const prompt = `观察下列序列的递增演化规律：\n\n${seqItems.join("  ")}  [ ? ]\n\n推断末尾 [ ? ] 处所对应的组合。`;
+      const macroDesc: BilingualText = {
+        "zh-CN": "符号保持恒定不变，数值构成公差为 +2 的简单等差数列。",
+        "en-US": "The symbol remains constant; values form an arithmetic progression with common difference +2.",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": "在第 4 项数值基础上加 2 即可确定第 5 项。",
+        "en-US": "Add 2 to the 4th item's value to determine the 5th item.",
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
+      const prompt: BilingualText = {
+        "zh-CN": `观察下列序列的递增演化规律：\n\n${seqItems.join("  ")}  [ ? ]\n\n推断末尾 [ ? ] 处所对应的组合。`,
+        "en-US": `Observe the progression pattern of the following sequence:\n\n${seqItems.join("  ")}  [ ? ]\n\nInfer the combination corresponding to [ ? ] from options A, B, C, and D.`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "SEQUENCE_PROGRESSION",
         difficulty_tier: tier,
@@ -1336,15 +1584,24 @@ export class TaskGenerator {
       ];
 
       const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        tier === 4
+      const macroDesc: BilingualText = {
+        "zh-CN": tier === 4
           ? `双轨解耦分析：符号轨以长度 ${cycleLen} 周期循环；数值轨为二阶等差数列（相邻两项的一阶差值依次为 ${stepDiff}, ${stepDiff * 2}, ${stepDiff * 3}, ${stepDiff * 4}）。`
           : `双轨解耦分析：符号轨以长度 ${cycleLen} 周期循环，数值轨以固定步长 +${stepDiff} 线性递增。`,
-        `先锁定第 5 项对应的周期符号，再将第 4 项数值加上第 4 步增量（+${tier === 4 ? stepDiff * 4 : stepDiff}）。`
-      );
+        "en-US": tier === 4
+          ? `Dual-track decoupled analysis: symbols cycle with period ${cycleLen}; numbers follow a second-order arithmetic progression (differences ${stepDiff}, ${stepDiff * 2}, ${stepDiff * 3}, ${stepDiff * 4}).`
+          : `Dual-track decoupled analysis: symbols cycle with period ${cycleLen}; numbers increase linearly with step +${stepDiff}.`,
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": `先锁定第 5 项对应的周期符号，再将第 4 项数值加上第 4 步增量（+${tier === 4 ? stepDiff * 4 : stepDiff}）。`,
+        "en-US": `First lock in the cyclic symbol for item 5, then add step increment (+${tier === 4 ? stepDiff * 4 : stepDiff}) to item 4's value.`,
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-      const prompt = `观察下列符号与数值的双轨演化序列：\n\n${seqItems.join("  ")}  [ ? ]\n\n推断末尾 [ ? ] 处所对应的符号与数值组合。`;
+      const prompt: BilingualText = {
+        "zh-CN": `观察下列符号与数值的双轨演化序列：\n\n${seqItems.join("  ")}  [ ? ]\n\n推断末尾 [ ? ] 处所对应的符号与数值组合。`,
+        "en-US": `Observe the following dual-track sequence of symbols and numeric values:\n\n${seqItems.join("  ")}  [ ? ]\n\nInfer the symbol and numeric combination at [ ? ] from options A, B, C, and D.`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "SEQUENCE_PROGRESSION",
         difficulty_tier: tier,
@@ -1386,13 +1643,20 @@ export class TaskGenerator {
     ];
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-      correctOption,
-      `三轨耦合系统 [Sym A:B] 规律：1. 符号以 3 为周期循环；2. 左寄存器 A 的相邻差值呈等差递增（+${d}, +${2 * d}, +${3 * d}, +${4 * d}）；3. 右寄存器 B 满足跨轨累加递推：下一项的 B 等于上一项的 A 与 B 之和（Bₙ = Bₙ₋₁ + Aₙ₋₁）。`,
-      `计算第 5 项时，左值 A₅ = A₄ + ${4 * d}，而右值 B₅ 必须由第 4 项的 A₄ + B₄ 求得（切勿误加 A₅）。`
-    );
+    const macroDesc: BilingualText = {
+      "zh-CN": `三轨耦合系统 [Sym A:B] 规律：1. 符号以 3 为周期循环；2. 左寄存器 A 的相邻差值呈等差递增（+${d}, +${2 * d}, +${3 * d}, +${4 * d}）；3. 右寄存器 B 满足跨轨累加递推：下一项的 B 等于上一项的 A 与 B 之和（Bₙ = Bₙ₋₁ + Aₙ₋₁）。`,
+      "en-US": `Three-track coupled system [Sym A:B]: 1. symbol cycles with period 3; 2. left register A increases by second-order differences (+${d}, +${2 * d}, +${3 * d}, +${4 * d}); 3. right register B couples via recurrence B_n = B_{n-1} + A_{n-1}.`,
+    };
+    const microDesc: BilingualText = {
+      "zh-CN": `计算第 5 项时，左值 A₅ = A₄ + ${4 * d}，而右值 B₅ 必须由第 4 项的 A₄ + B₄ 求得（切勿误加 A₅）。`,
+      "en-US": `For item 5, left value A_5 = A_4 + ${4 * d}, while right value B_5 must be obtained from A_4 + B_4 of item 4.`,
+    };
+    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-    const prompt = `观察下列三轨耦合寄存器序列 [符号 左值:右值] 的递推演化规律：\n\n${seqItems.join("  ")}  [ ? ]\n\n请从选项 A、B、C、D 中推断末尾 [ ? ] 处对应的精确状态。`;
+    const prompt: BilingualText = {
+      "zh-CN": `观察下列三轨耦合寄存器序列 [符号 左值:右值] 的递推演化规律：\n\n${seqItems.join("  ")}  [ ? ]\n\n请从选项 A、B、C、D 中推断末尾 [ ? ] 处对应的精确状态。`,
+      "en-US": `Observe the progression of the following 3-track coupled register sequence [Symbol Left:Right]:\n\n${seqItems.join("  ")}  [ ? ]\n\nInfer the exact state for [ ? ] from options A, B, C, and D.`,
+    };
     return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
       task_type: "SEQUENCE_PROGRESSION",
       difficulty_tier: tier,
@@ -1429,12 +1693,19 @@ export class TaskGenerator {
         "[ K ── M ── N ── K ]",
       ];
       const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-        correctOption,
-        "观察路径的首尾节点是否重合：参考样本均为首尾不相连的开放折线（0 个闭合环）。",
-        "首尾出现相同节点字母的选项均构成了闭合回路，需直接排除。"
-      );
-      const prompt = `下列 3 个参考拓扑路径具有相同的几何连通特征（【开放路径，0 个闭合回路】）：\n\n参考样本:  [ ${openSamples[0]} ]    [ ${openSamples[1]} ]    [ ${openSamples[2]} ]\n\n请从选项 A、B、C、D 中选出同样属于【开放路径（0 个闭合回路）】的选项。`;
+      const macroDesc: BilingualText = {
+        "zh-CN": "观察路径的首尾节点是否重合：参考样本均为首尾不相连的开放折线（0 个闭合环）。",
+        "en-US": "Observe whether path endpoints coincide: reference samples are all open paths without closed loops (0 cycles).",
+      };
+      const microDesc: BilingualText = {
+        "zh-CN": "首尾出现相同节点字母的选项均构成了闭合回路，需直接排除。",
+        "en-US": "Options where start and end share the same vertex form closed cycles and should be eliminated.",
+      };
+      const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
+      const prompt: BilingualText = {
+        "zh-CN": `下列 3 个参考拓扑路径具有相同的几何连通特征（【开放路径，0 个闭合回路】）：\n\n参考样本:  [ ${openSamples[0]} ]    [ ${openSamples[1]} ]    [ ${openSamples[2]} ]\n\n请从选项 A、B、C、D 中选出同样属于【开放路径（0 个闭合回路）】的选项。`,
+        "en-US": `The following 3 reference topological paths share the same geometric property (open path, 0 closed loops):\n\nReference:  [ ${openSamples[0]} ]    [ ${openSamples[1]} ]    [ ${openSamples[2]} ]\n\nSelect the option from A, B, C, and D that is also an OPEN path (0 closed loops).`,
+      };
       return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
         task_type: "TOPOLOGICAL_LOOPS",
         difficulty_tier: tier,
@@ -1513,23 +1784,36 @@ export class TaskGenerator {
     );
 
     const { options, correctOption, signalType } = this.assembleFourOptions(correctAns, distractors);
-    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(
-      correctOption,
-      `图的独立闭合回路数（第一贝蒂数 β₁）满足拓扑欧拉示性数公式：β₁ = E - V + C（其中 E 为边数，V 为顶点数，C 为连通分量数）。`,
-      `参考样本的独立闭合回路数均为 β₁ = ${targetLoops}（含 ${vCount} 个顶点、${compCount} 个连通分量）。统计各选项的边数 E 与连通块数 C 代入 β₁ = E - V + C 即可排除环数不符的候选项。`
-    );
+    const macroDesc: BilingualText = {
+      "zh-CN": `图的独立闭合回路数（第一贝蒂数 β₁）满足拓扑欧拉示性数公式：β₁ = E - V + C（其中 E 为边数，V 为顶点数，C 为连通分量数）。`,
+      "en-US": `The cycle rank (first Betti number β₁) of a graph satisfies Euler's formula: β₁ = E - V + C (E = edges, V = vertices, C = connected components).`,
+    };
+    const microDesc: BilingualText = {
+      "zh-CN": `参考样本的独立闭合回路数均为 β₁ = ${targetLoops}（含 ${vCount} 个顶点、${compCount} 个连通分量）。统计各选项的边数 E 与连通块数 C 代入 β₁ = E - V + C 即可排除环数不符的候选项。`,
+      "en-US": `Reference samples have cycle rank β₁ = ${targetLoops} (${vCount} vertices, ${compCount} components). Count edges E and components C to eliminate non-matching options.`,
+    };
+    const { hint_tier1, hint_tier2 } = this.buildDiagnosticHints(correctOption, macroDesc, microDesc);
 
-    const compNote = tier === 5
+    const compNoteZh = tier === 5
       ? `\n（提示：图可能包含多个互不连通的子图分量 C，独立闭合环路数满足拓扑定理 β₁ = 边数 E - 顶点数 V + 连通分量数 C）`
       : `\n（注：每个集合表示无向连通图的边集，'X─Y' 表示顶点 X 与顶点 Y 之间存在一条无向边）`;
+    const compNoteEn = tier === 5
+      ? `\n(Hint: Graph may contain disconnected components C; cycle rank satisfies β₁ = E - V + C)`
+      : `\n(Note: Each set denotes undirected graph edges; 'X─Y' means undirected edge between X and Y)`;
 
-    const prompt = `下列 3 个无向拓扑图边集共享相同的拓扑不变量——【独立闭合环路数（第一贝蒂数 β₁）】：${compNote}
+    const prompt: BilingualText = {
+      "zh-CN": `下列 3 个无向拓扑图边集共享相同的拓扑不变量——【独立闭合环路数（第一贝蒂数 β₁）】：${compNoteZh}\n\n[参考图 1]: ${sample1}\n[参考图 2]: ${sample2}\n[参考图 3]: ${sample3}\n\n请从选项 A、B、C、D 中判断：哪一个拓扑图边集具有与参考图完全相同的【独立闭合环路数】？`,
+      "en-US": `The following 3 undirected edge sets share the same topological invariant—cycle rank (first Betti number β₁):${compNoteEn}\n\n[Reference Graph 1]: ${sample1}\n[Reference Graph 2]: ${sample2}\n[Reference Graph 3]: ${sample3}\n\nDetermine from options A, B, C, and D: which edge set shares the EXACT same cycle rank?`,
+    };
 
-[参考图 1]: ${sample1}
-[参考图 2]: ${sample2}
-[参考图 3]: ${sample3}
-
-请从选项 A、B、C、D 中判断：哪一个拓扑图边集具有与参考图完全相同的【独立闭合环路数】？`;
+    return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
+      task_type: "TOPOLOGICAL_LOOPS",
+      difficulty_tier: tier,
+      vertex_count: vCount,
+      component_count: compCount,
+      loop_count: targetLoops,
+      theme,
+    });
 
     return this.wrapTask(stimulus_id, delta, prompt, options, correctOption, signalType, hint_tier1, hint_tier2, {
       task_type: "TOPOLOGICAL_LOOPS",

@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { SubjectPoint, ScatterData, OctantStatsMap } from "../types/admin";
-import { OCTANT_SECTOR_CONFIGS } from "../constants/adminConstants";
+import { OCTANT_SECTOR_CONFIGS, getQuadrantPresets } from "../constants/adminConstants";
+import { useLocale } from "../contexts/LocaleContext";
 
 export function useAdminData() {
+  const { locale } = useLocale();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [inputPassword, setInputPassword] = useState("");
   const [authError, setAuthError] = useState("");
@@ -23,6 +25,22 @@ export function useAdminData() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedTag, pageSize]);
+
+  // 加载数据
+  const loadData = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const res = await fetch(`/api/cohort/scatter?lang=${encodeURIComponent(locale)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setScatterData(data);
+      }
+    } catch (e) {
+      console.error("加载群体数据失败", e);
+    } finally {
+      setLoadingData(false);
+    }
+  }, [locale]);
 
   // 令牌校验
   const verifyToken = useCallback(async (token: string) => {
@@ -45,7 +63,14 @@ export function useAdminData() {
     } finally {
       setCheckingAuth(false);
     }
-  }, []);
+  }, [loadData]);
+
+  // 当 locale 改变且已验证登录时，自动重新加载本地化数据
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [locale, isAuthenticated, loadData]);
 
   // 页面初始化时检查凭证
   useEffect(() => {
@@ -65,22 +90,6 @@ export function useAdminData() {
     setCheckingAuth(false);
   }, [verifyToken]);
 
-  // 加载数据
-  const loadData = async () => {
-    setLoadingData(true);
-    try {
-      const res = await fetch("/api/cohort/scatter");
-      if (res.ok) {
-        const data = await res.json();
-        setScatterData(data);
-      }
-    } catch (e) {
-      console.error("加载群体数据失败", e);
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
   // 手动登录提交
   const handleManualLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +102,7 @@ export function useAdminData() {
   // 打开个人报告详情
   const handleOpenReport = async (sessionId: string) => {
     try {
-      const res = await fetch(`/api/sessions/${sessionId}/report`);
+      const res = await fetch(`/api/sessions/${sessionId}/report?lang=${encodeURIComponent(locale)}`);
       if (res.ok) {
         const rep = await res.json();
         setSelectedSubjectReport(rep);
@@ -179,16 +188,19 @@ export function useAdminData() {
     return stats;
   }, [subjects]);
 
-  // 象区标题映射
+  // 象区标题映射 (支持当前语言预设与动态覆盖)
   const quadrantTitles = useMemo(() => {
     const titles: Record<string, string> = {};
+    getQuadrantPresets(locale).forEach((p) => {
+      titles[p.code] = p.defaultTitle;
+    });
     subjects.forEach((s) => {
-      if (s.quadrant_code && s.role_title && !titles[s.quadrant_code]) {
+      if (s.quadrant_code && s.role_title) {
         titles[s.quadrant_code] = s.role_title;
       }
     });
     return titles;
-  }, [subjects]);
+  }, [subjects, locale]);
 
   // 搜索和标签过滤
   const filteredSubjects = useMemo(() => {

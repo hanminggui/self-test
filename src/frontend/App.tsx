@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 
 import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
+import { useLocale } from "./contexts/LocaleContext";
+import { LanguageToggle } from "./components/LanguageToggle";
 
 interface TrialPayload {
   stimulus_id: string;
@@ -72,7 +74,7 @@ interface ReportData {
 const cleanOption = (text: string): string => {
   if (!text) return "";
   return text
-    .replace(/^(点阵区|几何构型|符号|命题|特征图形)[：:\s\n]*/g, "")
+    .replace(/^(点阵区|几何构型|符号|命题|特征图形|Dot Matrix|Geometry|Symbol|Proposition|Feature Graph)[：:\s\n]*/gi, "")
     .replace(/·/g, "・")
     .trim();
 };
@@ -146,9 +148,9 @@ const renderOption = (rawVal: string) => {
 
 const renderPrompt = (rawPrompt: string) => {
   if (!rawPrompt) return null;
-  // 1. Strip any residual title like "【任务类型：...】"
+  // 1. Strip any residual title like "【任务类型：...】" or "[Task Type: ...]"
   const cleaned = rawPrompt
-    .replace(/^【任务类型[：:][^】]+】\s*/g, "")
+    .replace(/^(【任务类型[：:][^】]+】|\[Task Type[：:][^\]]+\])\s*/gi, "")
     .replace(/·/g, "・");
 
   // Split into paragraphs separated by double newlines
@@ -209,6 +211,9 @@ const renderPrompt = (rawPrompt: string) => {
 };
 
 export default function App() {
+  const { locale, t, formatMessage } = useLocale();
+  const isEn = locale === "en-US";
+
   const [stage, setStage] = useState<"WELCOME" | "TESTING" | "REPORT">("WELCOME");
   const [subjectName, setSubjectName] = useState("");
   const [totalTrials, setTotalTrials] = useState(30);
@@ -225,7 +230,11 @@ export default function App() {
 
   // Report state
   const [report, setReport] = useState<ReportData | null>(null);
-  const [placeholderCodename, setPlaceholderCodename] = useState(() => generateRandomCodename());
+  const [placeholderCodename, setPlaceholderCodename] = useState(() => generateRandomCodename(locale));
+
+  useEffect(() => {
+    setPlaceholderCodename(generateRandomCodename(locale));
+  }, [locale]);
 
   // Current trial hint cost
   const hintsCost = unlockedHints.length === 0 ? 0 : unlockedHints.length === 1 ? 1 : 3;
@@ -236,16 +245,19 @@ export default function App() {
     setErrorMsg("");
     const finalName = subjectName.trim() || placeholderCodename;
     try {
-      const res = await fetch("/api/sessions/start", {
+      const res = await fetch(`/api/sessions/start?lang=${encodeURIComponent(locale)}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept-Language": locale,
+        },
         body: JSON.stringify({
           subject_name: finalName,
           total_trials: totalTrials,
           warmup_trials: Math.max(5, Math.floor(totalTrials / 3)),
         }),
       });
-      if (!res.ok) throw new Error("旅程启程准备中，请稍候重试");
+      if (!res.ok) throw new Error(t.app.startErrorFallback);
       const data: TrialRequest = await res.json();
       setSessionId(data.session_id);
       setTrialData(data);
@@ -255,7 +267,7 @@ export default function App() {
       setUnlockedHints(normalizeUnlockedHints(data.payload.unlocked_hints));
       setStage("TESTING");
     } catch (e: any) {
-      setErrorMsg(e.message || "网络连接微澜，请稍后刷新");
+      setErrorMsg(e.message || t.app.networkErrorFallback);
     } finally {
       setLoading(false);
     }
@@ -269,10 +281,13 @@ export default function App() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/sessions/${sessionId}/hint`, { method: "POST" });
+      const res = await fetch(`/api/sessions/${sessionId}/hint?lang=${encodeURIComponent(locale)}`, {
+        method: "POST",
+        headers: { "Accept-Language": locale },
+      });
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || "获取灵感启示失败");
+        throw new Error(errJson.error || t.app.buyHintErrorFallback);
       }
       const data = await res.json();
       setUnlockedHints(
@@ -291,7 +306,7 @@ export default function App() {
   const handleSubmitTrial = useCallback(async () => {
     if (!sessionId || loading) return;
     if (!selectedOption) {
-      setErrorMsg("请先在上方轻点选择一个选项，再确认提交");
+      setErrorMsg(t.app.selectOptionWarning);
       return;
     }
     setLoading(true);
@@ -300,20 +315,26 @@ export default function App() {
     try {
       const firstChoice = initialChoiceBeforeHint || selectedOption;
       // 1. Submit Phase 1 (first-order choice prior to hint revision if captured)
-      const p1Res = await fetch(`/api/sessions/${sessionId}/phase1`, {
+      const p1Res = await fetch(`/api/sessions/${sessionId}/phase1?lang=${encodeURIComponent(locale)}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept-Language": locale,
+        },
         body: JSON.stringify({ choice: firstChoice }),
       });
       if (!p1Res.ok) {
         const errJson = await p1Res.json().catch(() => ({}));
-        throw new Error(errJson.error || "记录选择中出现微澜");
+        throw new Error(errJson.error || t.app.recordChoiceError);
       }
 
       // 2. Submit Phase 2: action is selectedAction (HIGH_BET or SAFE_BET)
-      const p2Res = await fetch(`/api/sessions/${sessionId}/phase2`, {
+      const p2Res = await fetch(`/api/sessions/${sessionId}/phase2?lang=${encodeURIComponent(locale)}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept-Language": locale,
+        },
         body: JSON.stringify({
           action: selectedAction,
           confidence_level: selectedAction === "HIGH_BET" ? 0.95 : 0.50,
@@ -322,15 +343,17 @@ export default function App() {
       });
       if (!p2Res.ok) {
         const errJson = await p2Res.json().catch(() => ({}));
-        throw new Error(errJson.error || "确认决策中出现微澜");
+        throw new Error(errJson.error || t.app.confirmDecisionError);
       }
       const p2Data = await p2Res.json();
 
       if (p2Data.is_completed) {
         let repData = p2Data.report;
         if (!repData) {
-          const repRes = await fetch(`/api/sessions/${sessionId}/report`);
-          if (!repRes.ok) throw new Error("生成特质名片失败");
+          const repRes = await fetch(`/api/sessions/${sessionId}/report?lang=${encodeURIComponent(locale)}`, {
+            headers: { "Accept-Language": locale },
+          });
+          if (!repRes.ok) throw new Error(t.app.generateReportError);
           repData = await repRes.json();
         }
         setReport(repData);
@@ -343,8 +366,10 @@ export default function App() {
         });
       } else {
         // Fetch next trial
-        const nextReqRes = await fetch(`/api/sessions/${sessionId}/trial`);
-        if (!nextReqRes.ok) throw new Error("获取下一步探索题目失败");
+        const nextReqRes = await fetch(`/api/sessions/${sessionId}/trial?lang=${encodeURIComponent(locale)}`, {
+          headers: { "Accept-Language": locale },
+        });
+        if (!nextReqRes.ok) throw new Error(t.app.fetchNextTrialError);
         const nextTrial: TrialRequest = await nextReqRes.json();
         setTrialData(nextTrial);
         setSelectedOption(null);
@@ -353,11 +378,11 @@ export default function App() {
         setUnlockedHints(normalizeUnlockedHints(nextTrial.payload.unlocked_hints));
       }
     } catch (e: any) {
-      setErrorMsg(e.message || "请求出现微澜，请重试");
+      setErrorMsg(e.message || t.app.networkErrorFallback);
     } finally {
       setLoading(false);
     }
-  }, [sessionId, selectedOption, initialChoiceBeforeHint, selectedAction, loading]);
+  }, [sessionId, selectedOption, initialChoiceBeforeHint, selectedAction, loading, locale, t]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -398,20 +423,23 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-sm md:text-base font-bold tracking-wide text-white flex items-center gap-2">
-              思维星图 · 专属特质探索
+              {t.app.appTitle}
             </h1>
-            <p className="text-[11px] text-slate-400">跟随直觉与决断，映射独一无二的深层特质</p>
+            <p className="text-[11px] text-slate-400">{t.app.appSubtitle}</p>
           </div>
         </div>
 
-        {stage === "TESTING" && trialData && (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-slate-400">探索航程</span>
-            <span className="font-mono text-amber-300 font-bold text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
-              {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {stage === "TESTING" && trialData && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-400">{t.app.voyageProgress}</span>
+              <span className="font-mono text-amber-300 font-bold text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
+              </span>
+            </div>
+          )}
+          <LanguageToggle />
+        </div>
       </header>
 
       {/* 主体区域 */}
@@ -424,41 +452,40 @@ export default function App() {
 
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 mb-6 font-medium">
               <Stars className="w-3.5 h-3.5" />
-              沉浸式思维灵觉探索
+              {t.app.welcomeBadge}
             </div>
 
             <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
-              探索属于你的本命特质
+              {t.app.welcomeTitle}
             </h2>
 
             <p className="text-slate-300 text-sm md:text-base leading-relaxed mb-8 max-w-lg mx-auto font-normal">
-              放下世俗的评判与对错包袱。这是一场只关乎你<span className="text-amber-300 font-semibold">直觉韵律与决断魄力</span>的静谧探索之旅。
-              跟随你的第一感应，发现那份深藏于意识底层的神级特质。
+              {t.app.welcomeDesc}
             </p>
 
             <div className="space-y-4 max-w-sm mx-auto text-left mb-8">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Feather className="w-3.5 h-3.5 text-amber-400" /> 探索者称谓（留空自动随机分配代号）
+                    <Feather className="w-3.5 h-3.5 text-amber-400" /> {t.app.explorerNameLabel}
                   </span>
                   <button
                     type="button"
                     onClick={() => {
-                      const next = generateRandomCodename();
+                      const next = generateRandomCodename(locale);
                       setPlaceholderCodename(next);
                       setSubjectName(next);
                     }}
                     className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition-colors"
-                    title="点击随机掷一个专属代号"
+                    title={t.app.randomCodenameBtn}
                   >
-                    <Dices className="w-3.5 h-3.5" /> 随机代号
+                    <Dices className="w-3.5 h-3.5" /> {t.app.randomCodenameBtn}
                   </button>
                 </label>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder={`留空自动唤醒：${placeholderCodename}`}
+                    placeholder={formatMessage(t.app.placeholderCodename, { name: placeholderCodename })}
                     value={subjectName}
                     onChange={(e) => setSubjectName(e.target.value)}
                     className="w-full pl-4 pr-10 py-3 rounded-xl bg-slate-900/80 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50 text-sm transition-colors"
@@ -466,12 +493,12 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => {
-                      const next = generateRandomCodename();
+                      const next = generateRandomCodename(locale);
                       setPlaceholderCodename(next);
                       setSubjectName(next);
                     }}
                     className="absolute right-3 top-3 text-slate-400 hover:text-amber-300 cursor-pointer transition-colors"
-                    title="换一个随机代号"
+                    title={t.app.randomCodenameBtn}
                   >
                     <Dices className="w-4 h-4" />
                   </button>
@@ -479,11 +506,11 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">探索航程规模</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">{t.app.voyageScaleLabel}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { label: "深度沉浸旅程 (30步)", val: 30 },
-                    { label: "敏捷灵感漫游 (16步)", val: 16 },
+                    { label: t.app.scale30, val: 30 },
+                    { label: t.app.scale16, val: 16 },
                   ].map((opt) => (
                     <button
                       key={opt.val}
@@ -512,7 +539,7 @@ export default function App() {
               disabled={loading}
               className="w-full max-w-sm px-6 py-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 text-white font-semibold text-sm shadow-xl shadow-amber-500/20 hover:shadow-amber-500/35 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer mx-auto"
             >
-              {loading ? "正在凝铸探索图景..." : "开启探索旅程 →"}
+              {loading ? t.app.startingVoyage : t.app.startVoyageBtn}
             </button>
           </div>
         )}
@@ -543,10 +570,10 @@ export default function App() {
                       <div className="font-semibold text-amber-300 flex items-center justify-between mb-1">
                         <span className="flex items-center gap-1.5">
                           <Sparkles className="w-4 h-4 text-amber-400" />
-                          {idx === 0 ? "线索 1 · 宏观思考方向" : "线索 2 · 细节排除指引"}
+                          {idx === 0 ? t.app.clue1Title : t.app.clue2Title}
                         </span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">
-                          {idx === 0 ? "消耗 1 分" : "消耗 2 分"}
+                          {idx === 0 ? t.app.cost1Pt : t.app.cost2Pt}
                         </span>
                       </div>
                       {hint}
@@ -559,8 +586,8 @@ export default function App() {
               <div className="flex items-center justify-between pt-1">
                 <span className="text-[11px] text-slate-400">
                   {unlockedHints.length === 0
-                    ? "解题遇阻？可按阶梯获取多级解题线索"
-                    : `已解锁 ${unlockedHints.length}/2 级线索 (当前本题已扣除 ${hintsCost} 分)`}
+                    ? t.app.hintHint0
+                    : formatMessage(t.app.hintHintN, { count: unlockedHints.length, cost: hintsCost })}
                 </span>
 
                 {unlockedHints.length === 0 ? (
@@ -571,7 +598,7 @@ export default function App() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 transition-all cursor-pointer"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
-                    💡 获取宏观线索 (-1分)
+                    {t.app.buyClue1Btn}
                     <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">H</kbd>
                   </button>
                 ) : unlockedHints.length === 1 ? (
@@ -582,12 +609,12 @@ export default function App() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-orange-300 hover:text-orange-200 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 transition-all cursor-pointer"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
-                    🔍 获取细节排除线索 (-2分)
+                    {t.app.buyClue2Btn}
                     <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">H</kbd>
                   </button>
                 ) : (
                   <span className="text-[11px] text-amber-400/80 font-mono flex items-center gap-1">
-                    ✨ 线索已全部解锁
+                    {t.app.cluesAllUnlocked}
                   </span>
                 )}
               </div>
@@ -626,8 +653,8 @@ export default function App() {
             {/* 决断本能选择面板 */}
             <div className="glass-panel rounded-2xl p-5 space-y-4 border border-white/10">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300">倾听此刻的本能信心：</span>
-                <span className="text-[11px] text-slate-500 font-mono">[1] 确信 · [2] 保底</span>
+                <span className="text-slate-300">{t.app.instinctPrompt}</span>
+                <span className="text-[11px] text-slate-500 font-mono">{t.app.instinctShortcuts}</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -642,12 +669,12 @@ export default function App() {
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-xs md:text-sm flex items-center gap-1.5 text-amber-300">
                       <Flame className="w-4 h-4 text-amber-400" />
-                      🔥 稳赢确信 (+{10 - hintsCost} / -{10 + hintsCost}分)
+                      {formatMessage(t.app.highBetTitle, { pos: 10 - hintsCost, neg: 10 + hintsCost })}
                     </span>
                     <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">1</kbd>
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    直觉清醒坚定，胜券在握全额决断
+                    {t.app.highBetDesc}
                   </div>
                 </button>
 
@@ -662,12 +689,12 @@ export default function App() {
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-xs md:text-sm flex items-center gap-1.5 text-cyan-300">
                       <Shield className="w-4 h-4 text-cyan-400" />
-                      🛡️ 稳健保底 (+{3 - hintsCost}分)
+                      {formatMessage(t.app.safeBetTitle, { pos: 3 - hintsCost })}
                     </span>
                     <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">2</kbd>
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    审慎留白，以守为攻蓄势而动
+                    {t.app.safeBetDesc}
                   </div>
                 </button>
               </div>
@@ -693,26 +720,20 @@ export default function App() {
                 }`}
               >
                 {loading ? (
-                  trialData.trial_index >= totalTrials ? "✨ 正在凝铸专属名片..." : "正在记录感应..."
+                  trialData.trial_index >= totalTrials ? t.app.castingCard : t.app.recordingImpression
                 ) : !selectedOption ? (
-                  "请先在上方轻点选择一个选项 ↵"
+                  t.app.selectOptionFirst
                 ) : trialData.trial_index >= totalTrials ? (
-                  "✨ 完成探索，凝铸专属名片 ↵"
+                  t.app.finishVoyageBtn
                 ) : (
-                  "确认，下一题 ↵"
+                  t.app.nextTrialBtn
                 )}
               </button>
             </div>
 
             {/* 键盘盲打指引 */}
             <div className="flex items-center justify-center gap-4 text-[11px] text-slate-500">
-              <span>快捷键：[A/B/C/D] 选答案</span>
-              <span>•</span>
-              <span>[1/2] 确信/保底</span>
-              <span>•</span>
-              <span>[H] 看线索</span>
-              <span>•</span>
-              <span>[Enter] 确认切题</span>
+              {t.app.shortcutsGuide}
             </div>
           </div>
         )}
@@ -725,11 +746,11 @@ export default function App() {
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 mb-4 font-medium shadow-inner">
-                <Crown className="w-4 h-4 text-amber-400" /> 专属本命思维特质名片
+                <Crown className="w-4 h-4 text-amber-400" /> {t.app.archetypeCardHeader}
               </div>
 
               <div className="text-xs text-slate-400 mb-3 tracking-widest uppercase">
-                EXPLORER · {report.subject_name}
+                {formatMessage(t.app.explorerPrefix, { name: report.subject_name })}
               </div>
 
               {/* 5大专属称号 */}
@@ -757,7 +778,7 @@ export default function App() {
               {/* 深度赋能评语（极高情绪价值） */}
               <div className="text-sm md:text-base text-slate-200 leading-relaxed max-w-2xl mx-auto text-left bg-black/40 p-6 rounded-2xl border border-white/10 shadow-inner space-y-2">
                 <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5 mb-2">
-                  <Sparkles className="w-4 h-4" /> 灵魂特质共鸣解读
+                  <Sparkles className="w-4 h-4" /> {t.app.soulResonance}
                 </div>
                 <p className="text-slate-300 text-sm md:text-base leading-relaxed">
                   {report.diagnostic_profile.empowering_feedback}
@@ -769,9 +790,9 @@ export default function App() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400" /> 专属天赋特技谱系
+                  <Sparkles className="w-4 h-4 text-amber-400" /> {t.app.innateSkills}
                 </h3>
-                <span className="text-xs text-slate-500">独一无二的思维武器库</span>
+                <span className="text-xs text-slate-500">{t.app.arsenalSubtitle}</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -798,7 +819,7 @@ export default function App() {
             {/* 战略建议 */}
             <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/20 text-xs md:text-sm text-amber-100 leading-relaxed space-y-1">
               <div className="font-bold text-amber-300 flex items-center gap-1.5">
-                <Compass className="w-4 h-4" /> 进阶赋能战略启示
+                <Compass className="w-4 h-4" /> {t.app.strategicAdvice}
               </div>
               <p className="text-slate-300 text-xs md:text-sm pt-1">
                 {report.diagnostic_profile.growth_advice}
@@ -816,19 +837,21 @@ export default function App() {
                 }}
                 className="px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors border border-white/10 shadow-lg"
               >
-                <RotateCcw className="w-4 h-4" /> 重新启程探索
+                <RotateCcw className="w-4 h-4" /> {t.app.restartVoyage}
               </button>
 
               <button
                 type="button"
                 onClick={() => {
-                  const shareText = `【${report.diagnostic_profile.role_title}】\n“${report.diagnostic_profile.praise_tagline}”\n探索者：${report.subject_name}\n标签：${report.diagnostic_profile.strength_tags.map(t => `#${t}`).join(" ")}\n\n${report.diagnostic_profile.empowering_feedback}`;
+                  const shareText = isEn
+                    ? `[${report.diagnostic_profile.role_title}]\n"${report.diagnostic_profile.praise_tagline}"\nExplorer: ${report.subject_name}\nTags: ${report.diagnostic_profile.strength_tags.map(t => `#${t}`).join(" ")}\n\n${report.diagnostic_profile.empowering_feedback}`
+                    : `【${report.diagnostic_profile.role_title}】\n“${report.diagnostic_profile.praise_tagline}”\n探索者：${report.subject_name}\n标签：${report.diagnostic_profile.strength_tags.map(t => `#${t}`).join(" ")}\n\n${report.diagnostic_profile.empowering_feedback}`;
                   navigator.clipboard?.writeText(shareText);
-                  alert("专属本命名片文案已复制至剪贴板，可随心分享！");
+                  alert(t.app.copiedAlert);
                 }}
                 className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-amber-500/30"
               >
-                <Share2 className="w-4 h-4" /> 复制专属名片
+                <Share2 className="w-4 h-4" /> {t.app.copyCard}
               </button>
             </div>
           </div>
@@ -837,7 +860,7 @@ export default function App() {
 
       {/* 底部极简静谧脚注 */}
       <footer className="py-4 text-center text-xs text-slate-600 border-t border-white/5 mt-8">
-        思维星图 · 映照真实的直觉与自我掌控
+        {t.app.footerText}
       </footer>
     </div>
   );

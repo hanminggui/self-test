@@ -2,6 +2,8 @@ import React from "react";
 import { Info } from "lucide-react";
 import { SubjectPoint, ScatterData, SplitLineType } from "../../../types/admin";
 import { computeMultivariateColor } from "../../../utils/manifoldUtils";
+import { getOctantSectorConfigs } from "../../../constants/adminConstants";
+import { useLocale } from "../../../contexts/LocaleContext";
 
 interface RectangularPhaseViewProps {
   subjects: SubjectPoint[];
@@ -22,6 +24,9 @@ export default function RectangularPhaseView({
   setHoveredSubject,
   onActiveSectorChange,
 }: RectangularPhaseViewProps) {
+  const { locale } = useLocale();
+  const isEn = locale === "en-US";
+  const octantSectorConfigs = getOctantSectorConfigs(locale);
   // 计算相变分割线坐标比例 (基于 4D Cognitive Manifold 基准或中位数/均值)
   let splitXRatio = 0.6;
   let splitYRatio = 0.4; // 0.80 / 2.0 = 0.40
@@ -130,10 +135,10 @@ export default function RectangularPhaseView({
               onClick={() => onActiveSectorChange?.("Q1-CAL")}
               onMouseEnter={() => onActiveSectorChange?.("Q1-CAL")}
               className="px-2 py-0.5 rounded-md bg-slate-900/80 border border-emerald-500/30 text-[11px] font-bold text-emerald-400/90 hover:text-emerald-300 hover:border-emerald-400 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
-              title="查看 Q1-CAL 人形外挂 详细画像"
+              title={isEn ? `Inspect ${octantSectorConfigs["Q1-CAL"]?.name} profile` : `查看 Q1-CAL ${octantSectorConfigs["Q1-CAL"]?.name} 详细画像`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Q1-CAL: 人形外挂</span>
+              <span>Q1-CAL: {octantSectorConfigs["Q1-CAL"]?.name}</span>
             </button>
           </div>
 
@@ -142,7 +147,7 @@ export default function RectangularPhaseView({
               onClick={() => onActiveSectorChange?.("Q2-EVO")}
               onMouseEnter={() => onActiveSectorChange?.("Q2-EVO")}
               className="px-2 py-0.5 rounded-md bg-slate-900/80 border border-cyan-500/30 text-[11px] font-bold text-cyan-400/90 hover:text-cyan-300 hover:border-cyan-400 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
-              title="查看 Q2-EVO 灵窍天开 详细画像"
+              title={isEn ? `Inspect ${octantSectorConfigs["Q2-EVO"]?.name} profile` : `查看 Q2-EVO ${octantSectorConfigs["Q2-EVO"]?.name} 详细画像`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
               <span>Q2-EVO</span>
@@ -152,7 +157,7 @@ export default function RectangularPhaseView({
               onClick={() => onActiveSectorChange?.("Q7-ARB")}
               onMouseEnter={() => onActiveSectorChange?.("Q7-ARB")}
               className="px-2 py-0.5 rounded-md bg-slate-900/80 border border-yellow-500/30 text-[11px] font-bold text-yellow-400/90 hover:text-yellow-300 hover:border-yellow-400 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
-              title="查看 Q7-ARB 诸葛在世 详细画像"
+              title={isEn ? `Inspect ${octantSectorConfigs["Q7-ARB"]?.name} profile` : `查看 Q7-ARB ${octantSectorConfigs["Q7-ARB"]?.name} 详细画像`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
               <span>Q7-ARB</span>
@@ -169,7 +174,7 @@ export default function RectangularPhaseView({
               onClick={() => onActiveSectorChange?.("Q4-PIO")}
               onMouseEnter={() => onActiveSectorChange?.("Q4-PIO")}
               className="px-2 py-0.5 rounded-md bg-slate-900/80 border border-amber-500/30 text-[11px] font-bold text-amber-400/90 hover:text-amber-300 hover:border-amber-400 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
-              title="查看 Q4-PIO 飞龙在天 详细画像"
+              title={isEn ? `Inspect ${octantSectorConfigs["Q4-PIO"]?.name} profile` : `查看 Q4-PIO ${octantSectorConfigs["Q4-PIO"]?.name} 详细画像`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
               <span>Q4-PIO</span>
@@ -179,7 +184,7 @@ export default function RectangularPhaseView({
               onClick={() => onActiveSectorChange?.("Q3-SEN")}
               onMouseEnter={() => onActiveSectorChange?.("Q3-SEN")}
               className="px-2 py-0.5 rounded-md bg-slate-900/80 border border-teal-500/30 text-[11px] font-bold text-teal-400/90 hover:text-teal-300 hover:border-teal-400 uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
-              title="查看 Q3-SEN 定海神针 详细画像"
+              title={isEn ? `Inspect ${octantSectorConfigs["Q3-SEN"]?.name} profile` : `查看 Q3-SEN ${octantSectorConfigs["Q3-SEN"]?.name} 详细画像`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
               <span>Q3-SEN</span>
@@ -196,7 +201,7 @@ export default function RectangularPhaseView({
               onClick={() => onActiveSectorChange?.("Q6-GAM")}
               onMouseEnter={() => onActiveSectorChange?.("Q6-GAM")}
               className="px-1.5 py-0.5 rounded-md bg-slate-900/80 border border-rose-500/30 text-[10px] font-bold text-rose-400/90 hover:text-rose-300 hover:border-rose-400 uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all shadow-sm"
-              title="查看 Q6-GAM 无畏先锋 详细画像"
+              title={isEn ? `Inspect ${octantSectorConfigs["Q6-GAM"]?.name} profile` : `查看 Q6-GAM ${octantSectorConfigs["Q6-GAM"]?.name} 详细画像`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
               <span>Q6-GAM</span>
@@ -205,7 +210,7 @@ export default function RectangularPhaseView({
               onClick={() => onActiveSectorChange?.("Q5-RET")}
               onMouseEnter={() => onActiveSectorChange?.("Q5-RET")}
               className="px-1.5 py-0.5 rounded-md bg-slate-900/80 border border-indigo-500/30 text-[10px] font-bold text-indigo-400/90 hover:text-indigo-300 hover:border-indigo-400 uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all shadow-sm"
-              title="查看 Q5-RET 大音希声 详细画像"
+              title={isEn ? `Inspect ${octantSectorConfigs["Q5-RET"]?.name} profile` : `查看 Q5-RET ${octantSectorConfigs["Q5-RET"]?.name} 详细画像`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
               <span>Q5-RET</span>
@@ -214,7 +219,7 @@ export default function RectangularPhaseView({
               onClick={() => onActiveSectorChange?.("Q8-DRI")}
               onMouseEnter={() => onActiveSectorChange?.("Q8-DRI")}
               className="px-1.5 py-0.5 rounded-md bg-slate-900/80 border border-purple-500/30 text-[10px] font-bold text-purple-400/90 hover:text-purple-300 hover:border-purple-400 uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all shadow-sm"
-              title="查看 Q8-DRI 暮光星灵 详细画像"
+              title={isEn ? `Inspect ${octantSectorConfigs["Q8-DRI"]?.name} profile` : `查看 Q8-DRI ${octantSectorConfigs["Q8-DRI"]?.name} 详细画像`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
               <span>Q8-DRI</span>
@@ -233,8 +238,8 @@ export default function RectangularPhaseView({
               {splitLine === "BASELINE"
                 ? "D* = 0.60"
                 : splitLine === "MEDIAN"
-                  ? `中位: ${splitXVal.toFixed(2)}`
-                  : `均值: ${splitXVal.toFixed(2)}`}
+                  ? (isEn ? `Med: ${splitXVal.toFixed(2)}` : `中位: ${splitXVal.toFixed(2)}`)
+                  : (isEn ? `Mean: ${splitXVal.toFixed(2)}` : `均值: ${splitXVal.toFixed(2)}`)}
             </div>
           </div>
 
@@ -249,8 +254,8 @@ export default function RectangularPhaseView({
               {splitLine === "BASELINE"
                 ? "M = 0.80"
                 : splitLine === "MEDIAN"
-                  ? `中位: ${splitYVal.toFixed(2)}`
-                  : `均值: ${splitYVal.toFixed(2)}`}
+                  ? (isEn ? `Med: ${splitYVal.toFixed(2)}` : `中位: ${splitYVal.toFixed(2)}`)
+                  : (isEn ? `Mean: ${splitYVal.toFixed(2)}` : `均值: ${splitYVal.toFixed(2)}`)}
             </div>
           </div>
 

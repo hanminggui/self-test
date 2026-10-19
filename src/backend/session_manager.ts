@@ -29,6 +29,7 @@ import { ReportGenerator } from "./report_generator";
 import { mapLegacyArchetype, getArchetypeDefinition, classifyCognitiveArchetype } from "./archetype_matrix";
 import { compute4AFCdPrime } from "./math";
 import { generateSubjectCodename } from "./codename_generator";
+import { getLocale, type SupportedLocale } from "../i18n";
 
 export interface SessionState {
   sessionId: string;
@@ -400,13 +401,18 @@ export class SessionManager {
     return this.sessions.get(sessionId);
   }
 
-  getTrialRequest(sessionId: string): TrialRequest {
+  getTrialRequest(sessionId: string, locale?: SupportedLocale): TrialRequest {
     const session = this.getSession(sessionId);
     if (!session) {
       throw new Error(`Session '${sessionId}' not found.`);
     }
 
+    const targetLocale = locale || getLocale();
+
     if (session.isCompleted || !session.currentTask) {
+      const msg = targetLocale === "en-US"
+        ? "Assessment fully completed. Please inspect your final diagnostic evaluation report."
+        : "测试已全部完成。请查看最终评估报告。";
       return {
         session_id: session.sessionId,
         trial_index: session.currentTrialIndex,
@@ -414,7 +420,7 @@ export class SessionManager {
         payload: {
           stimulus_id: "completed",
           difficulty_level: session.staircase.getCurrentDelta(),
-          prompt: "测试已全部完成。请查看最终评估报告。",
+          prompt: msg,
           options: { A: "COMPLETED", B: "COMPLETED" },
           has_hint: false,
           hint_cost: 0,
@@ -430,7 +436,7 @@ export class SessionManager {
       session_id: session.sessionId,
       trial_index: session.currentTrialIndex,
       phase: session.currentPhase,
-      payload: session.currentTask.toSafePayload(session.hintsUnlockedForCurrentTrial),
+      payload: session.currentTask.toSafePayload(session.hintsUnlockedForCurrentTrial, targetLocale),
     };
   }
 
@@ -469,13 +475,14 @@ export class SessionManager {
     };
   }
 
-  requestHint(sessionId: string): any {
+  requestHint(sessionId: string, locale?: SupportedLocale): any {
     const session = this.getSession(sessionId);
     if (!session) throw new Error(`Session '${sessionId}' not found.`);
     if (session.isCompleted || !session.currentTask) throw new Error("Session already completed.");
 
     session.hintRevealedForCurrentTrial = true;
     const task = session.currentTask;
+    const targetLocale = locale || getLocale();
 
     if (session.hintsUnlockedForCurrentTrial === 0) {
       // Unlock Tier 1 (1 point)
@@ -484,17 +491,21 @@ export class SessionManager {
       if (session.stagedP1Choice === null) {
         session.hintsUnlockedBeforeP1 = 1;
       }
+      const hintText = task.bilingual?.hint_tier1[targetLocale] || task.hint_tier1;
+      const msg = targetLocale === "en-US"
+        ? "Unlocked Tier 1 Macro Clue (Cost: 1 pt). You may further unlock Tier 2 Micro Distractor Elimination (-2 pts) if uncertainty persists."
+        : "已解锁第 1 级宏观规律线索 (消耗 1 分)。后续仍有疑问可继续解锁第 2 级细节排除线索 (-2分)。";
       return {
         session_id: session.sessionId,
         trial_index: session.currentTrialIndex,
         tier: 1,
-        hint: task.hint_tier1,
+        hint: hintText,
         cost: 1,
         hint_cost: 1,
         total_cost: 1,
         next_tier_available: true,
         next_tier_cost: 2,
-        message: "已解锁第 1 级宏观规律线索 (消耗 1 分)。后续仍有疑问可继续解锁第 2 级细节排除线索 (-2分)。",
+        message: msg,
       };
     } else if (session.hintsUnlockedForCurrentTrial === 1) {
       // Unlock Tier 2 (2 points, total 3)
@@ -503,29 +514,37 @@ export class SessionManager {
       if (session.stagedP1Choice === null) {
         session.hintsUnlockedBeforeP1 = 2;
       }
+      const hintText = task.bilingual?.hint_tier2[targetLocale] || task.hint_tier2;
+      const msg = targetLocale === "en-US"
+        ? "Unlocked Tier 2 Micro Constraint Clue (Cost: 2 pts, Cumulative: 3 pts). All clues unlocked; please proceed with wagering."
+        : "已解锁第 2 级细节穿透线索 (消耗 2 分，累计 3 分)。线索已全部解锁，请自由决策下注。";
       return {
         session_id: session.sessionId,
         trial_index: session.currentTrialIndex,
         tier: 2,
-        hint: task.hint_tier2,
+        hint: hintText,
         cost: 2,
         hint_cost: 2,
         total_cost: 3,
         next_tier_available: false,
         next_tier_cost: 0,
-        message: "已解锁第 2 级细节穿透线索 (消耗 2 分，累计 3 分)。线索已全部解锁，请自由决策下注。",
+        message: msg,
       };
     } else {
+      const hintText = task.bilingual?.hint_tier2[targetLocale] || task.hint_tier2;
+      const msg = targetLocale === "en-US"
+        ? "All clues are currently unlocked."
+        : "所有线索已处于解锁状态。";
       return {
         session_id: session.sessionId,
         trial_index: session.currentTrialIndex,
         tier: 2,
-        hint: task.hint_tier2,
+        hint: hintText,
         cost: 0,
         total_cost: session.hintsCostForCurrentTrial,
         next_tier_available: false,
         next_tier_cost: 0,
-        message: "所有线索已处于解锁状态。",
+        message: msg,
       };
     }
   }
@@ -682,11 +701,41 @@ export class SessionManager {
     );
   }
 
-  finalizeReport(session: SessionState): FinalAssessmentReport {
-    if (session.finalReport) return session.finalReport;
+  private localizeReport(report: FinalAssessmentReport, locale?: SupportedLocale): FinalAssessmentReport {
+    const targetLocale = locale || getLocale();
+    const archetype = report.diagnostic_profile.archetype;
+    const def = getArchetypeDefinition(archetype, targetLocale);
+    const weakness = ReportGenerator.diagnoseWeakness(
+      report.metacognitive_metrics,
+      archetype,
+      report.diagnostic_profile.risk_attitude,
+      targetLocale
+    );
+
+    return {
+      ...report,
+      diagnostic_profile: {
+        ...report.diagnostic_profile,
+        role_title: def.role_title,
+        english_title: def.english_title,
+        quadrant_code: def.quadrant_code,
+        praise_tagline: def.praise_tagline,
+        strength_tags: def.strength_tags,
+        empowering_feedback: def.empowering_feedback,
+        growth_advice: def.growth_advice,
+        skills: def.skills,
+        clinical_summary: def.clinical_summary,
+        critical_weakness: weakness,
+      },
+    };
+  }
+
+  finalizeReport(session: SessionState, locale?: SupportedLocale): FinalAssessmentReport {
+    if (session.finalReport) return this.localizeReport(session.finalReport, locale);
 
     const dStar = session.staircase.computeDStar(undefined, session.warmupTrials);
     const metrics = PsychometricScorer.evaluate(session.records, true, dStar);
+    const targetLocale = locale || session.metadata?.locale || getLocale();
     const report = ReportGenerator.generateReport(
       session.sessionId,
       session.subjectType,
@@ -694,7 +743,8 @@ export class SessionManager {
       metrics,
       session.score,
       session.staircase.reversalCount,
-      session.subjectName
+      session.subjectName,
+      targetLocale
     );
 
     // 完整附加试次记录与执行元数据
@@ -858,13 +908,13 @@ export class SessionManager {
     return (res?.changes ?? 0) > 0;
   }
 
-  getReport(sessionId: string): FinalAssessmentReport {
+  getReport(sessionId: string, locale?: SupportedLocale): FinalAssessmentReport {
     const session = this.getSession(sessionId);
     if (session && session.finalReport) {
-      return session.finalReport;
+      return this.localizeReport(session.finalReport, locale);
     }
     if (session && session.isCompleted) {
-      return this.finalizeReport(session);
+      return this.finalizeReport(session, locale);
     }
 
     // Try reading from DB
@@ -894,16 +944,8 @@ export class SessionManager {
           ive: iveVal,
           hintsCount,
         });
-        const def = getArchetypeDefinition(archetype);
         parsed.diagnostic_profile.archetype = archetype;
-        parsed.diagnostic_profile.role_title = def.role_title;
-        parsed.diagnostic_profile.quadrant_code = def.quadrant_code;
-        parsed.diagnostic_profile.praise_tagline = def.praise_tagline;
-        parsed.diagnostic_profile.strength_tags = def.strength_tags;
-        parsed.diagnostic_profile.empowering_feedback = def.empowering_feedback;
-        parsed.diagnostic_profile.growth_advice = def.growth_advice;
-        parsed.diagnostic_profile.skills = def.skills;
-        parsed.diagnostic_profile.clinical_summary = def.clinical_summary;
+
         if (!parsed.metadata) {
           let tokenUsage = undefined;
           if (row.token_usage_json) {
@@ -922,7 +964,7 @@ export class SessionManager {
             };
           }
         }
-        return parsed;
+        return this.localizeReport(parsed, locale);
       }
 
       // Synthesize fallback report for legacy migrated record
@@ -941,7 +983,6 @@ export class SessionManager {
         ive: iveVal,
         hintsCount: 0,
       });
-      const def = getArchetypeDefinition(archetype);
 
       const metrics: any = {
         d_prime: dPrimeVal,
@@ -960,14 +1001,16 @@ export class SessionManager {
         metrics,
         row.final_score ?? 0,
         4,
-        row.name || "受测者"
+        row.name || "受测者",
+        locale
       );
     }
 
     throw new Error(`Report for session '${sessionId}' is not available.`);
   }
 
-  getCohortScatterData(currentSessionId?: string): CohortScatterResponse {
+  getCohortScatterData(currentSessionId?: string, locale?: SupportedLocale): CohortScatterResponse {
+    const targetLocale = locale || getLocale();
     const rows = this.db.query("SELECT * FROM completed_sessions ORDER BY created_at DESC").all() as any[];
 
     const subjects: SubjectDataPoint[] = rows.map(r => {
@@ -1021,7 +1064,7 @@ export class SessionManager {
         ive,
         hintsCount,
       });
-      const def = getArchetypeDefinition(archetype);
+      const def = getArchetypeDefinition(archetype, targetLocale);
 
       return {
         id: r.id,
@@ -1038,10 +1081,14 @@ export class SessionManager {
         created_at: r.created_at,
         role_title: def.role_title,
         quadrant_code: def.quadrant_code,
+        praise_tagline: def.praise_tagline,
+        clinical_summary: def.clinical_summary,
         d_star: dStar,
         ive: ive,
+        info_buying_efficiency: ive,
+        brier_score: brier,
         cognitive_manifold_vector: [dStar, mRatio, bias, ive],
-        clinical_summary: def.clinical_summary,
+        coachability_index: Math.round((Math.min(1.0, Math.max(0.0, mRatio)) * 0.45 + Math.max(0.0, 1.0 - Math.abs(bias) * 2.5) * 0.35 + ive * 0.20) * 100),
         metadata: sessionMetadata,
       };
     });
@@ -1056,6 +1103,18 @@ export class SessionManager {
         const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
         const dStar = active.staircase.computeDStar(undefined, active.warmupTrials);
         const metrics = PsychometricScorer.evaluate(active.records, true, dStar);
+        const hintsCount = ReportGenerator.countHintTrials(active.records, true);
+
+        const archetype = classifyCognitiveArchetype({
+          dStar: metrics.d_star,
+          dPrime: metrics.d_prime,
+          mRatio: metrics.m_ratio,
+          bias: metrics.calibration_bias,
+          brier: metrics.brier_score,
+          ive: metrics.info_buying_efficiency,
+          hintsCount,
+        });
+        const def = getArchetypeDefinition(archetype, targetLocale);
 
         subjects.unshift({
           id: active.sessionId,
@@ -1070,12 +1129,13 @@ export class SessionManager {
           final_score: active.score,
           is_current: true,
           created_at: active.createdAt,
-          role_title: active.finalReport?.diagnostic_profile.role_title,
-          quadrant_code: active.finalReport?.diagnostic_profile.quadrant_code,
+          role_title: def.role_title,
+          quadrant_code: def.quadrant_code,
+          praise_tagline: def.praise_tagline,
           d_star: metrics.d_star,
           ive: metrics.info_buying_efficiency,
           cognitive_manifold_vector: metrics.cognitive_manifold_vector,
-          clinical_summary: active.finalReport?.diagnostic_profile.clinical_summary,
+          clinical_summary: def.clinical_summary,
         });
       }
     }

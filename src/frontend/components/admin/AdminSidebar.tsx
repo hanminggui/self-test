@@ -17,9 +17,10 @@ import {
 } from "lucide-react";
 import { ViewMode, SplitLineType, OctantStatsMap } from "../../types/admin";
 import {
-  OCTANT_SECTOR_CONFIGS,
-  OCTANT_DETAILED_INFO,
+  getOctantSectorConfigs,
+  getOctantDetailedInfo,
 } from "../../constants/adminConstants";
+import { useLocale } from "../../contexts/LocaleContext";
 
 const ALL_OCTANTS = [
   "Q1-CAL",
@@ -81,10 +82,15 @@ export default function AdminSidebar({
   onSelectTag,
   quadrantTitles,
 }: AdminSidebarProps) {
+  const { locale } = useLocale();
+  const isEn = locale === "en-US";
+  const octantSectorConfigs = getOctantSectorConfigs(locale);
+  const octantDetailedInfo = getOctantDetailedInfo(locale);
+
   // 当前聚焦的象区（默认 Q1-CAL）
   const currentCode = activeGlobeSector || "Q1-CAL";
-  const conf = OCTANT_SECTOR_CONFIGS[currentCode] || OCTANT_SECTOR_CONFIGS["Q1-CAL"];
-  const detail = OCTANT_DETAILED_INFO[currentCode] || OCTANT_DETAILED_INFO["Q1-CAL"];
+  const conf = octantSectorConfigs[currentCode] || octantSectorConfigs["Q1-CAL"];
+  const detail = octantDetailedInfo[currentCode] || octantDetailedInfo["Q1-CAL"];
   const stats = octantStatsMap[currentCode] || {
     count: 0,
     percentage: "0%",
@@ -112,7 +118,7 @@ export default function AdminSidebar({
           <div className="p-2 rounded-xl bg-slate-900/80 border border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-[11px] text-slate-300 font-medium">
               <Compass className="w-3.5 h-3.5 text-indigo-400 animate-spin" style={{ animationDuration: "12s" }} />
-              <span>星系自转</span>
+              <span>{isEn ? "Astrolabe Rotation" : "星系自转"}</span>
             </div>
             <button
               onClick={onToggleRotating}
@@ -121,14 +127,22 @@ export default function AdminSidebar({
                   ? "bg-indigo-600/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-600/30 shadow-sm"
                   : "bg-amber-600/20 text-amber-300 border-amber-500/40 hover:bg-amber-600/30"
               }`}
-              title={isRotating ? "点击暂停星盘自转" : "点击开启星盘自转"}
+              title={
+                isRotating
+                  ? isEn
+                    ? "Click to pause astrolabe rotation"
+                    : "点击暂停星盘自转"
+                  : isEn
+                    ? "Click to resume astrolabe rotation"
+                    : "点击开启星盘自转"
+              }
             >
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
                   isRotating ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
                 }`}
               />
-              <span>{isRotating ? "自转中" : "已定格"}</span>
+              <span>{isRotating ? (isEn ? "Rotating" : "自转中") : isEn ? "Locked" : "已定格"}</span>
             </button>
           </div>
         )}
@@ -139,7 +153,7 @@ export default function AdminSidebar({
             <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
               <span className="flex items-center gap-1">
                 <Zap className="w-3 h-3 text-indigo-400" />
-                <span>相变分割基准</span>
+                <span>{isEn ? "Phase Boundary Cut" : "相变分割基准"}</span>
               </span>
               <span className="font-mono text-indigo-300 text-[10px]">{splitLine}</span>
             </div>
@@ -152,7 +166,7 @@ export default function AdminSidebar({
                     : "bg-white/[0.02] border-white/5 text-slate-400 hover:text-white hover:bg-white/5"
                 }`}
               >
-                基准(0.6, 0.8)
+                {isEn ? "Base (0.6, 0.8)" : "基准(0.6, 0.8)"}
               </button>
               <button
                 onClick={() => onSelectSplitLine("MEDIAN")}
@@ -162,7 +176,7 @@ export default function AdminSidebar({
                     : "bg-white/[0.02] border-white/5 text-slate-400 hover:text-white hover:bg-white/5"
                 }`}
               >
-                群体中位数
+                {isEn ? "Median" : "群体中位数"}
               </button>
               <button
                 onClick={() => onSelectSplitLine("MEAN")}
@@ -172,7 +186,7 @@ export default function AdminSidebar({
                     : "bg-white/[0.02] border-white/5 text-slate-400 hover:text-white hover:bg-white/5"
                 }`}
               >
-                群体均值
+                {isEn ? "Mean" : "群体均值"}
               </button>
             </div>
           </div>
@@ -184,15 +198,17 @@ export default function AdminSidebar({
             <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
               <span className="flex items-center gap-1">
                 <Search className="w-3 h-3 text-slate-400" />
-                <span>数据检索</span>
+                <span>{isEn ? "Data Search" : "数据检索"}</span>
               </span>
-              <span className="font-mono text-slate-400 text-[10px]">{totalTableItems} 条记录</span>
+              <span className="font-mono text-slate-400 text-[10px]">
+                {isEn ? `${totalTableItems} Records` : `${totalTableItems} 条记录`}
+              </span>
             </div>
             <div className="relative">
               <Search className="w-3 h-3 absolute left-2 top-2 text-slate-500 pointer-events-none" />
               <input
                 type="text"
-                placeholder="搜索受测者 / 称号 / 标签..."
+                placeholder={isEn ? "Search subject / title / tag..." : "搜索受测者 / 称号 / 标签..."}
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 className="w-full pl-6 pr-2 py-1 rounded-lg bg-slate-950 border border-white/10 text-[11px] text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -211,14 +227,14 @@ export default function AdminSidebar({
           <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
             <span className="flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>象区快速查阅 / 过滤</span>
+              <span>{isEn ? "Octant Fast Filter" : "象区快速查阅 / 过滤"}</span>
             </span>
-            <span className="text-[9px] text-slate-500">点击切换画像</span>
+            <span className="text-[9px] text-slate-500">{isEn ? "Click to view" : "点击切换画像"}</span>
           </div>
 
           <div className="grid grid-cols-4 gap-1">
             {ALL_OCTANTS.map((code) => {
-              const itemConf = OCTANT_SECTOR_CONFIGS[code];
+              const itemConf = octantSectorConfigs[code];
               const isSelected = currentCode === code;
               return (
                 <button
@@ -288,19 +304,21 @@ export default function AdminSidebar({
         {/* 2.3 群体样本分布指标 (4 格紧凑数据条) */}
         <div className="grid grid-cols-4 gap-1 p-2 rounded-xl bg-slate-900/80 border border-white/5 text-center">
           <div className="p-1 rounded bg-black/30 border border-white/5">
-            <div className="text-[8.5px] text-slate-400">样本人数</div>
-            <div className="text-xs font-mono font-bold text-white mt-0.5">{stats.count} 人</div>
+            <div className="text-[8.5px] text-slate-400">{isEn ? "Sample Size" : "样本人数"}</div>
+            <div className="text-xs font-mono font-bold text-white mt-0.5">
+              {isEn ? stats.count : `${stats.count} 人`}
+            </div>
           </div>
           <div className="p-1 rounded bg-black/30 border border-white/5">
-            <div className="text-[8.5px] text-slate-400">群体占比</div>
+            <div className="text-[8.5px] text-slate-400">{isEn ? "Ratio" : "群体占比"}</div>
             <div className="text-xs font-mono font-bold text-amber-300 mt-0.5">{stats.percentage}</div>
           </div>
           <div className="p-1 rounded bg-black/30 border border-white/5">
-            <div className="text-[8.5px] text-slate-400">均值 D*</div>
+            <div className="text-[8.5px] text-slate-400">{isEn ? "Avg D*" : "均值 D*"}</div>
             <div className="text-xs font-mono font-bold text-cyan-300 mt-0.5">{stats.avgDStar}</div>
           </div>
           <div className="p-1 rounded bg-black/30 border border-white/5">
-            <div className="text-[8.5px] text-slate-400">均值 M</div>
+            <div className="text-[8.5px] text-slate-400">{isEn ? "Avg M" : "均值 M"}</div>
             <div className="text-xs font-mono font-bold text-purple-300 mt-0.5">{stats.avgMRatio}</div>
           </div>
         </div>
@@ -309,7 +327,7 @@ export default function AdminSidebar({
         <div className="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1.5">
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-sky-400">
             <Sparkles className="w-3 h-3 text-sky-400 shrink-0" />
-            <span>核心特质人话释义 (B端洞察)</span>
+            <span>{isEn ? "Archetype Clinical Truth (Enterprise Insight)" : "核心特质人话释义 (B端洞察)"}</span>
           </div>
           <p className="text-[11px] text-slate-300 leading-relaxed font-normal">
             {detail?.definition}
@@ -320,7 +338,7 @@ export default function AdminSidebar({
         <div className="p-2.5 rounded-xl bg-slate-900/80 border border-white/5 space-y-1.5">
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400">
             <ShieldCheck className="w-3 h-3 text-amber-400 shrink-0" />
-            <span>实战决策与攻坚特征</span>
+            <span>{isEn ? "Tactical Decisions & Frontiers" : "实战决策与攻坚特征"}</span>
           </div>
           <p className="text-[11px] text-slate-300 leading-relaxed font-normal">
             {detail?.features}
@@ -332,9 +350,9 @@ export default function AdminSidebar({
           <div className="flex items-center justify-between text-[10px] font-bold text-purple-400">
             <span className="flex items-center gap-1.5">
               <Layers className="w-3 h-3 text-purple-400 shrink-0" />
-              <span>流形能级分阶画像</span>
+              <span>{isEn ? "Manifold Energy Tiers" : "流形能级分阶画像"}</span>
             </span>
-            <span className="text-[9px] text-slate-500 font-normal">晋级阶梯</span>
+            <span className="text-[9px] text-slate-500 font-normal">{isEn ? "Ascension" : "晋级阶梯"}</span>
           </div>
 
           <div className="space-y-1.5 text-[10px]">
@@ -359,15 +377,17 @@ export default function AdminSidebar({
       {/* ============================================================== */}
       <div className="shrink-0 pt-1.5 border-t border-white/5 space-y-1">
         <div className="text-[9.5px] text-slate-400 font-medium px-0.5 flex items-center justify-between">
-          <span>大盘全局基准</span>
-          <span className="font-mono text-slate-500">{overallStats.total} 份测评样本</span>
+          <span>{isEn ? "Global Benchmarks" : "大盘全局基准"}</span>
+          <span className="font-mono text-slate-500">
+            {isEn ? `${overallStats.total} Total Sessions` : `${overallStats.total} 份测评样本`}
+          </span>
         </div>
         <div className="grid grid-cols-2 gap-1.5">
           {/* 总参测人次 */}
           <div className="p-1.5 rounded-lg bg-slate-900/60 border border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-1 text-[9px] text-slate-400">
               <Users className="w-3 h-3 text-indigo-400 shrink-0" />
-              <span>人次</span>
+              <span>{isEn ? "Total" : "人次"}</span>
             </div>
             <div className="text-xs font-bold font-mono text-white">{overallStats.total}</div>
           </div>
@@ -376,7 +396,7 @@ export default function AdminSidebar({
           <div className="p-1.5 rounded-lg bg-slate-900/60 border border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-1 text-[9px] text-slate-400">
               <Brain className="w-3 h-3 text-cyan-400 shrink-0" />
-              <span>均 D*</span>
+              <span>{isEn ? "Avg D*" : "均 D*"}</span>
             </div>
             <div className="text-xs font-bold font-mono text-cyan-400">{overallStats.avgDStar}</div>
           </div>
@@ -385,7 +405,7 @@ export default function AdminSidebar({
           <div className="p-1.5 rounded-lg bg-slate-900/60 border border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-1 text-[9px] text-slate-400">
               <Layers className="w-3 h-3 text-purple-400 shrink-0" />
-              <span>均 M</span>
+              <span>{isEn ? "Avg M" : "均 M"}</span>
             </div>
             <div className="text-xs font-bold font-mono text-purple-400">{overallStats.avgMRatio}</div>
           </div>
@@ -394,7 +414,7 @@ export default function AdminSidebar({
           <div className="p-1.5 rounded-lg bg-slate-900/60 border border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-1 text-[9px] text-slate-400">
               <Award className="w-3 h-3 text-amber-400 shrink-0" />
-              <span>最高分</span>
+              <span>{isEn ? "Max Score" : "最高分"}</span>
             </div>
             <div className="text-xs font-bold font-mono text-amber-400">{overallStats.maxScore}</div>
           </div>

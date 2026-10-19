@@ -1,4 +1,5 @@
 import { OctantSectorConfig, OctantDetailedInfo, AxisDetailInfo } from "../types/admin";
+import type { SupportedLocale } from "../../i18n";
 
 export const QUADRANT_PRESETS = [
   { code: "Q1-CAL", defaultTitle: "人形外挂" },
@@ -10,6 +11,21 @@ export const QUADRANT_PRESETS = [
   { code: "Q7-ARB", defaultTitle: "诸葛在世" },
   { code: "Q8-DRI", defaultTitle: "暮光星灵" },
 ];
+
+export const QUADRANT_PRESETS_EN = [
+  { code: "Q1-CAL", defaultTitle: "The Grand Archmage" },
+  { code: "Q2-EVO", defaultTitle: "The Mystic Alchemist" },
+  { code: "Q3-SEN", defaultTitle: "The Aegis Paladin" },
+  { code: "Q4-PIO", defaultTitle: "The Solar Conqueror" },
+  { code: "Q5-RET", defaultTitle: "The Veiled Oracle" },
+  { code: "Q6-GAM", defaultTitle: "The Stormborne Maverick" },
+  { code: "Q7-ARB", defaultTitle: "The Fate Weaver" },
+  { code: "Q8-DRI", defaultTitle: "The Astral Wanderer" },
+];
+
+export function getQuadrantPresets(locale?: SupportedLocale): Array<{ code: string; defaultTitle: string }> {
+  return locale === "en-US" ? QUADRANT_PRESETS_EN : QUADRANT_PRESETS;
+}
 
 export const OCTANT_SECTOR_CONFIGS: Record<string, OctantSectorConfig> = {
   "Q1-CAL": {
@@ -133,6 +149,133 @@ export const OCTANT_SECTOR_CONFIGS: Record<string, OctantSectorConfig> = {
     quadrantName: "北偏西 · 谋略套利领地",
   },
 };
+
+export const OCTANT_SECTOR_CONFIGS_EN: Record<string, OctantSectorConfig> = {
+  "Q1-CAL": {
+    code: "Q1-CAL",
+    name: "The Grand Archmage",
+    subTitle: "Sight Beyond the Veil",
+    startAngle: 0,
+    endAngle: 45,
+    centerAngle: 22.5,
+    primaryColor: "#10b981",
+    glowColor: "rgba(16, 185, 129, 0.4)",
+    textColor: "text-emerald-400",
+    badgeBg: "bg-emerald-950/80",
+    badgeBorder: "border-emerald-500/40",
+    desc: "High Type-1 Mastery · Flawless Metacognitive Equilibrium",
+    quadrantName: "North-by-East · Sovereign Sanctuary",
+  },
+  "Q4-PIO": {
+    code: "Q4-PIO",
+    name: "The Solar Conqueror",
+    subTitle: "Crowned in Fire",
+    startAngle: 45,
+    endAngle: 90,
+    centerAngle: 67.5,
+    primaryColor: "#f59e0b",
+    glowColor: "rgba(245, 158, 11, 0.4)",
+    textColor: "text-amber-400",
+    badgeBg: "bg-amber-950/80",
+    badgeBorder: "border-amber-500/40",
+    desc: "Deep Objective Prowess · Fearless Offensive Breakthrough",
+    quadrantName: "East-by-North · Vanguard Vanguard",
+  },
+  "Q3-SEN": {
+    code: "Q3-SEN",
+    name: "The Aegis Paladin",
+    subTitle: "Unbreakable Bastion",
+    startAngle: 90,
+    endAngle: 135,
+    centerAngle: 112.5,
+    primaryColor: "#38bdf8",
+    glowColor: "rgba(56, 189, 248, 0.4)",
+    textColor: "text-sky-400",
+    badgeBg: "bg-sky-950/80",
+    badgeBorder: "border-sky-500/40",
+    desc: "High Prowess Foundation · Zero Flaw Conscientious Guardian",
+    quadrantName: "East-by-South · Shielded Realm",
+  },
+  "Q5-RET": {
+    code: "Q5-RET",
+    name: "The Veiled Oracle",
+    subTitle: "Lantern in the Mist",
+    startAngle: 135,
+    endAngle: 180,
+    centerAngle: 157.5,
+    primaryColor: "#0d9488",
+    glowColor: "rgba(13, 148, 136, 0.4)",
+    textColor: "text-teal-400",
+    badgeBg: "bg-teal-950/80",
+    badgeBorder: "border-teal-500/40",
+    desc: "Exploratory Stage · Humble Risk Avoidance & Self-Knowledge",
+    quadrantName: "South-by-East · Cloistered Sanctuary",
+  },
+  "Q6-GAM": {
+    code: "Q6-GAM",
+    name: "The Stormborne Maverick",
+    subTitle: "All In Against Fate",
+    startAngle: 180,
+    endAngle: 225,
+    centerAngle: 202.5,
+    primaryColor: "#f43f5e",
+    glowColor: "rgba(244, 63, 94, 0.4)",
+    textColor: "text-rose-400",
+    badgeBg: "bg-rose-950/80",
+    badgeBorder: "border-rose-500/40",
+    desc: "Exploratory Stage · Fearless Knight-Errant Blind Valor",
+    quadrantName: "South-by-West · Reckless Valor",
+  },
+  "Q8-DRI": {
+    code: "Q8-DRI",
+    name: "The Astral Wanderer",
+    subTitle: "Dancing on Starlight",
+    startAngle: 225,
+    endAngle: 270,
+    centerAngle: 247.5,
+    primaryColor: "#a855f7",
+    glowColor: "rgba(168, 85, 247, 0.4)",
+    textColor: "text-purple-400",
+    badgeBg: "bg-purple-950/80",
+    badgeBorder: "border-purple-500/40",
+    desc: "Exploratory Stage · Transcendent Intuition & Non-linear Drift",
+    quadrantName: "West-by-South · Fey Intuition",
+  },
+  "Q2-EVO": {
+    code: "Q2-EVO",
+    name: "The Mystic Alchemist",
+    subTitle: "The Philosopher's Mirror",
+    startAngle: 270,
+    endAngle: 315,
+    centerAngle: 292.5,
+    primaryColor: "#06b6d4",
+    glowColor: "rgba(6, 182, 212, 0.4)",
+    textColor: "text-cyan-400",
+    badgeBg: "bg-cyan-950/80",
+    badgeBorder: "border-cyan-500/40",
+    desc: "Exploratory Stage · Epistemic Humility & Rapid Self-Evolution",
+    quadrantName: "West-by-North · Epiphanic Evolution",
+  },
+  "Q7-ARB": {
+    code: "Q7-ARB",
+    name: "The Fate Weaver",
+    subTitle: "Tipping the Scales",
+    startAngle: 315,
+    endAngle: 360,
+    centerAngle: 337.5,
+    primaryColor: "#eab308",
+    glowColor: "rgba(234, 179, 8, 0.4)",
+    textColor: "text-yellow-400",
+    badgeBg: "bg-yellow-950/80",
+    badgeBorder: "border-yellow-500/40",
+    desc: "Exploratory Stage · Master of Information Leverage & Expected Value",
+    quadrantName: "North-by-West · Strategic Arbitrage",
+  },
+};
+
+export function getOctantSectorConfigs(locale?: SupportedLocale): Record<string, OctantSectorConfig> {
+  return locale === "en-US" ? OCTANT_SECTOR_CONFIGS_EN : OCTANT_SECTOR_CONFIGS;
+}
 
 export const OCTANT_DETAILED_INFO: Record<string, OctantDetailedInfo> = {
   "Q1-CAL": {
@@ -315,3 +458,193 @@ export const AXIS_DETAILED_INFO: Record<number, AxisDetailInfo> = {
     thresholdNote: "临界点: IVE = 0.70 高杠杆辉光分界",
   },
 };
+
+export const OCTANT_DETAILED_INFO_EN: Record<string, OctantDetailedInfo> = {
+  "Q1-CAL": {
+    code: "Q1-CAL",
+    name: "The Grand Archmage",
+    definition: "The ideal supercritical regime of high first-order competence (D* ≥ 0.60) paired with pristine second-order self-monitoring (M_ratio ≥ 0.80). Self-perception mirrors reality like an infallible instrument—devoid of vanity or false hesitation.",
+    features: "D* ≥ 0.60, M_ratio ≥ 0.80, |Bias| ≤ 0.12. Maximizes high wagers precisely when probability favors them, securing bastions when uncertain. Absolute unity of perception and decree.",
+    tiers: {
+      awakened: "[Awakened] Sovereign Metacognitive Lucidity (D* ≥ 0.85 & M_ratio ≥ 1.20)",
+      core: "[Core] Machine-Grade Calibrated Equilibrium (D* ≥ 0.60 & M_ratio ≥ 0.80)",
+      passive: "[Passive] Near-Critical Phase Shift, Emerging Alignment",
+      vacuum: "[Neutral] High-Entropy Equilibrium Zone",
+    },
+  },
+  "Q4-PIO": {
+    code: "Q4-PIO",
+    name: "The Solar Conqueror",
+    definition: "Formidable first-order mastery coupled with audacious, trailblazing initiative. Charges frontier complexities with unyielding vanguard conviction.",
+    features: "D* ≥ 0.60, Bias > +0.10. Overwhelming breakthrough capacity, staking full conviction against hard obstacles to shatter stalemates.",
+    tiers: {
+      awakened: "[Awakened] Apex Difficulty Breakthrough, Vanguard Commander",
+      core: "[Core] Aggressive Push, High Conviction Driving Expansion",
+      passive: "[Passive] Probing Advance, Stepping Past Comfort Zones",
+      vacuum: "[Neutral] High-Entropy Equilibrium Zone",
+    },
+  },
+  "Q3-SEN": {
+    code: "Q3-SEN",
+    name: "The Aegis Paladin",
+    definition: "Profound first-order ability paired with meticulous, self-effacing prudence. The unyielding citadel guardian who leaves zero room for ruin.",
+    features: "D* ≥ 0.60, Bias < -0.10. Upholds reverent humility despite high objective hit rates. Zero unforced errors; the most dependable bastion of any fellowship.",
+    tiers: {
+      awakened: "[Awakened] Absolute Citadel Bulwark, Zero-Error Sentinel",
+      core: "[Core] Resilient Bedrock, Prudent Restraint under High Accuracy",
+      passive: "[Passive] Inward Vigilance, Gathering Cognitive Potential",
+      vacuum: "[Neutral] High-Entropy Equilibrium Zone",
+    },
+  },
+  "Q5-RET": {
+    code: "Q5-RET",
+    name: "The Veiled Oracle",
+    definition: "Navigating early exploratory regimes with deep awareness of blind spots. Employs strategic retreat and conservative hedging to guard the inner flame.",
+    features: "D* < 0.60, Bias < -0.10. Restrained and vigilant, refusing reckless trials, immunizing against catastrophic drawdown.",
+    tiers: {
+      awakened: "[Awakened] Pristine Sanctuary Mastery, Art of Mindful Retreat",
+      core: "[Core] Steadfast Defense, Discerning Boundless Hazards",
+      passive: "[Passive] Holding Sanctuary, Mindful Probing",
+      vacuum: "[Neutral] High-Entropy Equilibrium Zone",
+    },
+  },
+  "Q6-GAM": {
+    code: "Q6-GAM",
+    name: "The Stormborne Maverick",
+    definition: "Dunning-Kruger frontier charge. First-order discrimination is in formative stages, yet confidence is unbounded. Uninhibited daring without self-braking.",
+    features: "D* < 0.60, Bias > +0.20, M_ratio < 0.80. Persistently stakes high wagers in ambiguous waters; fearless audacity that laughs at the abyss.",
+    tiers: {
+      awakened: "[Awakened] Reckless Valor, Extreme Outlier Breakthrough",
+      core: "[Core] Dunning-Kruger Charge, Archetypal Overconfidence Gamble",
+      passive: "[Passive] Impulsive Probe, Nascent Overconfidence Drift",
+      vacuum: "[Neutral] High-Entropy Equilibrium Zone",
+    },
+  },
+  "Q8-DRI": {
+    code: "Q8-DRI",
+    name: "The Astral Wanderer",
+    definition: "High-entropy intuitive drift. Decisional actions reflect non-linear intuition or stochastic exploration, unmoored from rigid dogma.",
+    features: "D* < 0.60, M_ratio ≈ 0.05. Wagers and accuracy are decoupled. Traversing an ethereal intuitive realm where serendipity sparks sudden flashes of insight.",
+    tiers: {
+      awakened: "[Awakened] Ethereal Intuition, Serendipitous Genius in Chaos",
+      core: "[Core] Cosmic Wanderer, Pure Intuitive Roaming",
+      passive: "[Passive] Stochastic Drift, Dispersed Trajectory",
+      vacuum: "[Neutral] High-Entropy Equilibrium Zone",
+    },
+  },
+  "Q2-EVO": {
+    code: "Q2-EVO",
+    name: "The Mystic Alchemist",
+    definition: "Formative first-order baseline elevated by exceptional metacognitive self-awareness and steep learning agility. Transmutes missteps into gold.",
+    features: "D* < 0.60, M_ratio ≥ 0.80, Moderate-High IVE. Excels at self-reflection, rapidly crossing cognitive barriers through iterative insight absorption.",
+    tiers: {
+      awakened: "[Awakened] Hermetic Transmutation, Rapid Difficulty Ascension",
+      core: "[Core] Keen Self-Correction, Feedback-Driven Mastery",
+      passive: "[Passive] Nascent Reflection, Building Self-Awareness Loops",
+      vacuum: "[Neutral] High-Entropy Equilibrium Zone",
+    },
+  },
+  "Q7-ARB": {
+    code: "Q7-ARB",
+    name: "The Fate Weaver",
+    definition: "Systematic information arbitrageur and expected-value strategist. Masterfully leverages external clues and environmental momentum to tip destiny.",
+    features: "IVE ≥ 0.70, High Expected-Value Focus. When facing ambiguity, procures high-leverage clues to lock in victory with minimal brute force.",
+    tiers: {
+      awakened: "[Awakened] Arcane Destiny Weave, Ultra-Certainty Arbitrage",
+      core: "[Core] Momentum Leverage, Proven Information Sourcing",
+      passive: "[Passive] Incipient Leverage, Exploring Clue Utility",
+      vacuum: "[Neutral] High-Entropy Equilibrium Zone",
+    },
+  },
+};
+
+export function getOctantDetailedInfo(locale?: SupportedLocale): Record<string, OctantDetailedInfo> {
+  return locale === "en-US" ? OCTANT_DETAILED_INFO_EN : OCTANT_DETAILED_INFO;
+}
+
+export const AXIS_DETAILED_INFO_EN: Record<number, AxisDetailInfo> = {
+  0: {
+    deg: 0,
+    axisName: "Metacognitive Efficiency Axis (M_ratio) Sovereign Peak",
+    dimension: "Second-Order Fidelity (Meta-d' / d')",
+    shortName: "Sovereign (M)",
+    value: "2.0+",
+    definition: "Ratio of second-order sensitivity (Meta-d') to first-order discrimination (d'), quantifying self-monitoring fidelity.",
+    features: "M ≥ 0.80 marks the self-calibrated phase; M ≥ 1.0 represents infallible self-knowledge ('knowing what one knows and what one knows not').",
+    thresholdNote: "Critical Threshold: M = 0.80 Calibration Boundary",
+  },
+  45: {
+    deg: 45,
+    axisName: "Decision Tilt Axis (Calibration Bias) Prudence Aspect",
+    dimension: "Subjective Confidence Bias",
+    shortName: "Prudent (Bias)",
+    value: "-0.30",
+    definition: "Discrepancy between subjective wagering confidence and objective hit rate. Negative values denote habitual modesty and conservative hedging.",
+    features: "Bias < -0.12 indicates underestimation of one's own accuracy, reflecting a disciplined defensive posture.",
+    thresholdNote: "Critical Threshold: Bias = -0.12 Citadel Boundary",
+  },
+  90: {
+    deg: 90,
+    axisName: "Phase Transition Axis (D*) Positive Breakthrough",
+    dimension: "First-Order Task Difficulty Threshold",
+    shortName: "Breakthrough (D*)",
+    value: "1.0",
+    definition: "Highest task difficulty level achieved and stabilized in the 2-up-1-down adaptive staircase.",
+    features: "D* ≥ 0.60 indicates overcoming foundation bottlenecks and commanding complex deductive challenges.",
+    thresholdNote: "Critical Threshold: D* = 0.60 Phase Shift Boundary",
+  },
+  135: {
+    deg: 135,
+    axisName: "Information Foraging Axis (IVE) Autonomous Core",
+    dimension: "Information Retrieval & External Leverage",
+    shortName: "Internal (IVE)",
+    value: "0.0",
+    definition: "Rate and conversion efficiency of external hints under uncertainty. 0.0 reflects pure internal computation with zero assistance.",
+    features: "Relies entirely on innate cognitive reserves, showing strong independent deduction without hints.",
+    thresholdNote: "Baseline: IVE = 0.50 Prior Neutrality",
+  },
+  180: {
+    deg: 180,
+    axisName: "Metacognitive Efficiency Axis (M_ratio) Attenuation Abyss",
+    dimension: "Second-Order Blind Spot & Distortion",
+    shortName: "Dampened (M)",
+    value: "0.0",
+    definition: "Extremely dampened metacognitive efficiency where self-evaluation is dissociated from task reality.",
+    features: "M_ratio < 0.80 denotes self-monitoring distortion; approaching 0.05 indicates decoupling of decisions from performance.",
+    thresholdNote: "Critical Thresholds: M = 0.80 Calibration, M = 0.40 Dunning-Kruger Risk",
+  },
+  225: {
+    deg: 225,
+    axisName: "Decision Tilt Axis (Calibration Bias) Overconfidence Aspect",
+    dimension: "Dunning-Kruger Overconfidence Overflow",
+    shortName: "Maverick (Bias)",
+    value: "+0.50",
+    definition: "Subjective confidence greatly exceeding objective accuracy. Staking high wagers on low-probability outcomes.",
+    features: "Bias > +0.12 enters the overconfidence zone; Bias > +0.25 reflects reckless staking behavior.",
+    thresholdNote: "Critical Threshold: Bias = +0.12 Overflow, Bias = +0.25 Reckless",
+  },
+  270: {
+    deg: 270,
+    axisName: "Phase Transition Axis (D*) Noise Bedrock",
+    dimension: "First-Order Baseline Foundation",
+    shortName: "Bedrock (D*)",
+    value: "0.0",
+    definition: "Baseline task discrimination and performance capacity in foundational regimes.",
+    features: "D* < 0.60 reflects active cognitive scaffolding and exploratory development.",
+    thresholdNote: "Critical Threshold: D* = 0.60 Transition Boundary",
+  },
+  315: {
+    deg: 315,
+    axisName: "Information Foraging Axis (IVE) High Leverage",
+    dimension: "High-Frequency External Clue Conversion",
+    shortName: "Arbitrage (IVE)",
+    value: "1.0",
+    definition: "Exceptional efficiency at transmuting minimal external clues into high-certainty solutions.",
+    features: "IVE ≥ 0.70 demonstrates sophisticated information arbitrage, tipping momentum with minimal effort.",
+    thresholdNote: "Critical Threshold: IVE = 0.70 High-Leverage Radiance",
+  },
+};
+
+export function getAxisDetailedInfo(locale?: SupportedLocale): Record<number, AxisDetailInfo> {
+  return locale === "en-US" ? AXIS_DETAILED_INFO_EN : AXIS_DETAILED_INFO;
+}

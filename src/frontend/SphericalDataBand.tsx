@@ -5,6 +5,7 @@ import {
   SubjectPoint,
   computeMultivariateColor,
 } from "./Admin";
+import { useLocale } from "./contexts/LocaleContext";
 
 interface SphericalDataBandProps {
   subjects: SubjectPoint[];
@@ -164,6 +165,133 @@ export const SCROLL_SECTOR_CONFIGS: ScrollSectorConfig[] = [
   },
 ];
 
+export const SCROLL_SECTOR_CONFIGS_EN: ScrollSectorConfig[] = [
+  {
+    code: "Q1-CAL",
+    angle: 0,
+    name: "The Grand Archmage",
+    subTitle: "Unerring Decree · 2.0+",
+    baguaChar: "🜁",
+    baguaName: "House of the Archmage",
+    territory: "Aetheric Sphere of Sovereign Alignment",
+    lines: [true, true, true],
+    primaryColor: "#10b981",
+    secondaryColor: "#34d399",
+    auroraFrom: "rgba(16, 185, 129, 0.28)",
+    auroraTo: "rgba(5, 150, 105, 0.02)",
+    desc: "High First-Order Breakthrough · Flawless Second-Order Self-Knowledge",
+  },
+  {
+    code: "Q4-PIO",
+    angle: 45,
+    name: "The Solar Conqueror",
+    subTitle: "Bold Vanguard Decree · Prudent Aspect",
+    baguaChar: "🜂",
+    baguaName: "House of the Conqueror",
+    territory: "Solar Citadel of Audacious Conviction",
+    lines: [false, true, true],
+    primaryColor: "#f59e0b",
+    secondaryColor: "#fbbf24",
+    auroraFrom: "rgba(245, 158, 11, 0.28)",
+    auroraTo: "rgba(217, 119, 6, 0.02)",
+    desc: "High Competence Foundation · Overwhelming Breakthrough",
+  },
+  {
+    code: "Q3-SEN",
+    angle: 90,
+    name: "The Aegis Paladin",
+    subTitle: "Steadfast Citadel Bastion · 1.0",
+    baguaChar: "🜃",
+    baguaName: "House of the Paladin",
+    territory: "Adamant Realm of Prudent Bastion",
+    lines: [true, false, true],
+    primaryColor: "#38bdf8",
+    secondaryColor: "#7dd3fc",
+    auroraFrom: "rgba(56, 189, 248, 0.28)",
+    auroraTo: "rgba(2, 132, 199, 0.02)",
+    desc: "High Competence Foundation · Zero-Error Defense",
+  },
+  {
+    code: "Q5-RET",
+    angle: 135,
+    name: "The Veiled Oracle",
+    subTitle: "Cloistered Sanctuary Wisdom · 0.0",
+    baguaChar: "☽",
+    baguaName: "House of the Oracle",
+    territory: "Veiled Mists of Mindful Retreat",
+    lines: [false, false, true],
+    primaryColor: "#0d9488",
+    secondaryColor: "#2dd4bf",
+    auroraFrom: "rgba(13, 148, 136, 0.28)",
+    auroraTo: "rgba(15, 118, 110, 0.02)",
+    desc: "Exploratory Stage · Acute Blind Spot Protection",
+  },
+  {
+    code: "Q6-GAM",
+    angle: 180,
+    name: "The Stormborne Maverick",
+    subTitle: "Dunning-Kruger Frontier Charge",
+    baguaChar: "⚡",
+    baguaName: "House of the Maverick",
+    territory: "Stormy Seas of Reckless Valor",
+    lines: [false, false, false],
+    primaryColor: "#f43f5e",
+    secondaryColor: "#fb7185",
+    auroraFrom: "rgba(244, 63, 94, 0.28)",
+    auroraTo: "rgba(225, 29, 72, 0.02)",
+    desc: "Exploratory Stage · Fearless Impulse Without Braking",
+  },
+  {
+    code: "Q8-DRI",
+    angle: 225,
+    name: "The Astral Wanderer",
+    subTitle: "Ethereal Serendipity Drift",
+    baguaChar: "✨",
+    baguaName: "House of the Wanderer",
+    territory: "Astral Expanse of Untamed Intuition",
+    lines: [true, false, false],
+    primaryColor: "#a855f7",
+    secondaryColor: "#c084fc",
+    auroraFrom: "rgba(168, 85, 247, 0.28)",
+    auroraTo: "rgba(126, 34, 206, 0.02)",
+    desc: "Exploratory Stage · Non-Linear Serendipitous Flow",
+  },
+  {
+    code: "Q2-EVO",
+    angle: 270,
+    name: "The Mystic Alchemist",
+    subTitle: "Philosopher's Awakening · 0.0",
+    baguaChar: "🜄",
+    baguaName: "House of the Alchemist",
+    territory: "Hermetic Crucible of Transmutation",
+    lines: [false, true, false],
+    primaryColor: "#06b6d4",
+    secondaryColor: "#22d3ee",
+    auroraFrom: "rgba(6, 182, 212, 0.28)",
+    auroraTo: "rgba(8, 145, 178, 0.02)",
+    desc: "Exploratory Stage · Rapid Metacognitive Learning",
+  },
+  {
+    code: "Q7-ARB",
+    angle: 315,
+    name: "The Fate Weaver",
+    subTitle: "Tipping the Scales · 1.0",
+    baguaChar: "⚖",
+    baguaName: "House of the Fate Weaver",
+    territory: "Spun Threads of Expected Value",
+    lines: [true, true, false],
+    primaryColor: "#eab308",
+    secondaryColor: "#fde047",
+    auroraFrom: "rgba(234, 179, 8, 0.28)",
+    auroraTo: "rgba(202, 138, 4, 0.02)",
+    desc: "Exploratory Stage · Strategic Information Leverage",
+  },
+];
+
+export function getScrollSectorConfigs(locale?: string): ScrollSectorConfig[] {
+  return locale === "en-US" ? SCROLL_SECTOR_CONFIGS_EN : SCROLL_SECTOR_CONFIGS;
+}
+
 // 8 根贯天彻地的全息光帷界标 (两象区交界经纬天线)
 // 位于各展区交界经度角：22.5°, 67.5°, 112.5°, 157.5°, 202.5°, 247.5°, 292.5°, 337.5°
 interface BoundaryVeilConfig {
@@ -203,6 +331,10 @@ export default function SphericalDataBand({
   onHoverStatusChange,
   onActiveSectorChange,
 }: SphericalDataBandProps) {
+  const { locale } = useLocale();
+  const isEn = locale === "en-US";
+  const scrollSectorConfigs = getScrollSectorConfigs(locale);
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 当前对准中央主角视线的象区：0 ~ 7 (初始 0 即 Q1-CAL 居中)
@@ -222,18 +354,18 @@ export default function SphericalDataBand({
 
   // 通知外部当前聚焦的主象区
   useEffect(() => {
-    const curConf = SCROLL_SECTOR_CONFIGS[activeSectorIndex];
+    const curConf = scrollSectorConfigs[activeSectorIndex];
     if (onActiveSectorChange && curConf) {
       onActiveSectorChange(curConf.code);
     }
-  }, [activeSectorIndex, onActiveSectorChange]);
+  }, [activeSectorIndex, onActiveSectorChange, scrollSectorConfigs]);
 
   // 象区步进吸附逻辑：切换到指定象区 (每步 45°，极速连滑无顿挫)
   const snapToSector = useCallback((newIndex: number) => {
     const safeIndex = ((newIndex % 8) + 8) % 8;
     setActiveSectorIndex(safeIndex);
 
-    const conf = SCROLL_SECTOR_CONFIGS[safeIndex];
+    const conf = scrollSectorConfigs[safeIndex];
     if (conf) {
       // 计算距离当前 rotationRef 最近的连续目标角 (避免跳变并保证最短连滑)
       const targetBase = -conf.angle;
@@ -242,7 +374,7 @@ export default function SphericalDataBand({
       while (diff < -180) diff += 360;
       targetRotationRef.current = rotationRef.current + diff;
     }
-  }, []);
+  }, [scrollSectorConfigs]);
 
   // 物理平滑过渡循环 (阻尼弹簧逼近，支持左右无限无缝连续滚动)
   useEffect(() => {
@@ -342,7 +474,7 @@ export default function SphericalDataBand({
         const curRot = ((-rotationRef.current % 360) + 360) % 360;
         let closestIdx = 0;
         let minDiff = 999;
-        SCROLL_SECTOR_CONFIGS.forEach((conf, idx) => {
+        scrollSectorConfigs.forEach((conf, idx) => {
           let diff = Math.abs(curRot - conf.angle);
           if (diff > 180) diff = 360 - diff;
           if (diff < minDiff) {
@@ -356,14 +488,14 @@ export default function SphericalDataBand({
 
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
-  }, [snapToSector]);
+  }, [snapToSector, scrollSectorConfigs]);
 
   // 计算受测者在全景画卷上的二维坐标 (天轨纵深与横向偏向分布)
   const projectedStars = useMemo(() => {
     return subjects
       .map((sub) => {
         const code = sub.quadrant_code || "Q1-CAL";
-        const conf = SCROLL_SECTOR_CONFIGS.find((c) => c.code === code) || SCROLL_SECTOR_CONFIGS[0];
+        const conf = scrollSectorConfigs.find((c) => c.code === code) || scrollSectorConfigs[0];
 
         // 横向角度：象区中心角 + 认知偏向微扰动 (留在象区画幅内部，左右保留充足安全余量)
         let jitter = 0;
@@ -490,7 +622,7 @@ export default function SphericalDataBand({
         {/* A. 8 大象区顶天立地全景光幕与东方八卦神威图腾                  */}
         {/* ============================================================== */}
         <g className="select-none">
-          {SCROLL_SECTOR_CONFIGS.map((conf) => {
+          {scrollSectorConfigs.map((conf) => {
             const centerX = getScreenX(conf.angle);
             // 视口剔除：距离中心过远则跳过渲染
             if (Math.abs(centerX - CX) > CANVAS_WIDTH * 1.1) return null;
@@ -506,13 +638,13 @@ export default function SphericalDataBand({
                 opacity={focusOpacity}
                 className="cursor-pointer"
                 onClick={() => {
-                  const idx = SCROLL_SECTOR_CONFIGS.findIndex((c) => c.code === conf.code);
+                  const idx = scrollSectorConfigs.findIndex((c) => c.code === conf.code);
                   if (idx >= 0) snapToSector(idx);
                 }}
                 onMouseEnter={() => {
                   setHoveredSector(conf.code);
                   if (onHoverStatusChange) {
-                    onHoverStatusChange(`【${conf.name}】: ${conf.desc}`);
+                    onHoverStatusChange(isEn ? `[${conf.name}]: ${conf.desc}` : `【${conf.name}】: ${conf.desc}`);
                   }
                 }}
                 onMouseLeave={() => {
@@ -863,7 +995,7 @@ export default function SphericalDataBand({
         <button
           onClick={() => snapToSector(activeSectorIndex - 1)}
           className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center shrink-0"
-          title="平移至上一个画卷象区 (逆时针 45°)"
+          title={isEn ? "Pan to previous sector (counter-clockwise 45°)" : "平移至上一个画卷象区 (逆时针 45°)"}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -888,7 +1020,8 @@ export default function SphericalDataBand({
 
           <div className="flex items-center gap-2 shrink-0 font-mono text-[10px]">
             <span className="text-slate-400">
-              样本: <strong className="text-slate-200">{activeStats.count}</strong>
+              {isEn ? "Samples: " : "样本: "}
+              <strong className="text-slate-200">{activeStats.count}</strong>
               <span className="text-slate-500"> ({activeStats.percentage})</span>
             </span>
             <span className="text-slate-600">|</span>
@@ -899,7 +1032,7 @@ export default function SphericalDataBand({
 
         {/* 8 象区无限环形指示微圆点 */}
         <div className="hidden sm:flex items-center gap-1 shrink-0 px-1">
-          {SCROLL_SECTOR_CONFIGS.map((conf, idx) => {
+          {scrollSectorConfigs.map((conf, idx) => {
             const isActive = idx === activeSectorIndex;
             return (
               <button
@@ -908,7 +1041,7 @@ export default function SphericalDataBand({
                 className={`w-1.5 h-1.5 rounded-full transition-all cursor-pointer ${
                   isActive ? "w-3 bg-indigo-400 shadow-sm shadow-indigo-500" : "bg-slate-700 hover:bg-slate-500"
                 }`}
-                title={`跳转到 ${conf.name} (${conf.code})`}
+                title={isEn ? `Jump to ${conf.name} (${conf.code})` : `跳转到 ${conf.name} (${conf.code})`}
               />
             );
           })}
@@ -918,7 +1051,7 @@ export default function SphericalDataBand({
         <button
           onClick={() => snapToSector(activeSectorIndex + 1)}
           className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center shrink-0"
-          title="平移至下一个画卷象区 (顺时针 45°)"
+          title={isEn ? "Pan to next sector (clockwise 45°)" : "平移至下一个画卷象区 (顺时针 45°)"}
         >
           <ChevronRight className="w-4 h-4" />
         </button>

@@ -6,6 +6,7 @@
  */
 
 import { CognitiveArchetype, SkillItem } from "./models";
+import { getLocale, getDictionary, type SupportedLocale } from "../i18n";
 
 export interface ArchetypeDefinition {
   archetype: CognitiveArchetype;
@@ -418,8 +419,38 @@ export function classifyCognitiveArchetype(x: {
   }
 }
 
-export function getArchetypeDefinition(archetype: CognitiveArchetype): ArchetypeDefinition {
-  return ARCHETYPE_MATRIX[archetype] || ARCHETYPE_MATRIX[CognitiveArchetype.SOVEREIGN];
+export function getArchetypeDefinition(
+  archetype: CognitiveArchetype,
+  locale?: SupportedLocale
+): ArchetypeDefinition {
+  const targetLocale = locale || getLocale();
+  const baseDef = ARCHETYPE_MATRIX[archetype] || ARCHETYPE_MATRIX[CognitiveArchetype.SOVEREIGN];
+  if (targetLocale === "zh-CN") {
+    return baseDef;
+  }
+  const dict = getDictionary(targetLocale);
+  const localized = dict?.archetypes?.[archetype];
+  if (!localized) {
+    return baseDef;
+  }
+
+  return {
+    ...baseDef,
+    role_title: localized.role_title,
+    english_title: localized.role_title,
+    praise_tagline: localized.praise_tagline,
+    strength_tags: localized.strength_tags,
+    empowering_feedback: localized.empowering_feedback,
+    growth_advice: localized.growth_advice,
+    skills: baseDef.skills.map((baseSkill, idx) => ({
+      ...baseSkill,
+      type: localized.skills[idx]?.type || baseSkill.type,
+      name: localized.skills[idx]?.name || baseSkill.name,
+      desc: localized.skills[idx]?.desc || baseSkill.desc,
+      icon: baseSkill.icon,
+    })),
+    clinical_summary: localized.clinical_summary,
+  };
 }
 
 /**

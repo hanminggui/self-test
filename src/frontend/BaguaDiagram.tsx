@@ -3,6 +3,7 @@ import SubjectHoverCard from "./components/admin/SubjectHoverCard";
 import { SubjectPoint } from "./types/admin";
 import { OCTANT_SECTOR_CONFIGS } from "./constants/adminConstants";
 import { computeMultivariateColor } from "./utils/manifoldUtils";
+import { useLocale } from "./contexts/LocaleContext";
 
 interface BaguaDiagramProps {
   subjects: SubjectPoint[];
@@ -42,26 +43,24 @@ interface YaoLineSegment {
 }
 
 /**
- * 8 个象区对应的周易先天八卦标准方位与三爻结构
- * 方位：天地定位(乾南0°/坤北180°)，山泽通气(兑45°/艮225°)，雷风相薄(震135°/巽315°)，水火不相射(离90°/坎270°)
- * lines: [初爻(内), 二爻(中), 上爻(外)], true 为阳实线，false 为阴断线
+ * 8 个象区对应的周易先天八卦标准方位与三爻结构 / Arcane Octagram Astrolabe
  */
 interface BaguaSectorConfig {
   code: string;
-  angle: number; // 卦位中心角 (每个扇区的开口正对该卦象方位)
+  angle: number;
   name: string;
   dimensionLabel: string;
   lines: [boolean, boolean, boolean];
   nature: string;
 }
 
-const BAGUA_SECTORS: BaguaSectorConfig[] = [
+const BAGUA_SECTORS_ZH: BaguaSectorConfig[] = [
   {
     code: "Q1-CAL",
     angle: 0,
     name: "人形外挂",
     dimensionLabel: "M_ratio 自洽极 · 2.0+",
-    lines: [true, true, true], // 乾 ☰: 三实线 (纯阳无极，知行自洽)
+    lines: [true, true, true],
     nature: "纯粹自洽 · 刚健中正",
   },
   {
@@ -69,7 +68,7 @@ const BAGUA_SECTORS: BaguaSectorConfig[] = [
     angle: 45,
     name: "飞龙在天",
     dimensionLabel: "进攻破局 · 审慎侧",
-    lines: [true, true, false], // 兑 ☱: 下二实，上一断
+    lines: [true, true, false],
     nature: "果敢进击 · 锐意破局",
   },
   {
@@ -77,7 +76,7 @@ const BAGUA_SECTORS: BaguaSectorConfig[] = [
     angle: 90,
     name: "定海神针",
     dimensionLabel: "D* 突破极 · 1.0",
-    lines: [true, false, true], // 离 ☲: 初实，中断，上实 (外阳内阴)
+    lines: [true, false, true],
     nature: "深厚审慎 · 明察秋毫",
   },
   {
@@ -85,7 +84,7 @@ const BAGUA_SECTORS: BaguaSectorConfig[] = [
     angle: 135,
     name: "大音希声",
     dimensionLabel: "内算借力 · 0.0",
-    lines: [true, false, false], // 震 ☳: 初实，中断，上断
+    lines: [true, false, false],
     nature: "知弱守拙 · 潜龙勿用",
   },
   {
@@ -93,7 +92,7 @@ const BAGUA_SECTORS: BaguaSectorConfig[] = [
     angle: 180,
     name: "无畏先锋",
     dimensionLabel: "M 衰减极 · 盲赌冲锋",
-    lines: [false, false, false], // 坤 ☷: 三断线 (纯阴承载，无知盲赌)
+    lines: [false, false, false],
     nature: "无畏冲锋 · 破釜沉舟",
   },
   {
@@ -101,7 +100,7 @@ const BAGUA_SECTORS: BaguaSectorConfig[] = [
     angle: 225,
     name: "暮光星灵",
     dimensionLabel: "过度自信 · 盲赌侧",
-    lines: [false, false, true], // 艮 ☶: 初断，二断，上实
+    lines: [false, false, true],
     nature: "灵动漫游 · 止而通幽",
   },
   {
@@ -109,7 +108,7 @@ const BAGUA_SECTORS: BaguaSectorConfig[] = [
     angle: 270,
     name: "灵窍天开",
     dimensionLabel: "D* 基底极 · 0.0",
-    lines: [false, true, false], // 坎 ☵: 初断，中实，上断 (外阴内阳)
+    lines: [false, true, false],
     nature: "敏锐进化 · 见几而作",
   },
   {
@@ -117,8 +116,75 @@ const BAGUA_SECTORS: BaguaSectorConfig[] = [
     angle: 315,
     name: "诸葛在世",
     dimensionLabel: "套利借力 · 1.0",
-    lines: [false, true, true], // 巽 ☴: 初断，二实，上实
+    lines: [false, true, true],
     nature: "借箭套利 · 随风逊入",
+  },
+];
+
+const BAGUA_SECTORS_EN: BaguaSectorConfig[] = [
+  {
+    code: "Q1-CAL",
+    angle: 0,
+    name: "House of the Archmage",
+    dimensionLabel: "M_ratio Sovereign · 2.0+",
+    lines: [true, true, true],
+    nature: "Omniscient Mastery · Unerring Decree",
+  },
+  {
+    code: "Q4-PIO",
+    angle: 45,
+    name: "House of the Conqueror",
+    dimensionLabel: "Offensive Breakthrough · Prudent",
+    lines: [true, true, false],
+    nature: "Heroic Dominance · Fortune Favors the Bold",
+  },
+  {
+    code: "Q3-SEN",
+    angle: 90,
+    name: "House of the Paladin",
+    dimensionLabel: "D* Bastion Zenith · 1.0",
+    lines: [true, false, true],
+    nature: "Sacred Guardianship · Shield of the Realm",
+  },
+  {
+    code: "Q5-RET",
+    angle: 135,
+    name: "House of the Oracle",
+    dimensionLabel: "Sanctuary Calculation · 0.0",
+    lines: [true, false, false],
+    nature: "Sanctuary Wisdom · Lantern in the Mist",
+  },
+  {
+    code: "Q6-GAM",
+    angle: 180,
+    name: "House of the Maverick",
+    dimensionLabel: "M Attenuation · Reckless Valor",
+    lines: [false, false, false],
+    nature: "Swashbuckling Valor · All In Against Fate",
+  },
+  {
+    code: "Q8-DRI",
+    angle: 225,
+    name: "House of the Wanderer",
+    dimensionLabel: "Overconfidence · Stochastic Drift",
+    lines: [false, false, true],
+    nature: "Ethereal Fey Freedom · Dancing on Starlight",
+  },
+  {
+    code: "Q2-EVO",
+    angle: 270,
+    name: "House of the Alchemist",
+    dimensionLabel: "D* Base Origin · 0.0",
+    lines: [false, true, false],
+    nature: "Hermetic Awakening · The Philosopher's Mirror",
+  },
+  {
+    code: "Q7-ARB",
+    angle: 315,
+    name: "House of the Fate Weaver",
+    dimensionLabel: "Arbitrage Leverage · 1.0",
+    lines: [false, true, true],
+    nature: "Master of Whispers · Tipping the Scales",
   },
 ];
 
@@ -216,6 +282,10 @@ export default function BaguaDiagram({
   onHoverStatusChange,
   onActiveSectorChange,
 }: BaguaDiagramProps) {
+  const { locale } = useLocale();
+  const isEn = locale === "en-US";
+  const baguaSectors = isEn ? BAGUA_SECTORS_EN : BAGUA_SECTORS_ZH;
+
   const [hoveredSubject, setHoveredSubject] = useState<SubjectPoint | null>(null);
   const [hoveredOctant, setHoveredOctant] = useState<string | null>(null);
   const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | null>(null);
@@ -252,7 +322,7 @@ export default function BaguaDiagram({
   const subjectPositions = useMemo(() => {
     return subjects.map((sub) => {
       const code = sub.quadrant_code || "Q1-CAL";
-      const sector = BAGUA_SECTORS.find((s) => s.code === code) || BAGUA_SECTORS[0];
+      const sector = baguaSectors.find((s) => s.code === code) || baguaSectors[0];
       const baseAngle = sector.angle;
 
       let angleJitter = 0;
@@ -319,7 +389,7 @@ export default function BaguaDiagram({
         {/* A. 8 象区背景感应热区 (每个扇区的开口正对对应卦象方位)          */}
         {/* ============================================================== */}
         <g className="select-none">
-          {BAGUA_SECTORS.map((conf) => {
+          {baguaSectors.map((conf) => {
             const isHovered = hoveredOctant === conf.code;
             const startAngle = (conf.angle - 22.5 + 360) % 360;
             const endAngle = (conf.angle + 22.5) % 360;
@@ -401,7 +471,7 @@ export default function BaguaDiagram({
         {/* C. 标准八卦平直切线三爻结构 (线延长交错交叉，阴爻中间明显空间)  */}
         {/* ============================================================== */}
         <g className="select-none">
-          {BAGUA_SECTORS.map((sector) => {
+          {baguaSectors.map((sector) => {
             const isHovered = hoveredOctant === sector.code;
             const sectorConf = OCTANT_SECTOR_CONFIGS[sector.code];
             const pLabel = polarToScreen(R_LABEL, sector.angle);
@@ -502,38 +572,97 @@ export default function BaguaDiagram({
         </g>
 
         {/* ============================================================== */}
-        {/* D. 中心太极相变奇点 (黑白双鱼太极核心，严整对称，秩序之源)    */}
+        {/* D. 中心奇点: 秘法星盘核心 (en-US) / 太极阴阳奇点 (zh-CN)        */}
         {/* ============================================================== */}
         <g className="select-none pointer-events-none">
-          {/* 太极外环银色包边 */}
-          <circle
-            cx={BAGUA_CX}
-            cy={BAGUA_CY}
-            r={R_CORE}
-            fill="#090a0f"
-            stroke="rgba(255, 255, 255, 0.45)"
-            strokeWidth="1.5"
-          />
+          {isEn ? (
+            <g id="arcane-astrolabe-core">
+              {/* 外圈秘法黄金印记圆 */}
+              <circle
+                cx={BAGUA_CX}
+                cy={BAGUA_CY}
+                r={R_CORE}
+                fill="#090a0f"
+                stroke="rgba(245, 158, 11, 0.7)"
+                strokeWidth="1.8"
+              />
+              <circle
+                cx={BAGUA_CX}
+                cy={BAGUA_CY}
+                r={R_CORE - 4}
+                fill="none"
+                stroke="rgba(217, 119, 6, 0.4)"
+                strokeWidth="1"
+                strokeDasharray="2 3"
+              />
+              {/* 中层奥术能量环 */}
+              <circle
+                cx={BAGUA_CX}
+                cy={BAGUA_CY}
+                r={R_CORE - 14}
+                fill="none"
+                stroke="rgba(168, 85, 247, 0.6)"
+                strokeWidth="1.2"
+              />
+              {/* 八芒星几何交织 (两个正方形交错 45°) */}
+              <rect
+                x={BAGUA_CX - 18}
+                y={BAGUA_CY - 18}
+                width="36"
+                height="36"
+                fill="none"
+                stroke="#fbbf24"
+                strokeWidth="1.2"
+                opacity="0.8"
+              />
+              <rect
+                x={BAGUA_CX - 18}
+                y={BAGUA_CY - 18}
+                width="36"
+                height="36"
+                transform={`rotate(45, ${BAGUA_CX}, ${BAGUA_CY})`}
+                fill="none"
+                stroke="#fbbf24"
+                strokeWidth="1.2"
+                opacity="0.8"
+              />
+              {/* 中心白炽能量原石 */}
+              <circle cx={BAGUA_CX} cy={BAGUA_CY} r="7" fill="#fbbf24" opacity="0.9" />
+              <circle cx={BAGUA_CX} cy={BAGUA_CY} r="3.5" fill="#ffffff" />
+            </g>
+          ) : (
+            <g id="taiji-singularity-core">
+              {/* 太极外环银色包边 */}
+              <circle
+                cx={BAGUA_CX}
+                cy={BAGUA_CY}
+                r={R_CORE}
+                fill="#090a0f"
+                stroke="rgba(255, 255, 255, 0.45)"
+                strokeWidth="1.5"
+              />
 
-          {/* 阳半圆白鱼 (右侧顺时针) */}
-          <path
-            d={`M ${BAGUA_CX} ${BAGUA_CY - R_CORE} A ${R_CORE} ${R_CORE} 0 0 1 ${BAGUA_CX} ${BAGUA_CY + R_CORE} A ${R_CORE / 2} ${R_CORE / 2} 0 0 1 ${BAGUA_CX} ${BAGUA_CY} A ${R_CORE / 2} ${R_CORE / 2} 0 0 0 ${BAGUA_CX} ${BAGUA_CY - R_CORE} Z`}
-            fill="url(#taiji-white)"
-          />
+              {/* 阳半圆白鱼 (右侧顺时针) */}
+              <path
+                d={`M ${BAGUA_CX} ${BAGUA_CY - R_CORE} A ${R_CORE} ${R_CORE} 0 0 1 ${BAGUA_CX} ${BAGUA_CY + R_CORE} A ${R_CORE / 2} ${R_CORE / 2} 0 0 1 ${BAGUA_CX} ${BAGUA_CY} A ${R_CORE / 2} ${R_CORE / 2} 0 0 0 ${BAGUA_CX} ${BAGUA_CY - R_CORE} Z`}
+                fill="url(#taiji-white)"
+              />
 
-          {/* 阴半圆黑鱼 (左侧逆时针) */}
-          <path
-            d={`M ${BAGUA_CX} ${BAGUA_CY - R_CORE} A ${R_CORE} ${R_CORE} 0 0 0 ${BAGUA_CX} ${BAGUA_CY + R_CORE} A ${R_CORE / 2} ${R_CORE / 2} 0 0 1 ${BAGUA_CX} ${BAGUA_CY} A ${R_CORE / 2} ${R_CORE / 2} 0 0 0 ${BAGUA_CX} ${BAGUA_CY - R_CORE} Z`}
-            fill="url(#taiji-black)"
-          />
+              {/* 阴半圆黑鱼 (左侧逆时针) */}
+              <path
+                d={`M ${BAGUA_CX} ${BAGUA_CY - R_CORE} A ${R_CORE} ${R_CORE} 0 0 0 ${BAGUA_CX} ${BAGUA_CY + R_CORE} A ${R_CORE / 2} ${R_CORE / 2} 0 0 1 ${BAGUA_CX} ${BAGUA_CY} A ${R_CORE / 2} ${R_CORE / 2} 0 0 0 ${BAGUA_CX} ${BAGUA_CY - R_CORE} Z`}
+                fill="url(#taiji-black)"
+              />
 
-          {/* 阳中阴眼 (上方黑眼) */}
-          <circle cx={BAGUA_CX} cy={BAGUA_CY - R_CORE / 2} r="5.5" fill="#090a0f" />
-          <circle cx={BAGUA_CX} cy={BAGUA_CY - R_CORE / 2} r="2" fill="#ffffff" opacity="0.6" />
+              {/* 阳中阴眼 (上方黑眼) */}
+              <circle cx={BAGUA_CX} cy={BAGUA_CY - R_CORE / 2} r="5.5" fill="#090a0f" />
+              <circle cx={BAGUA_CX} cy={BAGUA_CY - R_CORE / 2} r="2" fill="#ffffff" opacity="0.6" />
 
-          {/* 阴中阳眼 (下方白眼) */}
-          <circle cx={BAGUA_CX} cy={BAGUA_CY + R_CORE / 2} r="5.5" fill="#ffffff" />
-          <circle cx={BAGUA_CX} cy={BAGUA_CY + R_CORE / 2} r="2" fill="#090a0f" opacity="0.6" />
+              {/* 阴中阳眼 (下方白眼) */}
+              <circle cx={BAGUA_CX} cy={BAGUA_CY + R_CORE / 2} r="5.5" fill="#ffffff" />
+              <circle cx={BAGUA_CX} cy={BAGUA_CY + R_CORE / 2} r="2" fill="#090a0f" opacity="0.6" />
+            </g>
+          )}
         </g>
 
         {/* ============================================================== */}

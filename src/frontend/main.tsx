@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import Admin from "./Admin";
+import { LocaleProvider } from "./contexts/LocaleContext";
 import "./index.css";
 
 const rootElement = document.getElementById("root");
@@ -11,6 +12,9 @@ const isAdmin = window.location.pathname.startsWith("/admin");
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    {isAdmin ? <Admin /> : <App />}
+    <LocaleProvider>
+      {isAdmin ? <Admin /> : <App />}
+    </LocaleProvider>
   </React.StrictMode>
 );
+

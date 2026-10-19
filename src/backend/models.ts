@@ -104,6 +104,8 @@ export interface TrialMetrics {
 
 export type EvaluationMode = "thinking_tool" | "multi_step";
 
+import type { SupportedLocale } from "../i18n";
+
 export interface SessionExecutionMetadata {
   model_name?: string;
   persona?: string;
@@ -115,6 +117,7 @@ export interface SessionExecutionMetadata {
   completed_trials?: number;
   warmup_trials?: number;
   token_usage?: TokenUsageStats;
+  locale?: SupportedLocale;
 }
 
 export interface TrialResponse {
@@ -184,6 +187,7 @@ export interface DiagnosticProfile {
   detailed_feedback?: string;
   // 展示层：纯正面赋能契约
   role_title: string;
+  english_title?: string;
   quadrant_code: string;
   praise_tagline: string;
   strength_tags: string[];
@@ -218,8 +222,12 @@ export interface SubjectDataPoint {
   created_at?: string;
   role_title?: string;
   quadrant_code?: string;
+  praise_tagline?: string;
   d_star: number;
   ive: number;
+  info_buying_efficiency?: number;
+  brier_score?: number;
+  coachability_index?: number;
   cognitive_manifold_vector: [number, number, number, number];
   clinical_summary?: string;
   metadata?: SessionExecutionMetadata;

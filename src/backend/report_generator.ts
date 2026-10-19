@@ -18,6 +18,7 @@ import {
 } from "./models";
 import { PsychometricScorer } from "./metrics";
 import { classifyCognitiveArchetype, getArchetypeDefinition } from "./archetype_matrix";
+import { getLocale, getDictionary, type SupportedLocale } from "../i18n";
 
 export class ReportGenerator {
   /**
@@ -43,7 +44,8 @@ export class ReportGenerator {
     metrics: MetacognitiveMetrics,
     finalScore: number,
     reversalsCount: number,
-    subjectName: string = "匿名受测者"
+    subjectName: string = "匿名受测者",
+    locale?: SupportedLocale
   ): FinalAssessmentReport {
     const totalTrials = records.length;
     const evalRecords = records.filter(r => !r.is_warmup);
@@ -77,7 +79,8 @@ export class ReportGenerator {
       hintsCount,
     });
 
-    const archetypeDef = getArchetypeDefinition(archetype);
+    const targetLocale = locale || getLocale();
+    const archetypeDef = getArchetypeDefinition(archetype, targetLocale);
 
     // Calculate Coachability Index [0, 100]
     const calibScore = Math.max(0.0, 1.0 - Math.abs(metrics.calibration_bias) * 2.5);
@@ -99,7 +102,7 @@ export class ReportGenerator {
     const diagnosticProfile: DiagnosticProfile = {
       archetype,
       risk_attitude: riskAttitude,
-      critical_weakness: this.diagnoseWeakness(metrics, archetype, riskAttitude),
+      critical_weakness: this.diagnoseWeakness(metrics, archetype, riskAttitude, targetLocale),
       coachability_index: coachabilityIndex,
       clinical_summary: archetypeDef.clinical_summary,
       detailed_feedback: archetypeDef.empowering_feedback,
@@ -132,11 +135,18 @@ export class ReportGenerator {
     }
   }
 
-  private static diagnoseWeakness(
+  public static diagnoseWeakness(
     metrics: MetacognitiveMetrics,
     archetype: CognitiveArchetype,
-    risk: RiskAttitude
+    risk: RiskAttitude,
+    locale?: SupportedLocale
   ): string {
+    const targetLocale = locale || getLocale();
+    const dict = getDictionary(targetLocale);
+    if (dict?.archetypes?.[archetype]?.critical_weakness) {
+      return dict.archetypes[archetype].critical_weakness;
+    }
+
     switch (archetype) {
       case CognitiveArchetype.SOVEREIGN:
         return "【知行合一】：核心逻辑与深层觉察高度契合，请继续保持当前的决策自洽与沉着定力。";

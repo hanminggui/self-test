@@ -1,5 +1,6 @@
 import React from "react";
 import { SubjectPoint } from "../../types/admin";
+import { useLocale } from "../../contexts/LocaleContext";
 
 interface SubjectHoverCardProps {
   subject: SubjectPoint;
@@ -18,6 +19,10 @@ export default function SubjectHoverCard({
   canvasWidth = 880,
   canvasHeight = 560,
 }: SubjectHoverCardProps) {
+  const { locale } = useLocale();
+  const isEn = locale === "en-US";
+  const isSubEn = subject.metadata?.locale === "en-US";
+
   // 视口边缘碰撞保护
   const padX = 110;
   const padY = 70;
@@ -41,7 +46,7 @@ export default function SubjectHoverCard({
         strokeWidth="1"
         style={{ filter: "drop-shadow(0 6px 18px rgba(0,0,0,0.7))" }}
       />
-      {/* 受测者姓名与得分 */}
+      {/* 受测者姓名与语言徽章 */}
       <text
         x="-75"
         y="-56"
@@ -52,6 +57,30 @@ export default function SubjectHoverCard({
       >
         {subject.name}
       </text>
+
+      {/* 语言徽章 */}
+      <rect
+        x="18"
+        y="-65"
+        width="16"
+        height="11"
+        rx="2"
+        fill={isSubEn ? "rgba(99, 102, 241, 0.25)" : "rgba(148, 163, 184, 0.2)"}
+        stroke={isSubEn ? "rgba(129, 140, 248, 0.6)" : "rgba(255, 255, 255, 0.2)"}
+        strokeWidth="0.8"
+      />
+      <text
+        x="26"
+        y="-57"
+        textAnchor="middle"
+        fill={isSubEn ? "#a5b4fc" : "#94a3b8"}
+        fontSize="7.5"
+        fontFamily="monospace"
+        fontWeight="bold"
+      >
+        {isSubEn ? "EN" : "ZH"}
+      </text>
+
       <text
         x="75"
         y="-56"
@@ -61,7 +90,7 @@ export default function SubjectHoverCard({
         fontFamily="monospace"
         fontWeight="bold"
       >
-        {subject.final_score}分
+        {subject.final_score}{isEn ? " pts" : "分"}
       </text>
 
       {/* 画像称号与象区代码 */}

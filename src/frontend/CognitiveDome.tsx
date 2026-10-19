@@ -3,9 +3,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import SubjectHoverCard from "./components/admin/SubjectHoverCard";
 import {
   SubjectPoint,
-  OCTANT_SECTOR_CONFIGS,
   computeMultivariateColor,
 } from "./Admin";
+import { getOctantSectorConfigs } from "./constants/adminConstants";
+import { useLocale } from "./contexts/LocaleContext";
 
 interface CognitiveDomeProps {
   subjects: SubjectPoint[];
@@ -88,6 +89,10 @@ export default function CognitiveDome({
   onHoverStatusChange,
   onActiveSectorChange,
 }: CognitiveDomeProps) {
+  const { locale } = useLocale();
+  const isEn = locale === "en-US";
+  const octantSectorConfigs = getOctantSectorConfigs(locale);
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 当前主聚焦点扇区：0 ~ 7 (默认 0 即 Q1-CAL 居中正对视线)
@@ -119,12 +124,12 @@ export default function CognitiveDome({
     setActiveSectorIndex(safeIndex);
 
     const octantCode = OCTANT_ORDER[safeIndex];
-    const conf = OCTANT_SECTOR_CONFIGS[octantCode];
+    const conf = octantSectorConfigs[octantCode];
     if (conf) {
       // 目标旋转角：使该扇区中心角恰好对准正面 0° 视线中轴
       targetRotationRef.current = -conf.centerAngle;
     }
-  }, []);
+  }, [octantSectorConfigs]);
 
   // 物理平滑过渡循环 (阻尼弹簧逼近)
   useEffect(() => {
@@ -230,7 +235,7 @@ export default function CognitiveDome({
       let closestIdx = 0;
       let minDiff = 999;
       OCTANT_ORDER.forEach((code, idx) => {
-        const conf = OCTANT_SECTOR_CONFIGS[code];
+        const conf = octantSectorConfigs[code];
         let diff = Math.abs(curRot - conf.centerAngle);
         if (diff > 180) diff = 360 - diff;
         if (diff < minDiff) {
@@ -264,7 +269,7 @@ export default function CognitiveDome({
         let closestIdx = 0;
         let minDiff = 999;
         OCTANT_ORDER.forEach((code, idx) => {
-          const conf = OCTANT_SECTOR_CONFIGS[code];
+          const conf = octantSectorConfigs[code];
           let diff = Math.abs(curRot - conf.centerAngle);
           if (diff > 180) diff = 360 - diff;
           if (diff < minDiff) {
@@ -344,7 +349,7 @@ export default function CognitiveDome({
     return subjects
       .map((sub) => {
         const code = sub.quadrant_code || "Q1-CAL";
-        const conf = OCTANT_SECTOR_CONFIGS[code] || OCTANT_SECTOR_CONFIGS["Q1-CAL"];
+        const conf = octantSectorConfigs[code] || octantSectorConfigs["Q1-CAL"];
 
         // 经度：所属扇区中心角 + 微抖动 (严格限制在 +- 16° 内，完全位于夹角中，绝不碰触边界线)
         let jitter = 0;
@@ -371,10 +376,10 @@ export default function CognitiveDome({
         };
       })
       .filter((item) => item.proj.isFront); // 仅渲染正面半球
-  }, [subjects, projectDome]);
+  }, [subjects, projectDome, octantSectorConfigs]);
 
   const activeOctantCode = OCTANT_ORDER[activeSectorIndex];
-  const activeConf = OCTANT_SECTOR_CONFIGS[activeOctantCode];
+  const activeConf = octantSectorConfigs[activeOctantCode];
   const activeStats = octantStatsMap[activeOctantCode] || {
     count: 0,
     percentage: "0%",
@@ -452,7 +457,7 @@ export default function CognitiveDome({
         {/* ============================================================== */}
         <g className="select-none">
           {OCTANT_ORDER.map((code) => {
-            const conf = OCTANT_SECTOR_CONFIGS[code];
+            const conf = octantSectorConfigs[code];
             const isCenter = activeOctantCode === code;
             const isHover = hoveredSector === code;
             const surfaceD = getSectorSurfacePath(conf.centerAngle);
@@ -560,7 +565,7 @@ export default function CognitiveDome({
         {/* ============================================================== */}
         <g className="select-none pointer-events-none">
           {OCTANT_ORDER.map((code) => {
-            const conf = OCTANT_SECTOR_CONFIGS[code];
+            const conf = octantSectorConfigs[code];
             const lines = DOME_SECTOR_LINES[code] || [true, true, true];
             const isCenter = activeOctantCode === code;
 
@@ -650,7 +655,7 @@ export default function CognitiveDome({
         {/* ============================================================== */}
         <g className="select-none">
           {OCTANT_ORDER.map((code) => {
-            const conf = OCTANT_SECTOR_CONFIGS[code];
+            const conf = octantSectorConfigs[code];
             const pLabel = projectDome(91, conf.centerAngle);
             if (!pLabel.isFront || pLabel.cosPsi < 0.1) return null;
 
@@ -799,7 +804,7 @@ export default function CognitiveDome({
         <button
           onClick={() => snapToSector(activeSectorIndex - 1)}
           className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center shrink-0"
-          title="切换至上一个象区 (逆时针 45°)"
+          title={isEn ? "Previous sector (counter-clockwise 45°)" : "切换至上一个象区 (逆时针 45°)"}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -824,7 +829,8 @@ export default function CognitiveDome({
 
           <div className="flex items-center gap-2 shrink-0 font-mono text-[10px]">
             <span className="text-slate-400">
-              样本: <strong className="text-slate-200">{activeStats.count}</strong>
+              {isEn ? "Samples: " : "样本: "}
+              <strong className="text-slate-200">{activeStats.count}</strong>
               <span className="text-slate-500"> ({activeStats.percentage})</span>
             </span>
             <span className="text-slate-600">|</span>
@@ -837,6 +843,7 @@ export default function CognitiveDome({
         <div className="hidden md:flex items-center gap-1 shrink-0 px-1">
           {OCTANT_ORDER.map((code, idx) => {
             const isActive = idx === activeSectorIndex;
+            const itemConf = octantSectorConfigs[code];
             return (
               <button
                 key={`step-dot-${code}`}
@@ -844,7 +851,7 @@ export default function CognitiveDome({
                 className={`w-1.5 h-1.5 rounded-full transition-all cursor-pointer ${
                   isActive ? "w-3 bg-indigo-400 shadow-sm shadow-indigo-500" : "bg-slate-700 hover:bg-slate-500"
                 }`}
-                title={`跳转到 ${OCTANT_SECTOR_CONFIGS[code].name}`}
+                title={isEn ? `Jump to ${itemConf?.name || code}` : `跳转到 ${itemConf?.name || code}`}
               />
             );
           })}
@@ -854,7 +861,7 @@ export default function CognitiveDome({
         <button
           onClick={() => snapToSector(activeSectorIndex + 1)}
           className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center shrink-0"
-          title="切换至下一个象区 (顺时针 45°)"
+          title={isEn ? "Next sector (clockwise 45°)" : "切换至下一个象区 (顺时针 45°)"}
         >
           <ChevronRight className="w-4 h-4" />
         </button>

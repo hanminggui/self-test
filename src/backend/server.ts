@@ -9,14 +9,28 @@ import * as path from "path";
 import * as fs from "fs";
 import { SessionManager } from "./session_manager";
 import { MetacognitiveAction, SubjectType, TrialResponse } from "./models";
+import { runWithLocale, normalizeLocale, DEFAULT_LOCALE, type SupportedLocale } from "../i18n";
 
-const app = new Hono();
+const app = new Hono<{ Variables: { locale: SupportedLocale } }>();
 
 app.use("*", cors({
   origin: "*",
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
+  allowHeaders: ["Content-Type", "Authorization", "X-Locale", "Accept-Language"],
 }));
+
+// i18n request context middleware
+app.use("*", async (c, next) => {
+  const queryLang = c.req.query("lang") || c.req.query("locale");
+  const headerXLocale = c.req.header("X-Locale");
+  const headerAcceptLang = c.req.header("Accept-Language");
+
+  const raw = queryLang || headerXLocale || headerAcceptLang || DEFAULT_LOCALE;
+  const locale = normalizeLocale(raw);
+  c.set("locale", locale);
+
+  return runWithLocale(locale, () => next());
+});
 
 // Admin credentials
 export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin888";
@@ -44,6 +58,7 @@ export const sessionManager = new SessionManager();
 // 1. Start Session
 app.post("/api/sessions/start", async (c) => {
   const body = await c.req.json().catch(() => ({}));
+  const locale = c.get("locale");
   const session = sessionManager.createSession({
     sessionId: body.session_id,
     subjectName: body.subject_name,
@@ -54,16 +69,20 @@ app.post("/api/sessions/start", async (c) => {
     seed: body.seed,
     persona: body.persona,
     thinkingEffort: body.thinking_effort,
-    metadata: body.metadata,
+    metadata: {
+      locale,
+      ...(body.metadata || {}),
+    },
   });
-  return c.json(sessionManager.getTrialRequest(session.sessionId));
+  return c.json(sessionManager.getTrialRequest(session.sessionId, locale));
 });
 
 // 2. Get current trial
 app.get("/api/sessions/:id/trial", (c) => {
   const id = c.req.param("id");
+  const locale = c.get("locale");
   try {
-    return c.json(sessionManager.getTrialRequest(id));
+    return c.json(sessionManager.getTrialRequest(id, locale));
   } catch (e: any) {
     return c.json({ error: e.message }, 404);
   }
@@ -83,8 +102,9 @@ app.post("/api/sessions/:id/phase1", async (c) => {
 // 4. Request Hint
 app.post("/api/sessions/:id/hint", (c) => {
   const id = c.req.param("id");
+  const locale = c.get("locale");
   try {
-    return c.json(sessionManager.requestHint(id));
+    return c.json(sessionManager.requestHint(id, locale));
   } catch (e: any) {
     return c.json({ error: e.message }, 400);
   }
@@ -119,8 +139,9 @@ app.post("/api/sessions/step", async (c) => {
 // 7. Get Report
 app.get("/api/sessions/:id/report", (c) => {
   const id = c.req.param("id");
+  const locale = c.get("locale");
   try {
-    return c.json(sessionManager.getReport(id));
+    return c.json(sessionManager.getReport(id, locale));
   } catch (e: any) {
     return c.json({ error: e.message }, 404);
   }
@@ -152,7 +173,8 @@ app.patch("/api/sessions/:id/metadata", async (c) => {
 // 8. Cohort Scatter
 app.get("/api/cohort/scatter", (c) => {
   const currentSessionId = c.req.query("current_session_id");
-  return c.json(sessionManager.getCohortScatterData(currentSessionId));
+  const locale = c.get("locale");
+  return c.json(sessionManager.getCohortScatterData(currentSessionId, locale));
 });
 
 const extractAdminToken = async (c: any): Promise<string | undefined> => {
@@ -177,7 +199,8 @@ app.get("/api/admin/sessions", async (c) => {
   if (token !== ADMIN_PASSWORD) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  const data = sessionManager.getCohortScatterData();
+  const locale = c.get("locale");
+  const data = sessionManager.getCohortScatterData(undefined, locale);
   return c.json({ sessions: data.subjects });
 });
 

@@ -4,19 +4,44 @@
  * used across both backend SessionManager and frontend Welcome UI.
  */
 
-export const CODENAME_PREFIXES = [
+import { getLocale, type SupportedLocale } from "../i18n";
+
+export const CODENAME_PREFIXES_ZH = [
   "星轨", "微光", "深空", "虚空", "极境", "无界", "辰极",
   "暗曜", "灵知", "破晓", "幻海", "以太", "云渊", "苍穹", "终焉",
 ] as const;
 
-export const CODENAME_SUFFIXES = [
+export const CODENAME_SUFFIXES_ZH = [
   "领航员", "漫游者", "探索家", "执剑人", "观测者",
   "寻迹者", "破壁人", "行者", "游侠", "先驱", "守夜人",
 ] as const;
 
-export function generateSubjectCodename(): string {
-  const p = CODENAME_PREFIXES[Math.floor(Math.random() * CODENAME_PREFIXES.length)];
-  const s = CODENAME_SUFFIXES[Math.floor(Math.random() * CODENAME_SUFFIXES.length)];
+export const CODENAME_PREFIXES_EN = [
+  "Silver", "Obsidian", "Astral", "Eldritch", "Solar",
+  "Runic", "Velvet", "Aether", "Crimson", "Mythic",
+  "Twilight", "Gilded", "Arcane", "Frost", "Celestial",
+] as const;
+
+export const CODENAME_SUFFIXES_EN = [
+  "Inquisitor", "Alchemist", "Templar", "Seer", "Wayfarer",
+  "Chronicler", "Spellbinder", "Warden", "Herald", "Oracle", "Vanguard",
+] as const;
+
+// Backward-compatible aliases
+export const CODENAME_PREFIXES = CODENAME_PREFIXES_ZH;
+export const CODENAME_SUFFIXES = CODENAME_SUFFIXES_ZH;
+
+export function generateSubjectCodename(locale?: SupportedLocale): string {
+  const targetLocale = locale || getLocale();
   const num = String(Math.floor(Math.random() * 99) + 1).padStart(2, "0");
+
+  if (targetLocale === "en-US") {
+    const p = CODENAME_PREFIXES_EN[Math.floor(Math.random() * CODENAME_PREFIXES_EN.length)];
+    const s = CODENAME_SUFFIXES_EN[Math.floor(Math.random() * CODENAME_SUFFIXES_EN.length)];
+    return `${p} ${s} · ${num}`;
+  }
+
+  const p = CODENAME_PREFIXES_ZH[Math.floor(Math.random() * CODENAME_PREFIXES_ZH.length)];
+  const s = CODENAME_SUFFIXES_ZH[Math.floor(Math.random() * CODENAME_SUFFIXES_ZH.length)];
   return `${p}${s} · ${num}`;
 }

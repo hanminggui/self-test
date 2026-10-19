@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import SubjectHoverCard from "./components/admin/SubjectHoverCard";
 import {
   SubjectPoint,
-  OCTANT_SECTOR_CONFIGS,
-  AXIS_DETAILED_INFO,
   AxisDetailInfo,
   computeMultivariateColor,
 } from "./Admin";
+import { getOctantSectorConfigs, getAxisDetailedInfo, OCTANT_SECTOR_CONFIGS } from "./constants/adminConstants";
+import { useLocale } from "./contexts/LocaleContext";
 
 interface CosmicGalaxyCompassProps {
   subjects: SubjectPoint[];
@@ -349,6 +349,11 @@ export default function CosmicGalaxyCompass({
   onHoverStatusChange,
   onActiveSectorChange,
 }: CosmicGalaxyCompassProps) {
+  const { locale } = useLocale();
+  const isEn = locale === "en-US";
+  const octantSectorConfigs = getOctantSectorConfigs(locale);
+  const axisDetailedInfo = getAxisDetailedInfo(locale);
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 动画与手势状态
@@ -367,13 +372,14 @@ export default function CosmicGalaxyCompass({
   useEffect(() => {
     if (!onHoverStatusChange) return;
     if (hoveredOctant) {
-      onHoverStatusChange(`【${OCTANT_SECTOR_CONFIGS[hoveredOctant]?.name}】: ${OCTANT_SECTOR_CONFIGS[hoveredOctant]?.desc}`);
+      const conf = octantSectorConfigs[hoveredOctant];
+      onHoverStatusChange(isEn ? `[${conf?.name}]: ${conf?.desc}` : `【${conf?.name}】: ${conf?.desc}`);
     } else if (hoveredAxis) {
-      onHoverStatusChange(`【${hoveredAxis.shortName}】: ${hoveredAxis.dimension}`);
+      onHoverStatusChange(isEn ? `[${hoveredAxis.shortName}]: ${hoveredAxis.dimension}` : `【${hoveredAxis.shortName}】: ${hoveredAxis.dimension}`);
     } else {
       onHoverStatusChange(null);
     }
-  }, [hoveredOctant, hoveredAxis, onHoverStatusChange]);
+  }, [hoveredOctant, hoveredAxis, onHoverStatusChange, octantSectorConfigs, isEn]);
 
   // 动能物理引擎 Ref
   const rotationRef = useRef(0);
@@ -702,7 +708,7 @@ export default function CosmicGalaxyCompass({
           <g className="select-none">
             {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
               const rayConf = AXIS_RAY_COLOR_CONFIGS[deg] || AXIS_RAY_COLOR_CONFIGS[0];
-              const axisInfo = AXIS_DETAILED_INFO[deg];
+              const axisInfo = axisDetailedInfo[deg];
 
               // 关键性能优化：每方向仅计算一次 32 步投影曲线，5 层光晕流束直接复用
               const rayPath = getCurvedRayPath(deg);
@@ -883,7 +889,7 @@ export default function CosmicGalaxyCompass({
           {/* D. 8 个相室画像名称 (字体颜色固定为宇宙背景色，半透明白光外包围晕染，无抖动纯矢量) */}
           {/* ============================================================== */}
           <g className="select-none">
-            {Object.values(OCTANT_SECTOR_CONFIGS).map((conf) => {
+            {Object.values(octantSectorConfigs).map((conf) => {
               // 位于各相室中心角，半径 R=296，随旋转与向心力引力弯曲同等级形变
               const curveOffset = getCurvatureOffsetDeg(296, velocity);
               const pOctant = project3D(296, conf.centerAngle + rotation + curveOffset, 0, GALAXY_CX, GALAXY_CY, 45, 680);
