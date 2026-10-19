@@ -104,3 +104,47 @@ export const BET_STEP3_SCHEMA = createStrictSchema(
   },
   ["action", "confidence"]
 );
+
+/**
+ * 思考模式专用：购买线索工具定义 (BUY_HINT_TOOL)
+ */
+export const BUY_HINT_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "buy_hint",
+    description:
+      "当推演遇到瓶颈、条件存在歧义或无法唯一锁定正确选项时，调用此工具消耗分数购买辅助线索。若当前已能推导出答案，请勿调用此工具，直接输出最终 JSON 决策。",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        tier: {
+          type: "integer" as const,
+          enum: [1, 2],
+          description:
+            "购买线索级别：1 表示调阅第 1 级宏观线索（消耗 1 分）；2 表示直接调阅完整两级线索（累计消耗 3 分）。",
+        },
+        analysis_so_far: {
+          type: "string" as const,
+          description:
+            "简要记录目前已排除的选项、已完成的推导结论及需要线索解决的具体卡点，以便获取线索后直接作答而不必重新推演。",
+        },
+      },
+      required: ["tier", "analysis_so_far"],
+      additionalProperties: false,
+    },
+  },
+};
+
+/**
+ * 思考模式专用：单通最终复合决策 Schema (同时输出 choice, action, confidence)
+ */
+export const SINGLE_PASS_DECISION_SCHEMA = createStrictSchema(
+  "single_pass_metacognitive_decision",
+  {
+    ...CHOICE_STEP2_SCHEMA.json_schema.schema.properties,
+    ...BET_STEP3_SCHEMA.json_schema.schema.properties,
+  },
+  ["choice", "action", "confidence"]
+);
+
+

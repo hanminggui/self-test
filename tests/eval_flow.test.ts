@@ -1,12 +1,15 @@
 import { describe, expect, it } from "bun:test";
+import { MetacognitiveAction } from "../src/backend/models";
 import { GAME_RULES_SYSTEM_PROMPT, STEP1_ACTION_USER_PROMPT } from "../src/cli/eval";
 import { formatTokenCount } from "../src/cli/lib/formatters";
 import { cleanAndExtractJson } from "../src/cli/lib/json_parser";
 import {
   BET_STEP3_SCHEMA,
+  BUY_HINT_TOOL,
   CHOICE_STEP2_SCHEMA,
   HINT_STEP1_SCHEMA,
   HINT_STEP1B_SCHEMA,
+  SINGLE_PASS_DECISION_SCHEMA,
 } from "../src/cli/lib/schema_builder";
 
 describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
@@ -172,4 +175,564 @@ describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
     expect(formatTokenCount(1250000)).toBe("1.25M (1,250,000 tokens)");
     expect(formatTokenCount(1250000, false)).toBe("1.25M tokens");
   });
+
+  it("BUY_HINT_TOOL 与 SINGLE_PASS_DECISION_SCHEMA 定义符合单通思考+工具调用规范，且支持复合字段提取", () => {
+    expect(BUY_HINT_TOOL.type).toBe("function");
+    expect(BUY_HINT_TOOL.function.name).toBe("buy_hint");
+    const toolProps = BUY_HINT_TOOL.function.parameters.properties;
+    expect(toolProps.tier.enum).toEqual([1, 2]);
+    expect(toolProps.analysis_so_far.type).toBe("string");
+    expect(BUY_HINT_TOOL.function.parameters.required).toEqual(["tier", "analysis_so_far"]);
+
+    const spProps = SINGLE_PASS_DECISION_SCHEMA.json_schema.schema.properties;
+    expect(spProps.choice.enum).toEqual(["A", "B", "C", "D"]);
+    expect(spProps.action.enum).toEqual(["HIGH_BET", "SAFE_BET"]);
+    expect(spProps.confidence.minimum).toBe(0);
+    expect(spProps.confidence.maximum).toBe(1);
+    expect(SINGLE_PASS_DECISION_SCHEMA.json_schema.schema.required).toEqual(["choice", "action", "confidence"]);
+
+    // 复合输出带 <think> 的解析
+    const compositeRaw = `<think>\n排除A和B，确定是D。\n</think>\n\`\`\`json\n{"choice": "D", "action": "HIGH_BET", "confidence": 0.92}\n\`\`\``;
+    const parsedComposite = cleanAndExtractJson(compositeRaw);
+    expect(parsedComposite.choice).toBe("D");
+    expect(parsedComposite.action).toBe("HIGH_BET");
+    expect(parsedComposite.confidence).toBe(0.92);
+  });
+
+  it("LLMClient 在未开启思考时显式下发关闭思考参数，并在开启思考时支持 tools 与 tool_calls 解析", async () => {
+    const { LLMClient } = await import("../src/cli/lib/llm_client");
+    const capturedPayloads: any[] = [];
+    const origFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (_url: any, init: any) => {
+        const body = JSON.parse(init.body);
+        capturedPayloads.push(body);
+
+        // 模拟第 1 次调用 (non-thinking client): 返回正常 JSON
+        if (capturedPayloads.length === 1) {
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: '{"strategy": "DECIDE"}' } }],
+              usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 },
+            }),
+            { status: 200 }
+          );
+        }
+
+        // 模拟第 2 次调用 (thinking client + BUY_HINT_TOOL): 返回 tool_calls
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: "",
+                  reasoning_content: "A和C不对，B和D之间需要线索确认",
+                  tool_calls: [
+                    {
+                      id: "call_hint_1",
+                      type: "function",
+                      function: {
+                        name: "buy_hint",
+                        arguments: JSON.stringify({
+                          tier: 1,
+                          analysis_so_far: "已排除A和C，需确认B和D",
+                        }),
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+            usage: {
+              prompt_tokens: 150,
+              completion_tokens: 80,
+              total_tokens: 230,
+              completion_tokens_details: { reasoning_tokens: 60 },
+            },
+          }),
+          { status: 200 }
+        );
+      }) as any;
+
+      // 1. 非思考模式客户端：必须显式包含关闭思考标记
+      const nonThinkingClient = new LLMClient({
+        baseUrl: "http://localhost:11434/v1",
+        apiKey: "ollama",
+        model: "qwen3:8b",
+        thinking: "none",
+      });
+      const res1 = await nonThinkingClient.query(
+        [{ role: "user", content: "test" }],
+        HINT_STEP1_SCHEMA,
+        "test-non-thinking"
+      );
+      expect(res1.parsed.strategy).toBe("DECIDE");
+      expect(capturedPayloads[0].reasoning_effort).toBe("none");
+      expect(capturedPayloads[0].chat_template_kwargs).toEqual({ enable_thinking: false });
+
+      // 2. 思考模式客户端：挂载 BUY_HINT_TOOL 并解析 tool_calls
+      const thinkingClient = new LLMClient({
+        baseUrl: "http://localhost:11434/v1",
+        apiKey: "ollama",
+        model: "qwen3:8b",
+        thinking: "medium",
+      });
+      const res2 = await thinkingClient.query(
+        [{ role: "user", content: "solve task" }],
+        SINGLE_PASS_DECISION_SCHEMA,
+        "test-thinking-tool",
+        0.1,
+        { tools: [BUY_HINT_TOOL] }
+      );
+      expect(capturedPayloads[1].reasoning_effort).toBe("medium");
+      expect(capturedPayloads[1].chat_template_kwargs).toEqual({ enable_thinking: true });
+      expect(capturedPayloads[1].tools).toEqual([BUY_HINT_TOOL]);
+      expect(res2.tool_calls?.length).toBe(1);
+      expect(res2.tool_calls?.[0].function.name).toBe("buy_hint");
+      const parsedArgs = JSON.parse(res2.tool_calls![0].function.arguments);
+      expect(parsedArgs.tier).toBe(1);
+      expect(parsedArgs.analysis_so_far).toBe("已排除A和C，需确认B和D");
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  it("runEvaluationTrial 在开启思考且不买线索时仅需 1 次 LLM 请求即可完成全部决策", async () => {
+    const { runEvaluationTrial } = await import("../src/cli/eval");
+    const { LLMClient } = await import("../src/cli/lib/llm_client");
+
+    const llmRequests: any[] = [];
+    const origFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (url: any, init: any) => {
+        const urlStr = String(url);
+        if (urlStr.endsWith("/chat/completions")) {
+          llmRequests.push(JSON.parse(init.body));
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    reasoning_content: "直接推演出唯一解为 C，把握度极高。",
+                    content: JSON.stringify({
+                      choice: "C",
+                      action: "HIGH_BET",
+                      confidence: 0.95,
+                    }),
+                  },
+                },
+              ],
+              usage: {
+                prompt_tokens: 180,
+                completion_tokens: 90,
+                total_tokens: 270,
+                completion_tokens_details: { reasoning_tokens: 70 },
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        throw new Error(`Unexpected fetch: ${urlStr}`);
+      }) as any;
+
+      const config: any = {
+        model: "qwen3-thinking",
+        apiBase: "http://localhost:8000",
+        openaiBaseUrl: "http://localhost:11434/v1",
+        openaiApiKey: "ollama",
+        totalTrials: 10,
+        warmupTrials: 3,
+        isMock: false,
+        isDebug: false,
+        thinking: "high",
+      };
+      const client = new LLMClient({
+        baseUrl: config.openaiBaseUrl,
+        apiKey: config.openaiApiKey,
+        model: config.model,
+        thinking: config.thinking,
+      });
+
+      const result = await runEvaluationTrial(
+        "sess_1",
+        1,
+        {
+          prompt: "求矩阵缺失项",
+          options: { A: "1", B: "2", C: "3", D: "4" },
+        },
+        config,
+        client
+      );
+
+      expect(llmRequests.length).toBe(1);
+      expect(llmRequests[0].reasoning_effort).toBe("high");
+      expect(llmRequests[0].tools?.[0]?.function?.name).toBe("buy_hint");
+      expect(result.choice).toBe("C");
+      expect(result.action).toBe(MetacognitiveAction.HIGH_BET);
+      expect(result.confidence).toBe(0.95);
+      expect(result.hintsUnlocked).toBe(0);
+      expect(result.hintsCost).toBe(0);
+      expect(result.operations.map((o: any) => o.step)).toEqual([
+        "HINT_TIER1",
+        "FIRST_ORDER_CHOICE",
+        "SECOND_ORDER_BET",
+      ]);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  it("runEvaluationTrial 在开启思考且触发 buy_hint 工具调用时，拉取线索并在第 2 步显式关闭思考完成最终作答", async () => {
+    const { runEvaluationTrial } = await import("../src/cli/eval");
+    const { LLMClient } = await import("../src/cli/lib/llm_client");
+
+    const llmRequests: any[] = [];
+    let hintApiCalls = 0;
+    const origFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (url: any, init: any) => {
+        const urlStr = String(url);
+        if (urlStr.endsWith("/api/sessions/sess_2/hint")) {
+          hintApiCalls += 1;
+          return new Response(
+            JSON.stringify({
+              hint: hintApiCalls === 1 ? "宏观线索：奇偶交替" : "微观线索：末尾必为偶数",
+            }),
+            { status: 200 }
+          );
+        }
+        if (urlStr.endsWith("/chat/completions")) {
+          const body = JSON.parse(init.body);
+          llmRequests.push(body);
+
+          if (llmRequests.length === 1) {
+            // 第 1 次请求：思考中途决定调用 buy_hint (tier: 2)
+            return new Response(
+              JSON.stringify({
+                choices: [
+                  {
+                    message: {
+                      content: "",
+                      reasoning_content: "已排除A和C，但B和D之间缺条件，调用工具买线索。",
+                      tool_calls: [
+                        {
+                          id: "call_hint_tier2",
+                          type: "function",
+                          function: {
+                            name: "buy_hint",
+                            arguments: JSON.stringify({
+                              tier: 2,
+                              analysis_so_far: "已排除A(1)和C(3)，仅需在B(2)与D(4)间锁定",
+                            }),
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+                usage: { prompt_tokens: 200, completion_tokens: 60, total_tokens: 260 },
+              }),
+              { status: 200 }
+            );
+          }
+
+          // 第 2 次请求：拿到线索后，关闭思考直接输出最终决策
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      choice: "D",
+                      action: "HIGH_BET",
+                      confidence: 0.88,
+                    }),
+                  },
+                },
+              ],
+              usage: { prompt_tokens: 280, completion_tokens: 25, total_tokens: 305 },
+            }),
+            { status: 200 }
+          );
+        }
+        throw new Error(`Unexpected fetch: ${urlStr}`);
+      }) as any;
+
+      const config: any = {
+        model: "qwen3-thinking",
+        apiBase: "http://localhost:8000",
+        openaiBaseUrl: "http://localhost:11434/v1",
+        openaiApiKey: "ollama",
+        totalTrials: 10,
+        warmupTrials: 3,
+        isMock: false,
+        isDebug: false,
+        thinking: "medium",
+      };
+      const client = new LLMClient({
+        baseUrl: config.openaiBaseUrl,
+        apiKey: config.openaiApiKey,
+        model: config.model,
+        thinking: config.thinking,
+      });
+
+      const result = await runEvaluationTrial(
+        "sess_2",
+        2,
+        {
+          prompt: "求矩阵缺失项",
+          options: { A: "1", B: "2", C: "3", D: "4" },
+        },
+        config,
+        client
+      );
+
+      expect(hintApiCalls).toBe(2);
+      expect(llmRequests.length).toBe(2);
+      // 第 1 次请求开启思考并挂载工具
+      expect(llmRequests[0].reasoning_effort).toBe("medium");
+      expect(llmRequests[0].chat_template_kwargs).toEqual({ enable_thinking: true });
+      // 第 2 次请求（已获线索与阶段结论）显式关闭思考，避免重复思考
+      expect(llmRequests[1].reasoning_effort).toBe("none");
+      expect(llmRequests[1].chat_template_kwargs).toEqual({ enable_thinking: false });
+
+      expect(result.choice).toBe("D");
+      expect(result.action).toBe(MetacognitiveAction.HIGH_BET);
+      expect(result.confidence).toBe(0.88);
+      expect(result.hintsUnlocked).toBe(2);
+      expect(result.hintsCost).toBe(3);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  it("runEvaluationTrial 在未开启思考 (thinking: none) 时走经典 3 步流程且每步均显式关闭思考，并支持 HTTP 400 参数降级", async () => {
+    const { runEvaluationTrial } = await import("../src/cli/eval");
+    const { LLMClient } = await import("../src/cli/lib/llm_client");
+
+    const llmRequests: any[] = [];
+    const origFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (_url: any, init: any) => {
+        const body = JSON.parse(init.body);
+        llmRequests.push(body);
+
+        // 模拟端点拒绝 chat_template_kwargs 返回 400，验证自适应降级重试
+        if (body.chat_template_kwargs !== undefined) {
+          return new Response(
+            JSON.stringify({ error: { message: "Unknown parameter: chat_template_kwargs" } }),
+            { status: 400 }
+          );
+        }
+
+        if (llmRequests.length <= 2) {
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: '{"strategy": "DECIDE"}' } }],
+              usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 },
+            }),
+            { status: 200 }
+          );
+        }
+        if (llmRequests.length <= 4) {
+          return new Response(
+            JSON.stringify({
+              choices: [{ message: { content: '{"choice": "B"}' } }],
+              usage: { prompt_tokens: 120, completion_tokens: 10, total_tokens: 130 },
+            }),
+            { status: 200 }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: '{"action": "SAFE_BET", "confidence": 0.6}' } }],
+            usage: { prompt_tokens: 140, completion_tokens: 15, total_tokens: 155 },
+          }),
+          { status: 200 }
+        );
+      }) as any;
+
+      const config: any = {
+        model: "gpt-4o-mini",
+        apiBase: "http://localhost:8000",
+        openaiBaseUrl: "https://api.openai.com/v1",
+        openaiApiKey: "sk-test",
+        totalTrials: 10,
+        warmupTrials: 3,
+        isMock: false,
+        isDebug: false,
+        thinking: "none",
+      };
+      const client = new LLMClient({
+        baseUrl: config.openaiBaseUrl,
+        apiKey: config.openaiApiKey,
+        model: config.model,
+        thinking: config.thinking,
+      });
+
+      const result = await runEvaluationTrial(
+        "sess_3",
+        3,
+        {
+          prompt: "求序列规律",
+          options: { A: "10", B: "20", C: "30", D: "40" },
+        },
+        config,
+        client
+      );
+
+      // 3 个步骤，每步首次携带 chat_template_kwargs: {enable_thinking: false} 触发 400 后自动剔除重试成功 (共 6 次底层请求)
+      expect(llmRequests.length).toBe(6);
+      expect(llmRequests[0].reasoning_effort).toBe("none");
+      expect(llmRequests[0].chat_template_kwargs).toEqual({ enable_thinking: false });
+      expect(llmRequests[1].chat_template_kwargs).toBeUndefined();
+      expect(result.choice).toBe("B");
+      expect(result.action).toBe(MetacognitiveAction.SAFE_BET);
+      expect(result.confidence).toBe(0.6);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  it("executeThinkingToolTrial 支持先买 Tier 1 线索再递进调取 Tier 2 线索，并在 --debug 下输出 [tool_call] 与 [tool_result]", async () => {
+    const { runEvaluationTrial } = await import("../src/cli/eval");
+    const { LLMClient } = await import("../src/cli/lib/llm_client");
+
+    const debugLogs: string[] = [];
+    const mockLogger: any = {
+      log: (m: string) => debugLogs.push(m),
+      warn: (m: string) => debugLogs.push(m),
+      error: (m: string) => debugLogs.push(m),
+    };
+
+    let hintApiCalls = 0;
+    let llmCallIdx = 0;
+    const origFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = (async (url: any) => {
+        const urlStr = String(url);
+        if (urlStr.endsWith("/api/sessions/sess_seq/hint")) {
+          hintApiCalls += 1;
+          return new Response(
+            JSON.stringify({
+              hint: hintApiCalls === 1 ? "Tier1线索：行和为15" : "Tier2线索：右下角必为质数",
+            }),
+            { status: 200 }
+          );
+        }
+        llmCallIdx += 1;
+        if (llmCallIdx === 1) {
+          // Pass 1: 申请 Tier 1
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: "",
+                    reasoning_content: "先看一级线索",
+                    tool_calls: [
+                      {
+                        id: "tc_1",
+                        type: "function",
+                        function: {
+                          name: "buy_hint",
+                          arguments: JSON.stringify({ tier: 1, analysis_so_far: "排除A" }),
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            }),
+            { status: 200 }
+          );
+        }
+        if (llmCallIdx === 2) {
+          // Pass 2: 看到 Tier 1 后继续申请 Tier 2
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: "",
+                    tool_calls: [
+                      {
+                        id: "tc_2",
+                        type: "function",
+                        function: {
+                          name: "buy_hint",
+                          arguments: JSON.stringify({ tier: 2, analysis_so_far: "排除A和B，还差最后一步" }),
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            }),
+            { status: 200 }
+          );
+        }
+        // Pass 3: 最终决策
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({ choice: "C", action: "HIGH_BET", confidence: 0.91 }),
+                },
+              },
+            ],
+          }),
+          { status: 200 }
+        );
+      }) as any;
+
+      const config: any = {
+        model: "qwen3-thinking",
+        apiBase: "http://localhost:8000",
+        openaiBaseUrl: "http://localhost:11434/v1",
+        openaiApiKey: "ollama",
+        totalTrials: 5,
+        warmupTrials: 1,
+        isMock: false,
+        isDebug: true,
+        thinking: "low",
+      };
+      const client = new LLMClient({
+        baseUrl: config.openaiBaseUrl,
+        apiKey: config.openaiApiKey,
+        model: config.model,
+        isDebug: true,
+        thinking: config.thinking,
+        logger: mockLogger,
+      });
+
+      const result = await runEvaluationTrial(
+        "sess_seq",
+        1,
+        { prompt: "九宫格推演", options: { A: "2", B: "4", C: "5", D: "8" } },
+        config,
+        client
+      );
+
+      expect(hintApiCalls).toBe(2);
+      expect(result.hintsUnlocked).toBe(2);
+      expect(result.hintsCost).toBe(3);
+      expect(result.choice).toBe("C");
+      expect(debugLogs.some((l) => l.includes("[tool_call]"))).toBe(true);
+      expect(debugLogs.some((l) => l.includes("[tool_result]"))).toBe(true);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
 });
+
+
+
+
+

@@ -102,10 +102,13 @@ export interface TrialMetrics {
   operations?: TrialOperation[];
 }
 
+export type EvaluationMode = "thinking_tool" | "multi_step";
+
 export interface SessionExecutionMetadata {
   model_name?: string;
   persona?: string;
   thinking_effort?: string;
+  evaluation_mode?: EvaluationMode;
   total_duration_ms?: number;
   formatted_duration?: string;
   total_trials?: number;

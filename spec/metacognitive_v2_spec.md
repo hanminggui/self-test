@@ -3,7 +3,7 @@
 
 > **文档性质**：系统核心架构规格说明书（System Architectural Specification）  
 > **面向对象**：系统架构师、认知心理物理学算法工程师、全栈研发 Agent、大模型评测科学家  
-> **状态标记**：Approved & Ready for Implementation（已全面完成数学与统计逻辑闭环审查）  
+> **状态标记**：Completed & Fully Implemented（已全面完成工程落地与自动化验收测试闭环）  
 > **核心演进**：彻底解决 v1.0 阶梯自适应导致的一元胜率方差压缩问题；引入严格有界的 4D 正交“认知流形”相空间；重构严密无死角（MECE）的 8 大认知画像分类拓扑；实施“用户展示层（极致正面赋能）”与“后台统计层（严谨客观临床真值）”彻底物理隔离的双层契约架构。
 
 ---
@@ -433,7 +433,7 @@ export function computeMultivariateColor(
 ## 8. v2.0 工程迭代任务清单与实施计划（Implementation Roadmap）
 
 ### 8.1 里程碑 M1：模型契约重构与数据向前兼容 (`src/backend/models.ts`)
-- [ ] 扩展 `CognitiveArchetype` 8 种全新枚举，保持向后兼容：
+- [x] 扩展 `CognitiveArchetype` 8 种全新枚举，保持向后兼容：
   ```typescript
   export enum CognitiveArchetype {
     SOVEREIGN = "SOVEREIGN",                       // Q1-CAL
@@ -446,32 +446,32 @@ export function computeMultivariateColor(
     STOCHASTIC_DRIFTER = "STOCHASTIC_DRIFTER",     // Q8-DRI
   }
   ```
-- [ ] 针对 `data/sessions.sqlite` 提供历史 session 枚举兼容映射层（将存量 v1 枚举无损映射至对应新画像），杜绝历史数据反序列化崩溃；
-- [ ] 扩展 `MetacognitiveMetrics` 与 `DiagnosticProfile` 契约，新增 `d_star`, `cognitive_manifold_vector`, `clinical_summary`。
+- [x] 针对 `data/sessions.sqlite` 提供历史 session 枚举兼容映射层（将存量 v1 枚举无损映射至对应新画像），杜绝历史数据反序列化崩溃；
+- [x] 扩展 `MetacognitiveMetrics` 与 `DiagnosticProfile` 契约，新增 `d_star`, `cognitive_manifold_vector`, `clinical_summary`。
 
 ### 8.2 里程碑 M2：心理计量与 4D 流形数学引擎 (`src/backend/metrics.ts`, `staircase.ts`)
-- [ ] 在 `staircase.ts` 实现安全的相变阈值提取与反转数组越界防护：
+- [x] 在 `staircase.ts` 实现安全的相变阈值提取与反转数组越界防护：
   - 提取最后 $\min(5, N_{\text{rev}})$ 次反转；若 $N_{\text{rev}} < 2$，回退至最后 5 轮滑动均值；
   - 导出归一化相变突破度 $D^* = (0.85 - \delta^*) / 0.80$；
-- [ ] 实现严格归一化的 `computeInfoBuyingEfficiency(records)` 函数（有界于 $[0, 1]$，处理 $N_{\text{hints}}=0$ 分支）；
-- [ ] 规范 4AFC 架构下的 Type-2 信号检测灵敏度计算，引入 Hautus 平滑与分母保护 $\max(0.20, d')$；
-- [ ] 封装完整的 4D 认知流形特征向量 $\mathbf{X}_{\mathcal{M}} = (D^*, M_{ratio}, \text{Bias}, \text{IVE})$。
+- [x] 实现严格归一化的 `computeInfoBuyingEfficiency(records)` 函数（有界于 $[0, 1]$，处理 $N_{\text{hints}}=0$ 分支）；
+- [x] 规范 4AFC 架构下的 Type-2 信号检测灵敏度计算，引入 Hautus 平滑与分母保护 $\max(0.20, d')$；
+- [x] 封装完整的 4D 认知流形特征向量 $\mathbf{X}_{\mathcal{M}} = (D^*, M_{ratio}, \text{Bias}, \text{IVE})$。
 
 ### 8.3 里程碑 M3：MECE 判别引擎与双层解耦生成器 (`src/backend/report_generator.ts`)
-- [ ] 建立独立的对照映射字典 `src/backend/archetype_matrix.ts`，彻底分离文案与核心超平面算法；
-- [ ] 严格落地第 6 节的 MECE 判定算法，消除所有兜底歧义；
-- [ ] 生成报告时，同时输出完整的后台临床诊断真值（`clinical_summary`）与前台纯正面赋能卡片（`user_profile`）。
+- [x] 建立独立的对照映射字典 `src/backend/archetype_matrix.ts`，彻底分离文案与核心超平面算法；
+- [x] 严格落地第 6 节的 MECE 判定算法，消除所有兜底歧义；
+- [x] 生成报告时，同时输出完整的后台临床诊断真值（`clinical_summary`）与前台纯正面赋能卡片（`user_profile`）。
 
 ### 8.4 里程碑 M4：前端卡片动效与群体管理台宏观升级 (`src/frontend/`)
-- [ ] **用户前台 (`App.tsx`)**：
+- [x] **用户前台 (`App.tsx`)**：
   - 适配 8 大全新角色专属徽章、称号金句与四重技能卡片动效；
-- [ ] **管理后台群体散点图 (`Admin.tsx`)**：
+- [x] **管理后台群体散点图 (`Admin.tsx`)**：
   - 彻底淘汰方差压缩的旧 X 轴（`first_order_accuracy`），重构为以相变突破度 $D^*$ 为 X 轴、元认知效率 $M_{ratio}$ 为 Y 轴的真实流形宏观分布图；
   - 接入第 7 节双变量色彩规范 `computeMultivariateColor(bias, ive)`，实现 4D 点阵着色、透明度调节与高杠杆外发光；
   - 增加看板双变量微元图例说明（Bias 冷暖色温轴 + IVE 能量饱和度轴）。
 
 ### 8.5 里程碑 M5：全覆盖自动化验收测试套件 (`tests/`)
-- [ ] 构建 8 组针对性 Mock Agent，实现 8 个画像分支超平面边界的 100% 覆盖率测试；
-- [ ] 边界与健壮性测试：全对（撞顶）、全错（撞底）、0 购买线索、高频购买线索、零反转等极端边界；
-- [ ] 双层隔离断言测试：验证修改展示层文本绝不引起后台统计指标与画像枚举的任何漂移。
+- [x] 构建 8 组针对性 Mock Agent，实现 8 个画像分支超平面边界的 100% 覆盖率测试；
+- [x] 边界与健壮性测试：全对（撞顶）、全错（撞底）、0 购买线索、高频购买线索、零反转等极端边界；
+- [x] 双层隔离断言测试：验证修改展示层文本绝不引起后台统计指标与画像枚举的任何漂移。
 

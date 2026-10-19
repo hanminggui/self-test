@@ -17,15 +17,24 @@
 import * as fs from "fs";
 import * as path from "path";
 import { parseArgs } from "util";
-import { MetacognitiveAction, SubjectType, type TokenUsageStats, type TrialOperation } from "../backend/models";
+import {
+  type EvaluationMode,
+  MetacognitiveAction,
+  SubjectType,
+  type TokenUsageStats,
+  type TrialOperation,
+  type TrialPayload,
+} from "../backend/models";
 import { formatDuration, formatTokenCount, getFullDateTime, getShortTime, maskKey } from "./lib/formatters";
-import { LLMClient } from "./lib/llm_client";
+import { LLMClient, type TokenUsage } from "./lib/llm_client";
 import { EvalLogger } from "./lib/logger";
 import {
   BET_STEP3_SCHEMA,
+  BUY_HINT_TOOL,
   CHOICE_STEP2_SCHEMA,
   HINT_STEP1_SCHEMA,
   HINT_STEP1B_SCHEMA,
+  SINGLE_PASS_DECISION_SCHEMA,
 } from "./lib/schema_builder";
 import { runInteractiveWizard, type ThinkingEffort } from "./wizard";
 
@@ -80,6 +89,17 @@ export const STEP1_ACTION_USER_PROMPT = `【本轮行动选择】
 - BUY_HINT: 调阅第 1 级辅助线索 (消耗 1 分)
 
 请以 JSON 格式输出选择，例如: {"strategy": "BUY_HINT"} 或 {"strategy": "DECIDE"}`;
+
+/**
+ * 思考模式单通推演与工具调用指令 (作为思考模式下紧随题目后的第 2 条 User 消息)
+ */
+export const THINKING_SINGLE_PASS_USER_PROMPT = `【单通推演与决策指令】
+- 若当前信息已足够锁定答案，请勿调用任何工具，直接以 JSON 格式输出最终决策：
+  {"choice": "A", "action": "HIGH_BET", "confidence": 0.9}
+  * choice: 唯一选定的选项字母 ("A" / "B" / "C" / "D")
+  * action: 交付下注策略 ("HIGH_BET" 选对+10/选错-10；"SAFE_BET" 固定+3)
+  * confidence: 主观把握度 (0.0 ~ 1.0)
+- 若推演遇到瓶颈或信息不足，请调用 buy_hint 工具调阅辅助线索（tier=1 消耗 1 分；tier=2 累计消耗 3 分），并在 analysis_so_far 中记录当前已排除选项与卡点（若当前端点不支持工具调用，也可直接输出 JSON: {"strategy": "BUY_HINT", "tier": 1, "analysis_so_far": "..."}）。`;
 
 const CONFIG_FILE = path.resolve(process.cwd(), ".eval_config.json");
 
@@ -306,12 +326,108 @@ interface StepTrialResult {
 }
 
 /**
- * 分步元认知评测核心执行协议 (自然追加单向会话 + 推理模型思维链完全原生兼容)
+ * 构造单试次初始对话消息栈 (System 规则 + 可选 Persona + 纯净题目文本 + 首步指令)
  */
-async function executeStepByStepTrial(
+function buildTrialConversation(
+  trialIndex: number,
+  payload: Pick<TrialPayload, "prompt" | "options">,
+  firstInstructionPrompt: string,
+  persona?: string
+): any[] {
+  const conversation: any[] = [
+    { role: "system", content: GAME_RULES_SYSTEM_PROMPT },
+  ];
+
+  if (persona && persona.trim()) {
+    conversation.push({ role: "system", content: persona.trim() });
+  }
+
+  const optionsText = Object.entries(payload.options)
+    .map(([k, v]) => `  [选项 ${k}]:\n${v}`)
+    .join("\n\n");
+
+  const firstUserMessage = `【推演任务 #${trialIndex}】
+${payload.prompt}
+
+候选选项列表:
+${optionsText}`;
+
+  conversation.push({ role: "user", content: firstUserMessage });
+  conversation.push({ role: "user", content: firstInstructionPrompt });
+  return conversation;
+}
+
+/**
+ * 调用后端接口解锁下一级辅助线索
+ */
+async function fetchSessionHint(apiBase: string, sessionId: string, fallbackText: string): Promise<string> {
+  const res = await fetch(`${apiBase}/api/sessions/${sessionId}/hint`, { method: "POST" });
+  const data = await res.json();
+  return data.hint || fallbackText;
+}
+
+/**
+ * 归一化最终选项与下注决策，计算单题耗时及 Token 增量并生成标准 StepTrialResult
+ */
+function finalizeTrialDecision(
+  rawChoiceVal: unknown,
+  betParsed: { action?: string; confidence?: number } | undefined,
+  operations: TrialOperation[],
+  trialStartTime: number,
+  tokenUsageBefore: TokenUsage,
+  llmClient: LLMClient,
+  hintsUnlocked: number,
+  hintsCost: number
+): StepTrialResult {
+  const rawChoice = rawChoiceVal ? String(rawChoiceVal).toUpperCase() : "";
+  const choice = ["A", "B", "C", "D"].includes(rawChoice) ? rawChoice : "A";
+
+  operations.push({
+    step: "FIRST_ORDER_CHOICE",
+    action: choice,
+    details: { raw_choice: rawChoice },
+  });
+
+  const action = betParsed?.action === "HIGH_BET" ? MetacognitiveAction.HIGH_BET : MetacognitiveAction.SAFE_BET;
+  const confidence = typeof betParsed?.confidence === "number"
+    ? Math.min(1.0, Math.max(0.0, betParsed.confidence))
+    : (action === MetacognitiveAction.HIGH_BET ? 0.85 : 0.55);
+
+  operations.push({
+    step: "SECOND_ORDER_BET",
+    action,
+    details: { confidence },
+  });
+
+  const trialDurationMs = Date.now() - trialStartTime;
+  const tokenUsageAfter = llmClient.getSessionTokenUsage();
+  const trialTokenUsage: TokenUsageStats = {
+    prompt_tokens: Math.max(0, tokenUsageAfter.promptTokens - tokenUsageBefore.promptTokens),
+    completion_tokens: Math.max(0, tokenUsageAfter.completionTokens - tokenUsageBefore.completionTokens),
+    cached_tokens: Math.max(0, tokenUsageAfter.cachedTokens - tokenUsageBefore.cachedTokens),
+    reasoning_tokens: Math.max(0, tokenUsageAfter.reasoningTokens - tokenUsageBefore.reasoningTokens),
+    total_tokens: Math.max(0, tokenUsageAfter.totalTokens - tokenUsageBefore.totalTokens),
+  };
+
+  return {
+    choice,
+    action,
+    confidence,
+    hintsUnlocked,
+    hintsCost,
+    trialDurationMs,
+    trialTokenUsage,
+    operations,
+  };
+}
+
+/**
+ * 分步元认知评测核心执行协议 (自然追加单向会话 + 显式关闭思考)
+ */
+export async function executeStepByStepTrial(
   sessionId: string,
   trialIndex: number,
-  payload: any,
+  payload: Pick<TrialPayload, "prompt" | "options">,
   config: EvalConfig,
   llmClient: LLMClient
 ): Promise<StepTrialResult> {
@@ -364,8 +480,7 @@ async function executeStepByStepTrial(
       action,
       details: { confidence },
     });
-    
-    // 模拟 mock 模式下的 token 消耗，确保统计链路一致
+
     const mockPromptTokens = Math.floor(400 + Math.random() * 150);
     const mockCachedTokens = Math.floor(mockPromptTokens * (0.6 + Math.random() * 0.3));
     const mockCompletionTokens = Math.floor(40 + Math.random() * 40);
@@ -400,18 +515,8 @@ async function executeStepByStepTrial(
     };
   }
 
-  // 1. 系统消息装配：
-  // 消息 1 (恒定系统消息)：纯粹放置全局恒定的博弈效用规则
-  const conversation: any[] = [
-    { role: "system", content: GAME_RULES_SYSTEM_PROMPT },
-  ];
+  const conversation = buildTrialConversation(trialIndex, payload, STEP1_ACTION_USER_PROMPT, config.persona);
 
-  // 消息 2 (可选系统消息)：若启动时配置了自定义 Agent 人设，则在此注入第二条 system
-  if (config.persona && config.persona.trim()) {
-    conversation.push({ role: "system", content: config.persona.trim() });
-  }
-
-  // 助手消息追加助手函数：完整透传 reasoning_content 保证 DeepSeek-R1 / QwQ 上下文合法
   const appendAssistant = (res: { content: string; reasoning_content?: string }) => {
     conversation.push({
       role: "assistant",
@@ -419,23 +524,6 @@ async function executeStepByStepTrial(
       ...(res.reasoning_content ? { reasoning_content: res.reasoning_content } : {}),
     });
   };
-
-  // 2. 题干与候选选项作为首条 user 消息输入 (无 task_type 剧透，纯净题目数据)
-  const optionsText = Object.entries(payload.options)
-    .map(([k, v]) => `  [选项 ${k}]:\n${v}`)
-    .join("\n\n");
-
-  const firstUserMessage = `【推演任务 #${trialIndex}】
-${payload.prompt}
-
-候选选项列表:
-${optionsText}`;
-
-  // 连续两个 user 消息：
-  // 消息 1: 纯净题目与候选选项
-  // 消息 2: 行动选择指令与反省自审引导
-  conversation.push({ role: "user", content: firstUserMessage });
-  conversation.push({ role: "user", content: STEP1_ACTION_USER_PROMPT });
 
   // =========================================================================
   // 步骤 1：线索调阅策略决策 (纯粹决定是否调阅辅助线索，由 HINT_STEP1_SCHEMA 约束)
@@ -454,19 +542,14 @@ ${optionsText}`;
   });
 
   if (step1Strategy === "BUY_HINT") {
-    // 购买第 1 级线索
-    const h1Res = await fetch(`${config.apiBase}/api/sessions/${sessionId}/hint`, { method: "POST" });
-    const h1Data = await h1Res.json();
-    const hint1 = h1Data.hint || "线索获取成功";
+    const hint1 = await fetchSessionHint(config.apiBase, sessionId, "线索获取成功");
     hintsUnlocked = 1;
     hintsCost = 1;
 
-    // 直接将纯净线索文本作为 user 消息追加
     conversation.push({
       role: "user",
       content: hint1,
     });
-    // 紧跟进阶决策指令
     conversation.push({
       role: "user",
       content: `【本轮行动选择】
@@ -476,7 +559,6 @@ ${optionsText}`;
 请以 JSON 格式输出选择，例如: {"strategy": "BUY_HINT_TIER2"} 或 {"strategy": "DECIDE"}`,
     });
 
-    // 询问是否继续调阅第 2 级线索
     const step1bRes = await llmClient.query(conversation, HINT_STEP1B_SCHEMA, `#${trialIndex}/${config.totalTrials}  step 1b`);
     appendAssistant(step1bRes);
 
@@ -488,13 +570,10 @@ ${optionsText}`;
     });
 
     if (step1bStrategy === "BUY_HINT_TIER2") {
-      const h2Res = await fetch(`${config.apiBase}/api/sessions/${sessionId}/hint`, { method: "POST" });
-      const h2Data = await h2Res.json();
-      const hint2 = h2Data.hint || "细节线索获取成功";
+      const hint2 = await fetchSessionHint(config.apiBase, sessionId, "细节线索获取成功");
       hintsUnlocked = 2;
       hintsCost = 3;
 
-      // 直接追加第 2 级纯净线索文本
       conversation.push({
         role: "user",
         content: hint2,
@@ -507,7 +586,7 @@ ${optionsText}`;
   // =========================================================================
   conversation.push({
     role: "user",
-    content: `请推导并以 JSON 格式输出唯一正确选项，例如: {"choice": "A"}`,
+    content: `请以 JSON 格式输出唯一选项 (A/B/C/D)，例如: {"choice": "A"} 或 {"choice": "B"}`,
   });
 
   const choiceRes = await llmClient.query(conversation, CHOICE_STEP2_SCHEMA, `#${trialIndex}/${config.totalTrials}  step 2`);
@@ -516,58 +595,262 @@ ${optionsText}`;
   const rawChoice = choiceRes.parsed.choice ? String(choiceRes.parsed.choice).toUpperCase() : "";
   const choice = ["A", "B", "C", "D"].includes(rawChoice) ? rawChoice : "A";
 
-  operations.push({
-    step: "FIRST_ORDER_CHOICE",
-    action: choice,
-    details: { raw_choice: rawChoice },
-  });
-
   // =========================================================================
   // 步骤 3：二元置信下注 (一元选项已客观锁定，选择交付策略并给出把握度)
   // =========================================================================
   conversation.push({
     role: "user",
-    content: `已选定选项 [${choice}]。请评估确定性把握度 (0.0~1.0) 并选择交付策略：
+    content: `已选定选项 [${choice}]。交付策略规则如下：
 - HIGH_BET: 正确 +10 分，错误 -10 分
 - SAFE_BET: 收益固定为 +3 分 (不论正误)
 
-请以 JSON 格式输出，例如: {"action": "HIGH_BET", "confidence": 0.85}`,
+请以 JSON 格式输出交付策略与把握度 (0.0~1.0)，例如: {"action": "HIGH_BET", "confidence": 0.9} 或 {"action": "SAFE_BET", "confidence": 0.5}`,
   });
 
   const betRes = await llmClient.query(conversation, BET_STEP3_SCHEMA, `#${trialIndex}/${config.totalTrials}  step 3`);
   appendAssistant(betRes);
 
-  const action = betRes.parsed.action === "HIGH_BET" ? MetacognitiveAction.HIGH_BET : MetacognitiveAction.SAFE_BET;
-  const confidence = typeof betRes.parsed.confidence === "number"
-    ? Math.min(1.0, Math.max(0.0, betRes.parsed.confidence))
-    : (action === MetacognitiveAction.HIGH_BET ? 0.85 : 0.55);
-
-  operations.push({
-    step: "SECOND_ORDER_BET",
-    action,
-    details: { confidence },
-  });
-
-  const trialDurationMs = Date.now() - trialStartTime;
-  const tokenUsageAfter = llmClient.getSessionTokenUsage();
-  const trialTokenUsage: TokenUsageStats = {
-    prompt_tokens: Math.max(0, tokenUsageAfter.promptTokens - tokenUsageBefore.promptTokens),
-    completion_tokens: Math.max(0, tokenUsageAfter.completionTokens - tokenUsageBefore.completionTokens),
-    cached_tokens: Math.max(0, tokenUsageAfter.cachedTokens - tokenUsageBefore.cachedTokens),
-    reasoning_tokens: Math.max(0, tokenUsageAfter.reasoningTokens - tokenUsageBefore.reasoningTokens),
-    total_tokens: Math.max(0, tokenUsageAfter.totalTokens - tokenUsageBefore.totalTokens),
-  };
-
-  return {
-    choice,
-    action,
-    confidence,
-    hintsUnlocked,
-    hintsCost,
-    trialDurationMs,
-    trialTokenUsage,
+  return finalizeTrialDecision(
+    choiceRes.parsed.choice,
+    betRes.parsed,
     operations,
-  };
+    trialStartTime,
+    tokenUsageBefore,
+    llmClient,
+    hintsUnlocked,
+    hintsCost
+  );
+}
+
+/**
+ * 思考模式单通推演 + buy_hint 工具调用协议
+ * - 不需要买线索时：1 次请求直接输出 {choice, action, confidence} 结束
+ * - 需要买线索时：思考中途触发 buy_hint(tier, analysis_so_far)，获取线索后显式关闭思考直接完成作答
+ */
+export async function executeThinkingToolTrial(
+  sessionId: string,
+  trialIndex: number,
+  payload: Pick<TrialPayload, "prompt" | "options">,
+  config: EvalConfig,
+  llmClient: LLMClient
+): Promise<StepTrialResult> {
+  if (config.isMock) {
+    return executeStepByStepTrial(sessionId, trialIndex, payload, config, llmClient);
+  }
+
+  const trialStartTime = Date.now();
+  const tokenUsageBefore = { ...llmClient.getSessionTokenUsage() };
+  const operations: TrialOperation[] = [];
+
+  const conversation = buildTrialConversation(trialIndex, payload, THINKING_SINGLE_PASS_USER_PROMPT, config.persona);
+
+  // Pass 1：开启思考 + 挂载 buy_hint 工具
+  const pass1Res = await llmClient.query(
+    conversation,
+    SINGLE_PASS_DECISION_SCHEMA,
+    `#${trialIndex}/${config.totalTrials}  thinking pass 1`,
+    0.1,
+    { tools: [BUY_HINT_TOOL] }
+  );
+
+  let hintsUnlocked = 0;
+  let hintsCost = 0;
+  let finalParsed = pass1Res.parsed;
+
+  const toolCall = pass1Res.tool_calls?.find((tc) => tc.function?.name === "buy_hint");
+  const fallbackBuyStrategy = !toolCall && (
+    pass1Res.parsed?.strategy === "BUY_HINT" ||
+    pass1Res.parsed?.strategy === "BUY_HINT_TIER2"
+  );
+
+  if (toolCall || fallbackBuyStrategy) {
+    let requestedTier = 1;
+    let analysisSoFar = "";
+
+    if (toolCall) {
+      try {
+        const argsObj = JSON.parse(toolCall.function.arguments || "{}");
+        requestedTier = argsObj.tier === 2 ? 2 : 1;
+        analysisSoFar = typeof argsObj.analysis_so_far === "string" ? argsObj.analysis_so_far : "";
+      } catch {
+        requestedTier = 1;
+      }
+    } else {
+      requestedTier = pass1Res.parsed.strategy === "BUY_HINT_TIER2" || pass1Res.parsed.tier === 2 ? 2 : 1;
+      analysisSoFar = typeof pass1Res.parsed.analysis_so_far === "string" ? pass1Res.parsed.analysis_so_far : "";
+    }
+
+    // 调取第 1 级线索
+    const hint1 = await fetchSessionHint(config.apiBase, sessionId, "线索获取成功");
+    hintsUnlocked = 1;
+    hintsCost = 1;
+
+    operations.push({
+      step: "HINT_TIER1",
+      action: "BUY_HINT",
+      details: { cost: 1, ...(analysisSoFar ? { analysis_so_far: analysisSoFar } : {}) },
+    });
+
+    const collectedHints: string[] = [hint1];
+
+    // 若直接请求了第 2 级线索，一并解锁
+    if (requestedTier === 2) {
+      const hint2 = await fetchSessionHint(config.apiBase, sessionId, "细节线索获取成功");
+      hintsUnlocked = 2;
+      hintsCost = 3;
+      collectedHints.push(hint2);
+
+      operations.push({
+        step: "HINT_TIER2",
+        action: "BUY_HINT_TIER2",
+        details: { cost: 2 },
+      });
+    }
+
+    const combinedHintsText = collectedHints.join("\n\n");
+
+    if (toolCall) {
+      conversation.push({
+        role: "assistant",
+        content: pass1Res.content || "",
+        tool_calls: pass1Res.tool_calls,
+        ...(pass1Res.reasoning_content ? { reasoning_content: pass1Res.reasoning_content } : {}),
+      });
+      conversation.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: combinedHintsText,
+      });
+    } else {
+      conversation.push({
+        role: "assistant",
+        content: pass1Res.content || "",
+        ...(pass1Res.reasoning_content ? { reasoning_content: pass1Res.reasoning_content } : {}),
+      });
+      conversation.push({
+        role: "user",
+        content: combinedHintsText,
+      });
+    }
+
+    conversation.push({
+      role: "user",
+      content: `结合已调阅的线索与前序分析${analysisSoFar ? `（${analysisSoFar}）` : ""}，请直接以 JSON 格式输出最终决策：
+{"choice": "A", "action": "HIGH_BET", "confidence": 0.9}${requestedTier === 1 ? "\n（若第 1 级线索后仍需第 2 级细节线索，可继续调用 buy_hint(tier=2)）" : ""}`,
+    });
+
+    // Pass 2：已获得线索与阶段推导结论，显式关闭思考合成决策（若仅解锁了 Tier 1 仍允许按需请求 Tier 2）
+    const pass2Res = await llmClient.query(
+      conversation,
+      SINGLE_PASS_DECISION_SCHEMA,
+      `#${trialIndex}/${config.totalTrials}  post-hint synthesis`,
+      0.1,
+      {
+        thinkingOverride: "none",
+        ...(requestedTier === 1 ? { tools: [BUY_HINT_TOOL] } : {}),
+      }
+    );
+
+    const tier2ToolCall = requestedTier === 1
+      ? pass2Res.tool_calls?.find((tc) => tc.function?.name === "buy_hint")
+      : undefined;
+    const fallbackTier2Buy = requestedTier === 1 && !tier2ToolCall && (
+      pass2Res.parsed?.strategy === "BUY_HINT_TIER2" ||
+      pass2Res.parsed?.strategy === "BUY_HINT"
+    );
+
+    if (tier2ToolCall || fallbackTier2Buy) {
+      const hint2 = await fetchSessionHint(config.apiBase, sessionId, "细节线索获取成功");
+      hintsUnlocked = 2;
+      hintsCost = 3;
+
+      operations.push({
+        step: "HINT_TIER2",
+        action: "BUY_HINT_TIER2",
+        details: { cost: 2 },
+      });
+
+      if (tier2ToolCall) {
+        conversation.push({
+          role: "assistant",
+          content: pass2Res.content || "",
+          tool_calls: pass2Res.tool_calls,
+        });
+        conversation.push({
+          role: "tool",
+          tool_call_id: tier2ToolCall.id,
+          content: hint2,
+        });
+      } else {
+        conversation.push({
+          role: "assistant",
+          content: pass2Res.content || "",
+        });
+        conversation.push({
+          role: "user",
+          content: hint2,
+        });
+      }
+
+      conversation.push({
+        role: "user",
+        content: `全部两级线索已调阅完毕，请直接以 JSON 格式输出最终决策：
+{"choice": "A", "action": "HIGH_BET", "confidence": 0.9}`,
+      });
+
+      const pass3Res = await llmClient.query(
+        conversation,
+        SINGLE_PASS_DECISION_SCHEMA,
+        `#${trialIndex}/${config.totalTrials}  tier2 synthesis`,
+        0.1,
+        { thinkingOverride: "none" }
+      );
+      finalParsed = pass3Res.parsed;
+    } else {
+      if (requestedTier === 1) {
+        operations.push({
+          step: "HINT_TIER2",
+          action: "DECIDE",
+          details: { cost: 0 },
+        });
+      }
+      finalParsed = pass2Res.parsed;
+    }
+  } else {
+    operations.push({
+      step: "HINT_TIER1",
+      action: "DECIDE",
+      details: { cost: 0 },
+    });
+  }
+
+  return finalizeTrialDecision(
+    finalParsed?.choice,
+    finalParsed,
+    operations,
+    trialStartTime,
+    tokenUsageBefore,
+    llmClient,
+    hintsUnlocked,
+    hintsCost
+  );
+}
+
+/**
+ * 统一试次调度入口：根据是否开启思考模式自动选择执行分支
+ */
+export async function runEvaluationTrial(
+  sessionId: string,
+  trialIndex: number,
+  payload: Pick<TrialPayload, "prompt" | "options">,
+  config: EvalConfig,
+  llmClient: LLMClient
+): Promise<StepTrialResult> {
+  const isThinkingMode = Boolean(config.thinking && config.thinking !== "none");
+  if (isThinkingMode) {
+    return executeThinkingToolTrial(sessionId, trialIndex, payload, config, llmClient);
+  }
+  return executeStepByStepTrial(sessionId, trialIndex, payload, config, llmClient);
 }
 
 async function main() {
@@ -596,12 +879,14 @@ async function main() {
     logger,
   });
 
-  const thinkingDisplay = config.thinking && config.thinking !== "none"
-    ? `已开启 [${config.thinking} 强度] (reasoning_effort: "${config.thinking}")`
-    : "未开启 (常规直接回答模式)";
+  const isThinkingMode = Boolean(config.thinking && config.thinking !== "none");
+  const evaluationMode: EvaluationMode = isThinkingMode ? "thinking_tool" : "multi_step";
+  const thinkingDisplay = isThinkingMode
+    ? `已开启 [${config.thinking} 强度] (单通推演 + buy_hint 工具中断续接模式)`
+    : "未开启 (显式关闭思考 + 经典分步协议模式)";
 
   console.log(`\n========================================================================`);
-  console.log(`  🧠 大模型二元认知 (Metacognition) 标准化评测流水线 (分步协议模式)`);
+  console.log(`  🧠 大模型二元认知 (Metacognition) 标准化评测流水线 (${isThinkingMode ? "单通思考+工具模式" : "分步协议模式"})`);
   console.log(`  🤖 目标模型:      ${config.model} ${config.isMock ? "(Mock 仿真验证模式)" : ""}`);
   console.log(`  🕒 开始时间:      ${startDateTime}`);
   console.log(`  🌐 评测服务端口:  ${config.apiBase}`);
@@ -632,6 +917,7 @@ async function main() {
         model_name: config.model,
         persona: config.persona || "标准中性 (零人设)",
         thinking_effort: config.thinking || "none",
+        evaluation_mode: evaluationMode,
         total_trials: config.totalTrials,
         warmup_trials: config.warmupTrials,
       },
@@ -647,7 +933,7 @@ async function main() {
   let currentReq = await sessionRes.json();
   const sessionId = currentReq.session_id;
   console.log(`✅ 评测会话已就绪: ${sessionId}`);
-  console.log(`🚀 开始执行分步骤隔离出题与作答...\n`);
+  console.log(`🚀 开始执行${isThinkingMode ? "单通思考+工具调阅" : "分步骤隔离"}出题与作答...\n`);
 
   let completedTrials = 0;
 
@@ -656,7 +942,7 @@ async function main() {
     const payload = currentReq.payload;
     const trialStart = Date.now();
 
-    const modelAns = await executeStepByStepTrial(sessionId, t, payload, config, llmClient);
+    const modelAns = await runEvaluationTrial(sessionId, t, payload, config, llmClient);
 
     const stepRes = await fetch(`${config.apiBase}/api/sessions/step`, {
       method: "POST",
@@ -720,6 +1006,7 @@ async function main() {
       model_name: config.model,
       persona: config.persona || "标准中性 (零人设)",
       thinking_effort: config.thinking || "none",
+      evaluation_mode: evaluationMode,
       total_duration_ms: evalTotalMs,
       formatted_duration: formatDuration(evalTotalMs),
       total_trials: config.totalTrials,

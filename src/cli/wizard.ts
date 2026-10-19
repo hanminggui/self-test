@@ -383,10 +383,10 @@ export async function runInteractiveWizard(options?: {
     const thinkingChoice = await p.select({
       message: "请选择思维链推理模式 (Thinking / 思考强度):",
       options: [
-        { value: "none", label: "⏹️  关闭思考 (none - 默认常规推理，快速直接回答)" },
-        { value: "medium", label: "🟡 中等强度 (medium - 推荐，均衡思考深度与速度)" },
-        { value: "low", label: "🟢 低等强度 (low - 快速简明思考)" },
-        { value: "high", label: "🔴 高等强度 (high - 最大化深度推演，适合复杂博弈)" },
+        { value: "none", label: "⏹️  关闭思考 (none - 显式禁用思考 + 经典分步协议)" },
+        { value: "medium", label: "🟡 中等强度 (medium - 单通推演 + buy_hint 工具模式，推荐)" },
+        { value: "low", label: "🟢 低等强度 (low - 单通快速思考 + buy_hint 工具模式)" },
+        { value: "high", label: "🔴 高等强度 (high - 单通深度推演 + buy_hint 工具模式)" },
       ],
       initialValue: options?.lastThinking || "none",
     });
@@ -399,10 +399,10 @@ export async function runInteractiveWizard(options?: {
   }
 
   const thinkingLabelMap: Record<ThinkingEffort, string> = {
-    none: "⏹️ 未开启 (none - 常规直接回答)",
-    low: "🟢 低等强度 (low)",
-    medium: "🟡 中等强度 (medium)",
-    high: "🔴 高等强度 (high)",
+    none: "⏹️ 未开启 (显式禁用思考 + 经典分步协议)",
+    low: "🟢 低等强度 (low - 单通推演 + buy_hint 工具模式)",
+    medium: "🟡 中等强度 (medium - 单通推演 + buy_hint 工具模式)",
+    high: "🔴 高等强度 (high - 单通推演 + buy_hint 工具模式)",
   };
 
   // 7. 最终确认

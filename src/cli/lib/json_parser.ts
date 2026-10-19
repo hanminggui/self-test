@@ -4,6 +4,8 @@
 
 export interface ParsedLLMDecision {
   strategy?: "DECIDE" | "BUY_HINT" | "BUY_HINT_TIER2" | string;
+  tier?: number;
+  analysis_so_far?: string;
   choice?: "A" | "B" | "C" | "D" | string;
   action?: "HIGH_BET" | "SAFE_BET" | string;
   confidence?: number;
@@ -41,13 +43,17 @@ export function cleanAndExtractJson(raw: string): ParsedLLMDecision {
 
   // 3. Fallback regex extractors
   const strategyMatch = text.match(/"strategy"\s*:\s*"(DECIDE|BUY_HINT|BUY_HINT_TIER2)"/i);
+  const tierMatch = text.match(/"tier"\s*:\s*([12])/i);
+  const analysisMatch = text.match(/"analysis_so_far"\s*:\s*"([^"]*)"/i);
   const choiceMatch = text.match(/"choice"\s*:\s*"([A-D])"/i);
   const actionMatch = text.match(/"action"\s*:\s*"(HIGH_BET|SAFE_BET)"/i);
   const confMatch = text.match(/"confidence"\s*:\s*([0-9]*\.?[0-9]+)/i);
 
-  if (strategyMatch || choiceMatch || actionMatch || confMatch) {
+  if (strategyMatch || tierMatch || analysisMatch || choiceMatch || actionMatch || confMatch) {
     const res: ParsedLLMDecision = {};
     if (strategyMatch) res.strategy = strategyMatch[1].toUpperCase();
+    if (tierMatch) res.tier = parseInt(tierMatch[1], 10);
+    if (analysisMatch) res.analysis_so_far = analysisMatch[1];
     if (choiceMatch) res.choice = choiceMatch[1].toUpperCase();
     if (actionMatch) res.action = actionMatch[1].toUpperCase();
     if (confMatch) res.confidence = Math.min(1, Math.max(0, parseFloat(confMatch[1])));
