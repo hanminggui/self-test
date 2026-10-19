@@ -155,6 +155,15 @@ app.get("/api/cohort/scatter", (c) => {
   return c.json(sessionManager.getCohortScatterData(currentSessionId));
 });
 
+const extractAdminToken = async (c: any): Promise<string | undefined> => {
+  const authHeader = c.req.header("Authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+  const queryToken = c.req.query("token");
+  if (bearerToken || queryToken) return bearerToken || queryToken;
+  const body = await c.req.json().catch(() => ({}));
+  return body?.token;
+};
+
 // 9. Admin Verify
 app.post("/api/admin/verify", async (c) => {
   const body = await c.req.json().catch(() => ({}));
@@ -163,19 +172,18 @@ app.post("/api/admin/verify", async (c) => {
 });
 
 // 10. Admin Sessions List
-app.get("/api/admin/sessions", (c) => {
+app.get("/api/admin/sessions", async (c) => {
+  const token = await extractAdminToken(c);
+  if (token !== ADMIN_PASSWORD) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
   const data = sessionManager.getCohortScatterData();
   return c.json({ sessions: data.subjects });
 });
 
 // 11. Admin Delete Session
 app.delete("/api/admin/sessions/:id", async (c) => {
-  const authHeader = c.req.header("Authorization");
-  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-  const queryToken = c.req.query("token");
-  const bodyToken = (await c.req.json().catch(() => ({})))?.token;
-  const token = bearerToken || queryToken || bodyToken;
-
+  const token = await extractAdminToken(c);
   if (token !== ADMIN_PASSWORD) {
     return c.json({ error: "Unauthorized" }, 401);
   }

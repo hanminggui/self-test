@@ -15,6 +15,25 @@ import { normPpf, normCdf, compute4AFCdPrime, nelderMead } from "./math";
 
 export class PsychometricScorer {
   /**
+   * Determines whether the trial records belong to the 4AFC paradigm.
+   * Prevents small-sample 4AFC sessions that randomly only had A/B options from degenerating into 2AFC.
+   */
+  static is4AfcParadigm(records: TrialRecord[]): boolean {
+    if (!records || records.length === 0) return true;
+    return records.some(
+      r =>
+        r.correct_option === "C" ||
+        r.correct_option === "D" ||
+        r.first_order_choice === "C" ||
+        r.first_order_choice === "D" ||
+        r.revised_choice === "C" ||
+        r.revised_choice === "D" ||
+        (r.correct_option === "B" && r.signal_type === "S1") ||
+        Boolean(r.stimulus_id && /_t\d+$/.test(r.stimulus_id))
+    );
+  }
+
+  /**
    * Calculates d' and criterion c using log-linear Hautus (1995) correction.
    * Supports both 2-alternative (2AFC) and 4-alternative (4AFC) paradigms.
    */
@@ -23,10 +42,7 @@ export class PsychometricScorer {
       return [0.01, 0.0];
     }
 
-    const is4afc = records.some(
-      r => r.correct_option === "C" || r.correct_option === "D" ||
-           r.first_order_choice === "C" || r.first_order_choice === "D"
-    );
+    const is4afc = this.is4AfcParadigm(records);
 
     if (is4afc) {
       // 4-Alternative Forced Choice
@@ -41,8 +57,8 @@ export class PsychometricScorer {
       const s2Records = records.filter(r => r.signal_type === "S2");
       const s1Records = records.filter(r => r.signal_type === "S1");
 
-      const hits = s2Records.filter(r => r.first_order_choice === "B").length;
-      const fas = s1Records.filter(r => r.first_order_choice === "B").length;
+      const hits = s2Records.filter(r => r.is_correct_first_order).length;
+      const fas = s1Records.filter(r => !r.is_correct_first_order).length;
 
       let hRate = s2Records.length > 0 ? (hits + 0.5) / (s2Records.length + 1.0) : 0.5;
       let faRate = s1Records.length > 0 ? (fas + 0.5) / (s1Records.length + 1.0) : 0.5;
@@ -86,10 +102,7 @@ export class PsychometricScorer {
     const clampedFa2 = Math.max(1e-4, Math.min(1.0 - 1e-4, fa2Star));
     const empiricalD2 = normPpf(clampedH2) - normPpf(clampedFa2);
 
-    const is4afc = records.some(
-      r => r.correct_option === "C" || r.correct_option === "D" ||
-           r.first_order_choice === "C" || r.first_order_choice === "D"
-    );
+    const is4afc = this.is4AfcParadigm(records);
 
     if (is4afc) {
       const metaD = empiricalD2 * 0.80;
@@ -185,7 +198,7 @@ export class PsychometricScorer {
 
   /**
    * Calibration Bias = Subjective Confidence - Objective Accuracy
-   * High bet c_i = 1.0 (or continuous confidence), Safe bet c_i = 0.5
+   * High bet c_i = 0.95 (or continuous confidence), Safe bet c_i = 0.50
    */
   static computeCalibrationBias(records: TrialRecord[]): number {
     if (!records || records.length === 0) return 0.0;
@@ -193,7 +206,7 @@ export class PsychometricScorer {
       if (r.confidence_level !== undefined && r.confidence_level !== null) {
         return r.confidence_level;
       }
-      return r.action === MetacognitiveAction.HIGH_BET ? 1.0 : 0.5;
+      return r.action === MetacognitiveAction.HIGH_BET ? 0.95 : 0.50;
     });
     const accuracies: number[] = records.map(r => (r.is_correct_first_order ? 1.0 : 0.0));
 
@@ -210,7 +223,7 @@ export class PsychometricScorer {
     if (!records || records.length === 0) return 0.25;
     const squaredErrors = records.map(r => {
       const outcome = r.is_correct_first_order ? 1.0 : 0.0;
-      const conf = r.confidence_level ?? (r.action === MetacognitiveAction.HIGH_BET ? 1.0 : 0.5);
+      const conf = r.confidence_level ?? (r.action === MetacognitiveAction.HIGH_BET ? 0.95 : 0.50);
       return Math.pow(conf - outcome, 2);
     });
     const avg = squaredErrors.reduce((a, b) => a + b, 0) / squaredErrors.length;
@@ -219,30 +232,45 @@ export class PsychometricScorer {
 
   /**
    * Information Value Efficiency (IVE) per §2.4:
-   * Leverage = N_rescued / N_hints
+   * Supports both two-phase revision protocol (!is_correct_first_order && is_correct_final)
+   * and single-pass pre-decision hint protocol (hint purchased before choice & final choice is correct).
+   * Leverage = N_rescued / N_hint_trials
    * DeltaNetScore = 10 * N_rescued - Cost_total
-   * IVE = Clamp[0, 1](0.40 * Leverage + 0.60 * max(0, DeltaNetScore) / max(10, 10 * N_hints))
-   * When N_hints = 0: IVE = 0.50 (neutral prior baseline)
+   * IVE = Clamp[0, 1](0.40 * Leverage + 0.60 * max(0, DeltaNetScore) / max(10, 10 * N_hint_trials))
+   * When N_hint_trials = 0: IVE = 0.50 (neutral prior baseline)
    */
   static computeInfoBuyingEfficiency(records: TrialRecord[]): number {
-    let nHints = 0;
+    let nHintTrials = 0;
     let costTotal = 0;
+    let rescued = 0;
+
     for (const r of records) {
+      const hasHint = (r.hints_unlocked !== undefined && r.hints_unlocked > 0) || Boolean(r.hint_purchased);
+      if (!hasHint) continue;
+
+      nHintTrials += 1;
       if (r.hints_unlocked !== undefined && r.hints_unlocked > 0) {
-        nHints += r.hints_unlocked;
         costTotal += r.hints_cost_total ?? (r.hints_unlocked === 1 ? 1 : 3);
-      } else if (r.hint_purchased) {
-        nHints += 1;
-        costTotal += 2;
+      } else {
+        costTotal += r.hints_cost_total ?? 2;
+      }
+
+      // 1. Two-phase revision mode: initial blind choice was wrong, revised to correct after hint
+      const isTwoPhaseRescued = !r.is_correct_first_order && r.is_correct_final;
+      // 2. Single-pass pre-decision hint mode: hint was bought prior to committing choice, and choice succeeded
+      const isSinglePassEffective =
+        r.is_correct_final && (!r.revised_choice || r.revised_choice === r.first_order_choice);
+
+      if (isTwoPhaseRescued || isSinglePassEffective) {
+        rescued += 1;
       }
     }
 
-    if (nHints === 0) return 0.50;
+    if (nHintTrials === 0) return 0.50;
 
-    const rescued = records.filter(r => r.hint_purchased && !r.is_correct_first_order && r.is_correct_final).length;
-    const leverage = rescued / nHints;
+    const leverage = rescued / nHintTrials;
     const deltaNetScore = 10 * rescued - costTotal;
-    const netScoreRatio = Math.max(0, deltaNetScore) / Math.max(10, 10 * nHints);
+    const netScoreRatio = Math.max(0, deltaNetScore) / Math.max(10, 10 * nHintTrials);
     const rawIve = 0.40 * leverage + 0.60 * netScoreRatio;
     const normalizedIve = Math.min(1.0, Math.max(0.0, rawIve));
     return Math.round(normalizedIve * 10000) / 10000;

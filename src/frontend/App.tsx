@@ -16,20 +16,7 @@ import {
   Dices,
 } from "lucide-react";
 
-const generateRandomCodename = () => {
-  const prefixes = [
-    "星轨", "微光", "深空", "虚空", "极境", "无界", "辰极",
-    "暗曜", "灵知", "破晓", "幻海", "以太", "云渊", "苍穹", "终焉"
-  ];
-  const suffixes = [
-    "领航员", "漫游者", "探索家", "执剑人", "观测者",
-    "寻迹者", "破壁人", "行者", "游侠", "先驱", "守夜人"
-  ];
-  const p = prefixes[Math.floor(Math.random() * prefixes.length)];
-  const s = suffixes[Math.floor(Math.random() * suffixes.length)];
-  const num = String(Math.floor(Math.random() * 99) + 1).padStart(2, "0");
-  return `${p}${s} · ${num}`;
-};
+import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
 
 interface TrialPayload {
   stimulus_id: string;
@@ -41,9 +28,18 @@ interface TrialPayload {
   hint_tier1_cost: number;
   hint_tier2_cost: number;
   hints_unlocked: number;
-  unlocked_hints: string[];
+  unlocked_hints?: string[] | { tier1?: string; tier2?: string };
   task_type: string;
 }
+
+const normalizeUnlockedHints = (raw?: string[] | { tier1?: string; tier2?: string }): string[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  const res: string[] = [];
+  if (raw.tier1) res.push(raw.tier1);
+  if (raw.tier2) res.push(raw.tier2);
+  return res;
+};
 
 interface TrialRequest {
   session_id: string;
@@ -221,6 +217,7 @@ export default function App() {
   const [sessionId, setSessionId] = useState("");
   const [trialData, setTrialData] = useState<TrialRequest | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [initialChoiceBeforeHint, setInitialChoiceBeforeHint] = useState<string | null>(null);
   const [selectedAction, setSelectedAction] = useState<"HIGH_BET" | "SAFE_BET">("HIGH_BET");
   const [unlockedHints, setUnlockedHints] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -253,8 +250,9 @@ export default function App() {
       setSessionId(data.session_id);
       setTrialData(data);
       setSelectedOption(null);
+      setInitialChoiceBeforeHint(null);
       setSelectedAction("HIGH_BET");
-      setUnlockedHints(data.payload.unlocked_hints || []);
+      setUnlockedHints(normalizeUnlockedHints(data.payload.unlocked_hints));
       setStage("TESTING");
     } catch (e: any) {
       setErrorMsg(e.message || "网络连接微澜，请稍后刷新");
@@ -266,6 +264,9 @@ export default function App() {
   // Purchase tiered hint
   const handleBuyHint = async () => {
     if (!sessionId || unlockedHints.length >= 2 || loading) return;
+    if (selectedOption && !initialChoiceBeforeHint) {
+      setInitialChoiceBeforeHint(selectedOption);
+    }
     setLoading(true);
     try {
       const res = await fetch(`/api/sessions/${sessionId}/hint`, { method: "POST" });
@@ -274,7 +275,11 @@ export default function App() {
         throw new Error(errJson.error || "获取灵感启示失败");
       }
       const data = await res.json();
-      setUnlockedHints(data.unlocked_hints || [...unlockedHints, data.hint]);
+      setUnlockedHints(
+        data.unlocked_hints
+          ? normalizeUnlockedHints(data.unlocked_hints)
+          : [...unlockedHints, data.hint]
+      );
     } catch (e: any) {
       setErrorMsg(e.message);
     } finally {
@@ -293,11 +298,12 @@ export default function App() {
     setErrorMsg("");
 
     try {
-      // 1. Submit Phase 1
+      const firstChoice = initialChoiceBeforeHint || selectedOption;
+      // 1. Submit Phase 1 (first-order choice prior to hint revision if captured)
       const p1Res = await fetch(`/api/sessions/${sessionId}/phase1`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ choice: selectedOption }),
+        body: JSON.stringify({ choice: firstChoice }),
       });
       if (!p1Res.ok) {
         const errJson = await p1Res.json().catch(() => ({}));
@@ -310,7 +316,7 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: selectedAction,
-          confidence_level: selectedAction === "HIGH_BET" ? 0.90 : 0.55,
+          confidence_level: selectedAction === "HIGH_BET" ? 0.95 : 0.50,
           revised_choice: selectedOption,
         }),
       });
@@ -342,15 +348,16 @@ export default function App() {
         const nextTrial: TrialRequest = await nextReqRes.json();
         setTrialData(nextTrial);
         setSelectedOption(null);
+        setInitialChoiceBeforeHint(null);
         setSelectedAction("HIGH_BET");
-        setUnlockedHints(nextTrial.payload.unlocked_hints || []);
+        setUnlockedHints(normalizeUnlockedHints(nextTrial.payload.unlocked_hints));
       }
     } catch (e: any) {
       setErrorMsg(e.message || "请求出现微澜，请重试");
     } finally {
       setLoading(false);
     }
-  }, [sessionId, selectedOption, selectedAction, loading]);
+  }, [sessionId, selectedOption, initialChoiceBeforeHint, selectedAction, loading]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {

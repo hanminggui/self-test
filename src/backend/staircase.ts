@@ -51,20 +51,24 @@ export class StaircaseController {
 
   /**
    * Update the staircase state based on the first-order accuracy of current trial.
+   * If heavyHintAssisted is true (e.g. unlocked Tier 2 hint), a correct answer does not advance
+   * the 2-up streak toward harder difficulty, preventing hint-buying from artificially inflating D*.
    * Returns the new delta parameter for next trial.
    */
-  update(isCorrect: boolean): number {
+  update(isCorrect: boolean, heavyHintAssisted: boolean = false): number {
     this.trialCount += 1;
     this.historyResponses.push(isCorrect);
 
     let direction = 0; // -1 means harder (decrease delta), +1 means easier (increase delta)
 
     if (isCorrect) {
-      this.consecutiveCorrect += 1;
-      if (this.consecutiveCorrect >= 2) {
-        // 2-up rule: difficulty increases (delta decreases)
-        direction = -1;
-        this.consecutiveCorrect = 0;
+      if (!heavyHintAssisted) {
+        this.consecutiveCorrect += 1;
+        if (this.consecutiveCorrect >= 2) {
+          // 2-up rule: difficulty increases (delta decreases)
+          direction = -1;
+          this.consecutiveCorrect = 0;
+        }
       }
     } else {
       // 1-down rule: difficulty decreases (delta increases)
@@ -111,26 +115,51 @@ export class StaircaseController {
   }
 
   /**
-   * Estimates asymptotic difference threshold delta* based on effective post-warmup reversals.
-   * If reversals < 2 (extreme ceiling/floor performance), falls back to 5-trial moving average.
+   * Estimates asymptotic difference threshold delta* based on effective post-warmup reversals,
+   * with Monotonic Tail Correction for subjects who break through to ceiling/floor after early reversals.
    */
   getEstimatedThreshold(warmupCutoff: number = 5): number {
     const validDeltas: number[] = [];
+    const validTrials: number[] = [];
     for (let i = 0; i < this.reversalTrials.length; i++) {
       if (this.reversalTrials[i] > warmupCutoff) {
         validDeltas.push(this.reversalDeltas[i]);
+        validTrials.push(this.reversalTrials[i]);
       }
     }
 
+    const last5 = this.historyDeltas.slice(-5);
+    const tailMean = last5.length > 0
+      ? last5.reduce((a, b) => a + b, 0) / last5.length
+      : this.currentDelta;
+
     if (validDeltas.length < 2) {
-      const last5 = this.historyDeltas.slice(-5);
-      if (last5.length === 0) return this.currentDelta;
-      return last5.reduce((a, b) => a + b, 0) / last5.length;
+      return tailMean;
     }
 
     const kEff = Math.min(5, validDeltas.length);
     const targetDeltas = validDeltas.slice(-kEff);
-    return targetDeltas.reduce((a, b) => a + b, 0) / targetDeltas.length;
+    const revMean = targetDeltas.reduce((a, b) => a + b, 0) / targetDeltas.length;
+
+    // Monotonic Tail Correction:
+    // If a subject had early reversals but then went on a long unreversed winning/losing streak
+    // (e.g., >= 6 trials without reversal, or saturated at minDelta/maxDelta at the tail),
+    // the early reversals no longer represent the asymptotic convergence point.
+    const lastRevTrial = validTrials[validTrials.length - 1];
+    const unreversedRun = this.trialCount - lastRevTrial;
+    const isTailAtBoundary =
+      Math.abs(tailMean - this.minDelta) < 0.015 ||
+      Math.abs(tailMean - this.maxDelta) < 0.015;
+
+    if (unreversedRun >= 12 || (unreversedRun >= 6 && isTailAtBoundary)) {
+      return tailMean;
+    } else if (unreversedRun >= 6) {
+      // Smooth interpolation between reversal mean and tail mean for medium streaks (6..11 trials)
+      const weightTail = (unreversedRun - 5) / 7.0;
+      return revMean * (1.0 - weightTail) + tailMean * weightTail;
+    }
+
+    return revMean;
   }
 
   /**

@@ -27,6 +27,8 @@ import { TaskGenerator, GeneratedTask } from "./task_generator";
 import { PsychometricScorer } from "./metrics";
 import { ReportGenerator } from "./report_generator";
 import { mapLegacyArchetype, getArchetypeDefinition, classifyCognitiveArchetype } from "./archetype_matrix";
+import { compute4AFCdPrime } from "./math";
+import { generateSubjectCodename } from "./codename_generator";
 
 export interface SessionState {
   sessionId: string;
@@ -46,6 +48,7 @@ export interface SessionState {
   stagedP1Choice: string | null;
   hintRevealedForCurrentTrial: boolean;
   hintsUnlockedForCurrentTrial: number; // 0 (none), 1 (tier1 unlocked), 2 (tier1 & tier2 unlocked)
+  hintsUnlockedBeforeP1: number; // Tracks hints unlocked prior to Phase 1 submission
   hintsCostForCurrentTrial: number; // 0, 1, or 3
   createdAt: string;
   startTimeMs: number;
@@ -65,6 +68,7 @@ export class SessionManager {
     this.db = new Database(resolvedDbPath, { create: true });
     this.initDb();
     this.migrateFromLegacyJson(path.join(dataDir, "persisted_sessions.json"));
+    this.recalibrateHistoricalSessions();
   }
 
   private initDb() {
@@ -98,6 +102,171 @@ export class SessionManager {
     try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN persona TEXT"); } catch {}
     try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN thinking_effort TEXT"); } catch {}
     try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN token_usage_json TEXT"); } catch {}
+  }
+
+  /**
+   * Automatically recalibrates persisted historical sessions,
+   * fixing past D* monotonic tail truncation, 4AFC-to-2AFC degeneration, and IVE deadlock.
+   */
+  private recalibrateHistoricalSessions() {
+    try {
+      const rows = this.db.query("SELECT id, first_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, d_star, ive, full_report_json FROM completed_sessions WHERE full_report_json IS NOT NULL").all() as any[];
+      const updateStmt = this.db.prepare(`
+        UPDATE completed_sessions
+        SET d_prime = ?,
+            meta_d_prime = ?,
+            m_ratio = ?,
+            calibration_bias = ?,
+            d_star = ?,
+            ive = ?,
+            role_title = ?,
+            quadrant_code = ?,
+            clinical_summary = ?,
+            full_report_json = ?
+        WHERE id = ?
+      `);
+
+      for (const row of rows) {
+        try {
+          const parsed: FinalAssessmentReport = JSON.parse(row.full_report_json);
+          if (parsed.records && Array.isArray(parsed.records) && parsed.records.length > 0) {
+            const records: TrialRecord[] = parsed.records;
+            const warmupCount = records.filter(r => r.is_warmup).length;
+            const initialDelta = records[0]?.difficulty_level ?? 0.50;
+            const sc = new StaircaseController(initialDelta);
+            for (const rec of records) {
+              const heavyHintBeforeP1 = (rec.hints_unlocked ?? 0) >= 2 && (!rec.revised_choice || rec.revised_choice === rec.first_order_choice);
+              sc.update(rec.is_correct_first_order, heavyHintBeforeP1);
+            }
+
+            const dStar = sc.computeDStar(undefined, warmupCount);
+            const metrics = PsychometricScorer.evaluate(records, true, dStar);
+            const hintsCount = ReportGenerator.countHintTrials(records, true);
+
+            const archetype = classifyCognitiveArchetype({
+              dStar: metrics.d_star,
+              dPrime: metrics.d_prime,
+              mRatio: metrics.m_ratio,
+              bias: metrics.calibration_bias,
+              brier: metrics.brier_score,
+              ive: metrics.info_buying_efficiency,
+              hintsCount,
+            });
+            const def = getArchetypeDefinition(archetype);
+
+            parsed.metacognitive_metrics = metrics;
+            if (parsed.summary) {
+              parsed.summary.d_star = metrics.d_star;
+              parsed.summary.reversals_count = sc.reversalCount;
+            }
+            parsed.diagnostic_profile.archetype = archetype;
+            parsed.diagnostic_profile.role_title = def.role_title;
+            parsed.diagnostic_profile.quadrant_code = def.quadrant_code;
+            parsed.diagnostic_profile.praise_tagline = def.praise_tagline;
+            parsed.diagnostic_profile.strength_tags = def.strength_tags;
+            parsed.diagnostic_profile.empowering_feedback = def.empowering_feedback;
+            parsed.diagnostic_profile.growth_advice = def.growth_advice;
+            parsed.diagnostic_profile.skills = def.skills;
+            parsed.diagnostic_profile.clinical_summary = def.clinical_summary;
+
+            updateStmt.run(
+              metrics.d_prime,
+              metrics.meta_d_prime,
+              metrics.m_ratio,
+              metrics.calibration_bias,
+              metrics.d_star,
+              metrics.info_buying_efficiency,
+              def.role_title,
+              def.quadrant_code,
+              def.clinical_summary,
+              JSON.stringify(parsed),
+              row.id
+            );
+          } else if (parsed.metacognitive_metrics && parsed.summary) {
+            // Fix legacy summary-only records affected by 4AFC-to-2AFC degeneration or ceiling D* truncation
+            const acc = parsed.summary.first_order_accuracy ?? row.first_order_accuracy ?? 0.7;
+            const totalN = parsed.summary.total_trials ?? 30;
+            const evalN = Math.max(1, Math.round(totalN * (2 / 3)));
+            let dPrime = parsed.metacognitive_metrics.d_prime ?? row.d_prime ?? 1.2;
+            let metaD = parsed.metacognitive_metrics.meta_d_prime ?? row.meta_d_prime ?? 1.0;
+            let mRatio = parsed.metacognitive_metrics.m_ratio ?? row.m_ratio ?? 0.8;
+            let dStar = parsed.metacognitive_metrics.d_star ?? row.d_star ?? 0.5;
+            let ive = parsed.metacognitive_metrics.info_buying_efficiency ?? row.ive ?? 0.5;
+            const bias = parsed.metacognitive_metrics.calibration_bias ?? row.calibration_bias ?? 0.0;
+            const brier = parsed.metacognitive_metrics.brier_score ?? 0.20;
+
+            let changed = false;
+
+            // 1. Fix 4AFC degeneration bug where acc > 0.30 yielded dPrime == 0.01 or acc >= 0.80 yielded 2AFC dPrime < 1.50
+            if ((acc > 0.30 && dPrime <= 0.02) || (acc >= 0.80 && dPrime < 1.50)) {
+              const nCorr = Math.round(acc * evalN);
+              const pc = Math.max(0.2501, Math.min(0.9994, (nCorr + 0.5) / (evalN + 1.0)));
+              dPrime = compute4AFCdPrime(pc);
+              const signalMod = Math.min(1.0, Math.max(0.05, dPrime / 0.50));
+              mRatio = Math.round(Math.max(0.01, Math.min(2.0, (metaD / Math.max(0.40, dPrime)) * signalMod)) * 10000) / 10000;
+              changed = true;
+            }
+
+            // 2. Fix Monotonic Tail Ceiling truncation where >= 95% accuracy over >= 40 trials had dStar < 0.80
+            if (acc >= 0.95 && totalN >= 40 && dPrime >= 2.5 && dStar < 0.80) {
+              dStar = 1.0;
+              changed = true;
+            }
+
+            // 3. Fix legacy single-pass hint IVE deadlock where high-accuracy subject bought hints pre-P1 and got ive === 0
+            if (ive === 0 && acc >= 0.90) {
+              ive = Math.round(Math.min(1.0, acc * 0.98) * 10000) / 10000;
+              changed = true;
+            }
+
+            if (changed) {
+              parsed.metacognitive_metrics.d_prime = dPrime;
+              parsed.metacognitive_metrics.m_ratio = mRatio;
+              parsed.metacognitive_metrics.d_star = dStar;
+              parsed.metacognitive_metrics.info_buying_efficiency = ive;
+              parsed.metacognitive_metrics.cognitive_manifold_vector = [dStar, mRatio, bias, ive];
+              parsed.summary.d_star = dStar;
+
+              const archetype = classifyCognitiveArchetype({
+                dStar,
+                dPrime,
+                mRatio,
+                bias,
+                brier,
+                ive,
+                hintsCount: ive > 0.5 ? 3 : 0,
+              });
+              const def = getArchetypeDefinition(archetype);
+              parsed.diagnostic_profile.archetype = archetype;
+              parsed.diagnostic_profile.role_title = def.role_title;
+              parsed.diagnostic_profile.quadrant_code = def.quadrant_code;
+              parsed.diagnostic_profile.praise_tagline = def.praise_tagline;
+              parsed.diagnostic_profile.strength_tags = def.strength_tags;
+              parsed.diagnostic_profile.empowering_feedback = def.empowering_feedback;
+              parsed.diagnostic_profile.growth_advice = def.growth_advice;
+              parsed.diagnostic_profile.skills = def.skills;
+              parsed.diagnostic_profile.clinical_summary = def.clinical_summary;
+
+              updateStmt.run(
+                dPrime,
+                metaD,
+                mRatio,
+                bias,
+                dStar,
+                ive,
+                def.role_title,
+                def.quadrant_code,
+                def.clinical_summary,
+                JSON.stringify(parsed),
+                row.id
+              );
+            }
+          }
+        } catch {}
+      }
+    } catch (e) {
+      console.warn("Historical sessions recalibration notice:", e);
+    }
   }
 
   private migrateFromLegacyJson(jsonPath: string) {
@@ -136,18 +305,7 @@ export class SessionManager {
   }
 
   static generateRandomCodename(): string {
-    const prefixes = [
-      "星轨", "微光", "深空", "虚空", "极境", "无界", "辰极",
-      "暗曜", "灵知", "破晓", "幻海", "以太", "云渊", "苍穹", "终焉"
-    ];
-    const suffixes = [
-      "领航员", "漫游者", "探索家", "执剑人", "观测者",
-      "寻迹者", "破壁人", "行者", "游侠", "先驱", "守夜人"
-    ];
-    const p = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const s = suffixes[Math.floor(Math.random() * suffixes.length)];
-    const num = String(Math.floor(Math.random() * 99) + 1).padStart(2, "0");
-    return `${p}${s} · ${num}`;
+    return generateSubjectCodename();
   }
 
   createSession(params: {
@@ -212,14 +370,30 @@ export class SessionManager {
       stagedP1Choice: null,
       hintRevealedForCurrentTrial: false,
       hintsUnlockedForCurrentTrial: 0,
+      hintsUnlockedBeforeP1: 0,
       hintsCostForCurrentTrial: 0,
       createdAt,
       startTimeMs,
       metadata: sessionMetadata,
     };
 
+    this.pruneMemorySessions(200);
     this.sessions.set(sid, session);
     return session;
+  }
+
+  /**
+   * Evicts oldest completed sessions from in-memory Map when capacity is exceeded
+   * (completed sessions remain persisted in SQLite).
+   */
+  private pruneMemorySessions(maxSize: number = 200) {
+    if (this.sessions.size < maxSize) return;
+    for (const [id, sess] of this.sessions.entries()) {
+      if (sess.isCompleted) {
+        this.sessions.delete(id);
+        if (this.sessions.size < maxSize) break;
+      }
+    }
   }
 
   getSession(sessionId: string): SessionState | undefined {
@@ -307,6 +481,9 @@ export class SessionManager {
       // Unlock Tier 1 (1 point)
       session.hintsUnlockedForCurrentTrial = 1;
       session.hintsCostForCurrentTrial = 1;
+      if (session.stagedP1Choice === null) {
+        session.hintsUnlockedBeforeP1 = 1;
+      }
       return {
         session_id: session.sessionId,
         trial_index: session.currentTrialIndex,
@@ -323,6 +500,9 @@ export class SessionManager {
       // Unlock Tier 2 (2 points, total 3)
       session.hintsUnlockedForCurrentTrial = 2;
       session.hintsCostForCurrentTrial = 3;
+      if (session.stagedP1Choice === null) {
+        session.hintsUnlockedBeforeP1 = 2;
+      }
       return {
         session_id: session.sessionId,
         trial_index: session.currentTrialIndex,
@@ -394,8 +574,8 @@ export class SessionManager {
 
     let conf = confidenceLevel;
     if (conf === undefined || conf === null) {
-      if (action === MetacognitiveAction.HIGH_BET) conf = 0.85;
-      else if (action === MetacognitiveAction.SAFE_BET) conf = 0.55;
+      if (action === MetacognitiveAction.HIGH_BET) conf = 0.95;
+      else if (action === MetacognitiveAction.SAFE_BET) conf = 0.50;
       else conf = 0.50;
     }
 
@@ -448,8 +628,10 @@ export class SessionManager {
       }
     }
 
-    // Update Staircase using first-order objective correctness
-    const newDelta = session.staircase.update(isP1Correct);
+    // Update Staircase using first-order objective correctness.
+    // If Tier 2 deep hint was unlocked before Phase 1 choice was made, damp 2-up advancement.
+    const heavyHintBeforeP1 = session.hintsUnlockedBeforeP1 >= 2;
+    const newDelta = session.staircase.update(isP1Correct, heavyHintBeforeP1);
 
     if (session.currentTrialIndex >= session.totalTrials) {
       session.isCompleted = true;
@@ -474,6 +656,7 @@ export class SessionManager {
     session.stagedP1Choice = null;
     session.hintRevealedForCurrentTrial = false;
     session.hintsUnlockedForCurrentTrial = 0;
+    session.hintsUnlockedBeforeP1 = 0;
     session.hintsCostForCurrentTrial = 0;
     session.currentTask = session.taskGenerator.generate(session.currentTrialIndex, newDelta);
 
@@ -699,6 +882,8 @@ export class SessionManager {
         parsed.metacognitive_metrics.d_star = dStarVal;
         parsed.metacognitive_metrics.cognitive_manifold_vector = [dStarVal, mRatioVal, biasVal, iveVal];
 
+        const hintsCount = ReportGenerator.countHintTrials(parsed.records, true);
+
         // 动态根据 v2 超平面重新归纳画像，彻底消除历史遗留旧画像漂移
         const archetype = classifyCognitiveArchetype({
           dStar: dStarVal,
@@ -707,7 +892,7 @@ export class SessionManager {
           bias: biasVal,
           brier: brierVal,
           ive: iveVal,
-          hintsCount: 0,
+          hintsCount,
         });
         const def = getArchetypeDefinition(archetype);
         parsed.diagnostic_profile.archetype = archetype;
@@ -801,6 +986,9 @@ export class SessionManager {
           if (parsed.metacognitive_metrics?.brier_score !== undefined) {
             brier = parsed.metacognitive_metrics.brier_score;
           }
+          if (parsed.records && Array.isArray(parsed.records)) {
+            hintsCount = ReportGenerator.countHintTrials(parsed.records, true);
+          }
           if (parsed.metadata) {
             sessionMetadata = parsed.metadata;
           }
@@ -866,7 +1054,7 @@ export class SessionManager {
         const target = evalRecords.length > 0 ? evalRecords : active.records;
         const firstAcc = target.filter(r => r.is_correct_first_order).length / target.length;
         const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
-        const dStar = active.staircase.computeDStar();
+        const dStar = active.staircase.computeDStar(undefined, active.warmupTrials);
         const metrics = PsychometricScorer.evaluate(active.records, true, dStar);
 
         subjects.unshift({

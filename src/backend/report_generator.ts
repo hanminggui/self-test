@@ -20,6 +20,22 @@ import { PsychometricScorer } from "./metrics";
 import { classifyCognitiveArchetype, getArchetypeDefinition } from "./archetype_matrix";
 
 export class ReportGenerator {
+  /**
+   * Counts the number of target trials where external hints were purchased.
+   */
+  static countHintTrials(records?: TrialRecord[], excludeWarmup: boolean = true): number {
+    if (!records || records.length === 0) return 0;
+    const evalRecords = excludeWarmup ? records.filter(r => !r.is_warmup) : records;
+    const targetRecords = evalRecords.length > 0 ? evalRecords : records;
+    let hintsCount = 0;
+    for (const r of targetRecords) {
+      if ((r.hints_unlocked !== undefined && r.hints_unlocked > 0) || r.hint_purchased) {
+        hintsCount += 1;
+      }
+    }
+    return hintsCount;
+  }
+
   static generateReport(
     sessionId: string,
     subjectType: string,
@@ -48,14 +64,7 @@ export class ReportGenerator {
     const riskAttitude = this.classifyRiskAttitude(highBetRate, safeBetRate, metrics.calibration_bias);
 
     // Count hints purchased across target records
-    let hintsCount = 0;
-    for (const r of targetRecords) {
-      if (r.hints_unlocked !== undefined && r.hints_unlocked > 0) {
-        hintsCount += r.hints_unlocked;
-      } else if (r.hint_purchased) {
-        hintsCount += 1;
-      }
-    }
+    const hintsCount = this.countHintTrials(records, true);
 
     // Spec §6.1 MECE 单向超平面判别
     const archetype = classifyCognitiveArchetype({
