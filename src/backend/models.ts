@@ -82,11 +82,44 @@ export interface Phase2MetacognitiveAction {
   revised_option?: string;
 }
 
+export interface TokenUsageStats {
+  prompt_tokens: number;
+  completion_tokens: number;
+  cached_tokens: number;
+  reasoning_tokens: number;
+  total_tokens: number;
+}
+
+export interface TrialOperation {
+  step: string;
+  action: string;
+  details?: Record<string, any>;
+}
+
+export interface TrialMetrics {
+  duration_ms?: number;
+  token_usage?: TokenUsageStats;
+  operations?: TrialOperation[];
+}
+
+export interface SessionExecutionMetadata {
+  model_name?: string;
+  persona?: string;
+  thinking_effort?: string;
+  total_duration_ms?: number;
+  formatted_duration?: string;
+  total_trials?: number;
+  completed_trials?: number;
+  warmup_trials?: number;
+  token_usage?: TokenUsageStats;
+}
+
 export interface TrialResponse {
   session_id: string;
   trial_index: number;
   phase_1_response: Phase1Response;
   phase_2_metacognitive_action: Phase2MetacognitiveAction;
+  trial_metrics?: TrialMetrics;
 }
 
 export interface TrialRecord {
@@ -106,6 +139,10 @@ export interface TrialRecord {
   is_correct_final: boolean;
   score_delta: number;
   is_warmup: boolean;
+  // 单步耗时、Token 统计与操作过程记录
+  duration_ms?: number;
+  token_usage?: TokenUsageStats;
+  operations?: TrialOperation[];
 }
 
 export interface SessionSummary {
@@ -159,6 +196,8 @@ export interface FinalAssessmentReport {
   summary: SessionSummary;
   metacognitive_metrics: MetacognitiveMetrics;
   diagnostic_profile: DiagnosticProfile;
+  metadata?: SessionExecutionMetadata;
+  records?: TrialRecord[];
 }
 
 export interface SubjectDataPoint {
@@ -180,6 +219,7 @@ export interface SubjectDataPoint {
   ive: number;
   cognitive_manifold_vector: [number, number, number, number];
   clinical_summary?: string;
+  metadata?: SessionExecutionMetadata;
 }
 
 export interface CohortScatterResponse {

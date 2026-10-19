@@ -24,6 +24,7 @@ export interface SubjectPoint {
   ive: number;
   cognitive_manifold_vector: [number, number, number, number];
   clinical_summary?: string;
+  metadata?: any;
 }
 
 export interface ScatterData {

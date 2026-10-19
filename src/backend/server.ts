@@ -52,6 +52,9 @@ app.post("/api/sessions/start", async (c) => {
     warmupTrials: body.warmup_trials ?? 10,
     initialDelta: body.initial_delta ?? 0.50,
     seed: body.seed,
+    persona: body.persona,
+    thinkingEffort: body.thinking_effort,
+    metadata: body.metadata,
   });
   return c.json(sessionManager.getTrialRequest(session.sessionId));
 });
@@ -123,6 +126,29 @@ app.get("/api/sessions/:id/report", (c) => {
   }
 });
 
+// 7b. Update Execution Metadata
+app.post("/api/sessions/:id/metadata", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const updated = sessionManager.updateSessionMetadata(id, body);
+    return c.json({ success: true, report: updated });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 400);
+  }
+});
+
+app.patch("/api/sessions/:id/metadata", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const updated = sessionManager.updateSessionMetadata(id, body);
+    return c.json({ success: true, report: updated });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 400);
+  }
+});
+
 // 8. Cohort Scatter
 app.get("/api/cohort/scatter", (c) => {
   const currentSessionId = c.req.query("current_session_id");
@@ -140,6 +166,27 @@ app.post("/api/admin/verify", async (c) => {
 app.get("/api/admin/sessions", (c) => {
   const data = sessionManager.getCohortScatterData();
   return c.json({ sessions: data.subjects });
+});
+
+// 11. Admin Delete Session
+app.delete("/api/admin/sessions/:id", async (c) => {
+  const authHeader = c.req.header("Authorization");
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+  const queryToken = c.req.query("token");
+  const bodyToken = (await c.req.json().catch(() => ({})))?.token;
+  const token = bearerToken || queryToken || bodyToken;
+
+  if (token !== ADMIN_PASSWORD) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const id = c.req.param("id");
+  try {
+    const success = sessionManager.deleteSession(id);
+    return c.json({ success, id });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
 });
 
 import { serveStatic } from "hono/bun";

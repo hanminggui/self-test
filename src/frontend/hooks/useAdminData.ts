@@ -103,6 +103,47 @@ export function useAdminData() {
     }
   };
 
+  // 删除单条受测者记录
+  const handleDeleteSubject = async (sessionId: string, subjectName?: string) => {
+    const displayName = subjectName || sessionId;
+    if (!window.confirm(`确定要彻底删除受测者「${displayName}」的数据记录吗？\n删除后该记录将无法恢复。`)) {
+      return false;
+    }
+
+    const token = sessionStorage.getItem("admin_token") || new URLSearchParams(window.location.search).get("token") || "";
+    try {
+      const res = await fetch(`/api/admin/sessions/${sessionId}?token=${encodeURIComponent(token)}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        setScatterData((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            subjects: prev.subjects.filter((s) => s.id !== sessionId),
+          };
+        });
+        if (selectedSubjectReport?.session_id === sessionId) {
+          setSelectedSubjectReport(null);
+        }
+        loadData();
+        return true;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(`删除失败: ${err.error || "网络或权限错误"}`);
+        return false;
+      }
+    } catch (e) {
+      console.error("删除受测者失败", e);
+      alert("删除失败，网络请求异常");
+      return false;
+    }
+  };
+
   const subjects = scatterData?.subjects || [];
 
   // 各标签频次统计
@@ -226,5 +267,6 @@ export function useAdminData() {
     selectedSubjectReport,
     setSelectedSubjectReport,
     handleOpenReport,
+    handleDeleteSubject,
   };
 }

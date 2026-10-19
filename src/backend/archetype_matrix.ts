@@ -381,14 +381,20 @@ export function classifyCognitiveArchetype(x: {
   const isHighFirstOrder = x.dStar >= 0.60 || x.dPrime >= 1.40;
 
   if (isHighFirstOrder) {
+    // 天花板高维自洽保护 (Ceiling Effect Calibration Protection):
+    // 当一元辨别力极高 (d' >= 2.20 或 D* >= 0.85) 且置信偏差处于黄金自洽带 (|bias| <= 0.15) 时，
+    // 错误样本极度稀疏 (零/极少错题) 会造成 Type-2 SDT 统计分母放大从而压低 M_ratio (天花板压缩效应)。
+    // 此时模型客观上知行高度自洽、无盲目冒进 (Brier 极低)，属于知行合一的【人形外挂】(Q1-CAL)
+    const isCeilingMaster = (x.dPrime >= 2.20 || x.dStar >= 0.85) && Math.abs(x.bias) <= 0.15;
+
     // 高一元分支：知行自洽 vs 谨慎守舵 vs 果敢进攻
-    if (x.mRatio >= 0.80 && Math.abs(x.bias) <= 0.15) {
-      return CognitiveArchetype.SOVEREIGN; // Q1-CAL
+    if ((x.mRatio >= 0.80 || isCeilingMaster) && Math.abs(x.bias) <= 0.15) {
+      return CognitiveArchetype.SOVEREIGN; // Q1-CAL (人形外挂)
     }
     if (x.bias < -0.12) {
-      return CognitiveArchetype.VIGILANT_SENTINEL; // Q3-SEN
+      return CognitiveArchetype.VIGILANT_SENTINEL; // Q3-SEN (定海神针)
     }
-    return CognitiveArchetype.AUDACIOUS_PIONEER; // Q4-PIO
+    return CognitiveArchetype.AUDACIOUS_PIONEER; // Q4-PIO (飞龙在天)
   } else {
     // 低一元分支 (D* < 0.60 且 d' < 1.40)：自省进化 vs 达克盲赌 vs 审慎避险
     // 1. 具有高二元线索借力能力与进化潜力的自省者 (主动借助外部工具穿透盲区)

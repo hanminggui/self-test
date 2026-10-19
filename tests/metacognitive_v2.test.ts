@@ -74,6 +74,23 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
       expect(def.quadrant_code).toBe("Q1-CAL");
     });
 
+    test("Q1-CAL: 天花板效应下的顶级模型 (Acc 97.5%, d' 3.106, Bias -0.08) 即使 M_ratio 遭统计压缩也准确归入人形外挂", () => {
+      // 现场复现用户 deepseek-v4-flash 60 步测试数据
+      const arch = classifyCognitiveArchetype({
+        dStar: 0.45,
+        dPrime: 3.106, // 极高一元水平
+        mRatio: 0.632, // 因负样本稀疏导致 M_ratio 遭遇统计压缩 (< 0.80)
+        bias: -0.08,   // 处于黄金自洽区间 [-0.15, 0.15]
+        brier: 0.019,  // 预测误差极低
+        ive: 0.0,
+        hintsCount: 11,
+      });
+      expect(arch).toBe(CognitiveArchetype.SOVEREIGN);
+      const def = getArchetypeDefinition(arch);
+      expect(def.role_title).toBe("人形外挂");
+      expect(def.quadrant_code).toBe("Q1-CAL");
+    });
+
     test("Q3-SEN: 定海神针 (高一元·过度谨慎守舵)", () => {
       const arch = classifyCognitiveArchetype({
         dStar: 0.70, // >= 0.60

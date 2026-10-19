@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { SubjectPoint } from "../../../types/admin";
 import { computeMultivariateColor } from "../../../utils/manifoldUtils";
 
@@ -18,6 +18,7 @@ interface SubjectDataTableViewProps {
   setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
   totalPages: number;
   onOpenReport: (sessionId: string) => void;
+  onDeleteSubject?: (sessionId: string, subjectName?: string) => void;
 }
 
 export default function SubjectDataTableView({
@@ -35,6 +36,7 @@ export default function SubjectDataTableView({
   setCurrentPage,
   totalPages,
   onOpenReport,
+  onDeleteSubject,
 }: SubjectDataTableViewProps) {
   return (
     <div className="w-full h-full flex flex-col p-3 gap-2 overflow-hidden">
@@ -127,12 +129,24 @@ export default function SubjectDataTableView({
                     {sub.clinical_summary || "--"}
                   </td>
                   <td className="py-2 px-3 text-right">
-                    <button
-                      onClick={() => onOpenReport(sub.id)}
-                      className="px-2.5 py-1 rounded-md bg-indigo-600/15 hover:bg-indigo-600/30 text-indigo-300 font-medium text-[11px] transition-colors cursor-pointer"
-                    >
-                      详情
-                    </button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => onOpenReport(sub.id)}
+                        className="px-2.5 py-1 rounded-md bg-indigo-600/15 hover:bg-indigo-600/30 text-indigo-300 font-medium text-[11px] transition-colors cursor-pointer"
+                      >
+                        详情
+                      </button>
+                      {onDeleteSubject && (
+                        <button
+                          onClick={() => onDeleteSubject(sub.id, sub.name)}
+                          className="px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 font-medium text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+                          title="删除此条数据"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>删除</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

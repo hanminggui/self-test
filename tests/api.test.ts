@@ -144,5 +144,32 @@ describe("Hono REST API Suite", () => {
     expect(repP2Data.is_completed).toBe(true);
     expect(repP2Data.report).toBeDefined();
   });
+
+  test("DELETE /api/admin/sessions/:id requires authorization and deletes record", async () => {
+    // 1. Unauthorized attempt
+    const resUnauth = await fetchApp(`/api/admin/sessions/${sessionId}`, {
+      method: "DELETE",
+    });
+    expect(resUnauth.status).toBe(401);
+
+    // 2. Authorized attempt with wrong token
+    const resWrong = await fetchApp(`/api/admin/sessions/${sessionId}?token=invalid_token`, {
+      method: "DELETE",
+    });
+    expect(resWrong.status).toBe(401);
+
+    // 3. Authorized deletion with valid token
+    const resAuth = await fetchApp(`/api/admin/sessions/${sessionId}?token=${ADMIN_PASSWORD}`, {
+      method: "DELETE",
+    });
+    expect(resAuth.status).toBe(200);
+    const authData = await resAuth.json();
+    expect(authData.success).toBe(true);
+    expect(authData.id).toBe(sessionId);
+
+    // 4. Verify report is gone
+    const resCheck = await fetchApp(`/api/sessions/${sessionId}/report`);
+    expect(resCheck.status).toBe(404);
+  });
 });
 

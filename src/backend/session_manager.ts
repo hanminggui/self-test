@@ -19,6 +19,8 @@ import {
   SubjectDataPoint,
   CohortScatterResponse,
   TrialResponse,
+  SessionExecutionMetadata,
+  TokenUsageStats,
 } from "./models";
 import { StaircaseController } from "./staircase";
 import { TaskGenerator, GeneratedTask } from "./task_generator";
@@ -46,6 +48,8 @@ export interface SessionState {
   hintsUnlockedForCurrentTrial: number; // 0 (none), 1 (tier1 unlocked), 2 (tier1 & tier2 unlocked)
   hintsCostForCurrentTrial: number; // 0, 1, or 3
   createdAt: string;
+  startTimeMs: number;
+  metadata?: SessionExecutionMetadata;
 }
 
 export class SessionManager {
@@ -90,6 +94,10 @@ export class SessionManager {
     try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN d_star REAL"); } catch {}
     try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN ive REAL"); } catch {}
     try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN clinical_summary TEXT"); } catch {}
+    try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN total_duration_ms INTEGER"); } catch {}
+    try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN persona TEXT"); } catch {}
+    try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN thinking_effort TEXT"); } catch {}
+    try { this.db.run("ALTER TABLE completed_sessions ADD COLUMN token_usage_json TEXT"); } catch {}
   }
 
   private migrateFromLegacyJson(jsonPath: string) {
@@ -150,6 +158,9 @@ export class SessionManager {
     warmupTrials?: number;
     initialDelta?: number;
     seed?: number;
+    persona?: string;
+    thinkingEffort?: string;
+    metadata?: Partial<SessionExecutionMetadata>;
   }): SessionState {
     const sid = params.sessionId || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const sName = params.subjectName?.trim() || SessionManager.generateRandomCodename();
@@ -164,6 +175,24 @@ export class SessionManager {
 
     const now = new Date();
     const createdAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+    const startTimeMs = Date.now();
+
+    const sessionMetadata: SessionExecutionMetadata = {
+      model_name: params.metadata?.model_name || sName,
+      persona: params.persona || params.metadata?.persona || "标准中性 (零人设)",
+      thinking_effort: params.thinkingEffort || params.metadata?.thinking_effort || "none",
+      total_trials: totalTrials,
+      completed_trials: 0,
+      warmup_trials: warmupTrials,
+      token_usage: {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        cached_tokens: 0,
+        reasoning_tokens: 0,
+        total_tokens: 0,
+      },
+      ...(params.metadata || {}),
+    };
 
     const session: SessionState = {
       sessionId: sid,
@@ -185,6 +214,8 @@ export class SessionManager {
       hintsUnlockedForCurrentTrial: 0,
       hintsCostForCurrentTrial: 0,
       createdAt,
+      startTimeMs,
+      metadata: sessionMetadata,
     };
 
     this.sessions.set(sid, session);
@@ -323,7 +354,12 @@ export class SessionManager {
     sessionId: string,
     action: MetacognitiveAction,
     confidenceLevel?: number,
-    revisedChoice?: string
+    revisedChoice?: string,
+    metricsPayload?: {
+      duration_ms?: number;
+      token_usage?: TokenUsageStats;
+      operations?: any[];
+    }
   ): any {
     const session = this.getSession(sessionId);
     if (!session) throw new Error(`Session '${sessionId}' not found.`);
@@ -394,8 +430,23 @@ export class SessionManager {
       is_correct_final: isFinalCorrect,
       score_delta: scoreDelta,
       is_warmup: isWarmup,
+      duration_ms: metricsPayload?.duration_ms,
+      token_usage: metricsPayload?.token_usage,
+      operations: metricsPayload?.operations,
     };
     session.records.push(record);
+
+    if (session.metadata) {
+      session.metadata.completed_trials = session.records.length;
+      if (metricsPayload?.token_usage && session.metadata.token_usage) {
+        const u = metricsPayload.token_usage;
+        session.metadata.token_usage.prompt_tokens += (u.prompt_tokens || 0);
+        session.metadata.token_usage.completion_tokens += (u.completion_tokens || 0);
+        session.metadata.token_usage.cached_tokens += (u.cached_tokens || 0);
+        session.metadata.token_usage.reasoning_tokens += (u.reasoning_tokens || 0);
+        session.metadata.token_usage.total_tokens += (u.total_tokens || 0);
+      }
+    }
 
     // Update Staircase using first-order objective correctness
     const newDelta = session.staircase.update(isP1Correct);
@@ -443,14 +494,15 @@ export class SessionManager {
       res.session_id,
       res.phase_2_metacognitive_action.action,
       res.phase_2_metacognitive_action.confidence_level,
-      res.phase_2_metacognitive_action.revised_option
+      res.phase_2_metacognitive_action.revised_option,
+      res.trial_metrics
     );
   }
 
   finalizeReport(session: SessionState): FinalAssessmentReport {
     if (session.finalReport) return session.finalReport;
 
-    const dStar = session.staircase.computeDStar();
+    const dStar = session.staircase.computeDStar(undefined, session.warmupTrials);
     const metrics = PsychometricScorer.evaluate(session.records, true, dStar);
     const report = ReportGenerator.generateReport(
       session.sessionId,
@@ -461,6 +513,16 @@ export class SessionManager {
       session.staircase.reversalCount,
       session.subjectName
     );
+
+    // 完整附加试次记录与执行元数据
+    report.records = session.records;
+    if (session.metadata) {
+      session.metadata.completed_trials = session.records.length;
+      if (!session.metadata.total_duration_ms && session.startTimeMs) {
+        session.metadata.total_duration_ms = Date.now() - session.startTimeMs;
+      }
+      report.metadata = session.metadata;
+    }
 
     session.finalReport = report;
 
@@ -473,8 +535,8 @@ export class SessionManager {
 
       const stmt = this.db.prepare(`
         INSERT OR REPLACE INTO completed_sessions
-        (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary, total_duration_ms, persona, thinking_effort, token_usage_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       stmt.run(
         report.session_id,
@@ -493,13 +555,124 @@ export class SessionManager {
         JSON.stringify(report),
         metrics.d_star,
         metrics.info_buying_efficiency,
-        report.diagnostic_profile.clinical_summary
+        report.diagnostic_profile.clinical_summary,
+        report.metadata?.total_duration_ms ?? null,
+        report.metadata?.persona ?? null,
+        report.metadata?.thinking_effort ?? null,
+        report.metadata?.token_usage ? JSON.stringify(report.metadata.token_usage) : null
       );
     } catch (e) {
       console.warn("Error persisting session to DB:", e);
     }
 
     return report;
+  }
+
+  updateSessionMetadata(sessionId: string, metadata: Partial<SessionExecutionMetadata>): FinalAssessmentReport | undefined {
+    const session = this.getSession(sessionId);
+    if (session) {
+      if (!session.metadata) {
+        session.metadata = {
+          model_name: session.subjectName,
+          total_trials: session.totalTrials,
+          completed_trials: session.records.length,
+          warmup_trials: session.warmupTrials,
+        };
+      }
+      Object.assign(session.metadata, metadata);
+      if (metadata.token_usage) {
+        session.metadata.token_usage = {
+          ...(session.metadata.token_usage || {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            cached_tokens: 0,
+            reasoning_tokens: 0,
+            total_tokens: 0,
+          }),
+          ...metadata.token_usage,
+        };
+      }
+      if (session.finalReport) {
+        session.finalReport.metadata = session.metadata;
+        try {
+          const stmt = this.db.prepare(`
+            UPDATE completed_sessions
+            SET full_report_json = ?,
+                total_duration_ms = COALESCE(?, total_duration_ms),
+                persona = COALESCE(?, persona),
+                thinking_effort = COALESCE(?, thinking_effort),
+                token_usage_json = COALESCE(?, token_usage_json)
+            WHERE id = ?
+          `);
+          stmt.run(
+            JSON.stringify(session.finalReport),
+            session.metadata.total_duration_ms ?? null,
+            session.metadata.persona ?? null,
+            session.metadata.thinking_effort ?? null,
+            session.metadata.token_usage ? JSON.stringify(session.metadata.token_usage) : null,
+            sessionId
+          );
+        } catch (e) {
+          console.warn("Error updating session metadata in DB:", e);
+        }
+        return session.finalReport;
+      }
+    } else {
+      const row: any = this.db.query("SELECT * FROM completed_sessions WHERE id = ?").get(sessionId);
+      if (row && row.full_report_json) {
+        try {
+          const rep: FinalAssessmentReport = JSON.parse(row.full_report_json);
+          rep.metadata = {
+            ...(rep.metadata || {}),
+            ...metadata,
+            model_name: metadata.model_name || rep.metadata?.model_name || rep.subject_name,
+            total_trials: metadata.total_trials || rep.metadata?.total_trials || rep.summary.total_trials,
+            completed_trials: metadata.completed_trials || rep.metadata?.completed_trials || rep.summary.total_trials,
+            warmup_trials: metadata.warmup_trials || rep.metadata?.warmup_trials || 10,
+          };
+          if (metadata.token_usage) {
+            rep.metadata.token_usage = {
+              ...(rep.metadata.token_usage || {
+                prompt_tokens: 0,
+                completion_tokens: 0,
+                cached_tokens: 0,
+                reasoning_tokens: 0,
+                total_tokens: 0,
+              }),
+              ...metadata.token_usage,
+            };
+          }
+          const stmt = this.db.prepare(`
+            UPDATE completed_sessions
+            SET full_report_json = ?,
+                total_duration_ms = COALESCE(?, total_duration_ms),
+                persona = COALESCE(?, persona),
+                thinking_effort = COALESCE(?, thinking_effort),
+                token_usage_json = COALESCE(?, token_usage_json)
+            WHERE id = ?
+          `);
+          stmt.run(
+            JSON.stringify(rep),
+            rep.metadata?.total_duration_ms ?? null,
+            rep.metadata?.persona ?? null,
+            rep.metadata?.thinking_effort ?? null,
+            rep.metadata?.token_usage ? JSON.stringify(rep.metadata.token_usage) : null,
+            sessionId
+          );
+          return rep;
+        } catch (e) {
+          console.warn("Error updating DB session metadata:", e);
+        }
+      }
+    }
+    return undefined;
+  }
+
+  deleteSession(sessionId: string): boolean {
+    this.sessions.delete(sessionId);
+    const stmt = this.db.prepare("DELETE FROM completed_sessions WHERE id = ?");
+    const res: any = stmt.run(sessionId);
+    return (res?.changes ?? 0) > 0;
   }
 
   getReport(sessionId: string): FinalAssessmentReport {
@@ -546,6 +719,24 @@ export class SessionManager {
         parsed.diagnostic_profile.growth_advice = def.growth_advice;
         parsed.diagnostic_profile.skills = def.skills;
         parsed.diagnostic_profile.clinical_summary = def.clinical_summary;
+        if (!parsed.metadata) {
+          let tokenUsage = undefined;
+          if (row.token_usage_json) {
+            try { tokenUsage = JSON.parse(row.token_usage_json); } catch {}
+          }
+          if (row.total_duration_ms || row.persona || row.thinking_effort || tokenUsage) {
+            parsed.metadata = {
+              model_name: row.name,
+              persona: row.persona,
+              thinking_effort: row.thinking_effort,
+              total_duration_ms: row.total_duration_ms,
+              total_trials: parsed.summary?.total_trials ?? 0,
+              completed_trials: parsed.summary?.total_trials ?? 0,
+              warmup_trials: 10,
+              token_usage: tokenUsage,
+            };
+          }
+        }
         return parsed;
       }
 
@@ -603,13 +794,33 @@ export class SessionManager {
 
       let brier = 0.20;
       let hintsCount = 0;
+      let sessionMetadata: SessionExecutionMetadata | undefined = undefined;
       if (r.full_report_json) {
         try {
           const parsed = JSON.parse(r.full_report_json);
           if (parsed.metacognitive_metrics?.brier_score !== undefined) {
             brier = parsed.metacognitive_metrics.brier_score;
           }
+          if (parsed.metadata) {
+            sessionMetadata = parsed.metadata;
+          }
         } catch {}
+      }
+      if (!sessionMetadata && (r.total_duration_ms || r.persona || r.thinking_effort || r.token_usage_json)) {
+        let tokenUsage = undefined;
+        if (r.token_usage_json) {
+          try { tokenUsage = JSON.parse(r.token_usage_json); } catch {}
+        }
+        sessionMetadata = {
+          model_name: r.name,
+          persona: r.persona,
+          thinking_effort: r.thinking_effort,
+          total_duration_ms: r.total_duration_ms,
+          total_trials: 0,
+          completed_trials: 0,
+          warmup_trials: 0,
+          token_usage: tokenUsage,
+        };
       }
 
       // 动态通过 v2 超平面算法为历史数据重新分类，使悬浮画像与散点坐标绝对严格对应
@@ -643,6 +854,7 @@ export class SessionManager {
         ive: ive,
         cognitive_manifold_vector: [dStar, mRatio, bias, ive],
         clinical_summary: def.clinical_summary,
+        metadata: sessionMetadata,
       };
     });
 

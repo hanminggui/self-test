@@ -71,6 +71,7 @@ export default function Admin() {
     selectedSubjectReport,
     setSelectedSubjectReport,
     handleOpenReport,
+    handleDeleteSubject,
   } = useAdminData();
 
   // 视图与交互状态
@@ -188,6 +189,7 @@ export default function Admin() {
               setCurrentPage={setCurrentPage}
               totalPages={totalPages}
               onOpenReport={handleOpenReport}
+              onDeleteSubject={handleDeleteSubject}
             />
           )}
         </Suspense>
@@ -223,6 +225,7 @@ export default function Admin() {
       <SubjectDetailDrawer
         report={selectedSubjectReport}
         onClose={() => setSelectedSubjectReport(null)}
+        onDelete={handleDeleteSubject}
       />
     </div>
   );

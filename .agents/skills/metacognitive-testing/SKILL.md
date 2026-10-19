@@ -96,16 +96,19 @@ Agent 直接在当前会话中对当前题目进行内在推导，调用 API 单
 ## 3. 多模型外部评测脚本（辅助工程工具）
 
 若用户明确提出要横向评测其他第三方模型（如比较 DeepSeek、GPT-4o 或本地 Ollama 模型）：
-可运行已脱敏无剧透的标准化评测脚本 `scripts/eval_model.ts`：
+可运行已脱敏无剧透的标准化评测套件 `src/cli/eval.ts`（或快捷命令 `bun run eval`）：
 ```bash
+# 交互式向导配置评测（支持方向键选择 Provider 与动态拉取模型列表）
+bun run eval
+
 # 评测外部 OpenAI 兼容模型
-OPENAI_API_KEY="sk-..." OPENAI_BASE_URL="..." bun run scripts/eval_model.ts --model <model-name> --trials 60 --warmup 20
+OPENAI_API_KEY="sk-..." OPENAI_BASE_URL="..." bun run src/cli/eval.ts --model <model-name> --trials 60 --warmup 20
 
 # 评测本地 Ollama 模型
-OPENAI_BASE_URL="http://localhost:11434/v1" bun run scripts/eval_model.ts --model qwen2.5:7b --trials 60 --warmup 20
+OPENAI_BASE_URL="http://localhost:11434/v1" bun run src/cli/eval.ts --model qwen2.5:7b --trials 60 --warmup 20
 
 # 纯协议仿真校验（无需 Key）
-bun run scripts/eval_model.ts --mock --trials 60 --warmup 20
+bun run eval:mock --trials 60 --warmup 20
 ```
 
 ---

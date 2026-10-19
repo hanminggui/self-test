@@ -1,12 +1,31 @@
-import React from "react";
-import { X, Brain, Sparkles } from "lucide-react";
+import React, { useState } from "react";
+import { X, Brain, Sparkles, Trash2, Cpu, Clock, Coins, Layers, Activity, ChevronDown, ChevronUp } from "lucide-react";
 
 interface SubjectDetailDrawerProps {
   report: any | null;
   onClose: () => void;
+  onDelete?: (sessionId: string, subjectName?: string) => void;
 }
 
-export default function SubjectDetailDrawer({ report, onClose }: SubjectDetailDrawerProps) {
+function formatTokens(n?: number): string {
+  if (n === undefined || n === null) return "--";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toLocaleString();
+}
+
+function formatDurationMs(ms?: number): string {
+  if (ms === undefined || ms === null) return "--";
+  if (ms < 1000) return `${ms}ms`;
+  const sec = ms / 1000;
+  if (sec < 60) return `${sec.toFixed(1)}s`;
+  const min = Math.floor(sec / 60);
+  const remSec = Math.round(sec % 60);
+  return `${min}m ${remSec}s`;
+}
+
+export default function SubjectDetailDrawer({ report, onClose, onDelete }: SubjectDetailDrawerProps) {
+  const [showRecords, setShowRecords] = useState(false);
   if (!report) return null;
 
   return (
@@ -24,12 +43,24 @@ export default function SubjectDetailDrawer({ report, onClose }: SubjectDetailDr
               {report.subject_name} ({report.session_id})
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onDelete && (
+              <button
+                onClick={() => onDelete(report.session_id, report.subject_name)}
+                className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 font-medium text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                title="彻底删除此条数据"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>删除记录</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* 顶栏展示：用户展示层专属称号 */}
@@ -132,6 +163,178 @@ export default function SubjectDetailDrawer({ report, onClose }: SubjectDetailDr
             </div>
           </div>
         </div>
+
+        {/* 执行元数据与资源统计面板 */}
+        {report.metadata && (
+          <div className="space-y-3 p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/20">
+            <div className="text-xs font-bold text-cyan-300 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Cpu className="w-4 h-4" /> 评测执行元数据与资源统计
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-200 font-mono">
+                {report.metadata.thinking_effort ? `思考强度: ${report.metadata.thinking_effort}` : "常规模式"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-cyan-400" /> 受测模型 / 名称
+                </div>
+                <div className="font-semibold text-white truncate" title={report.metadata.model_name || report.subject_name}>
+                  {report.metadata.model_name || report.subject_name}
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-emerald-400" /> 评测总用时
+                </div>
+                <div className="font-semibold text-emerald-300 font-mono">
+                  {report.metadata.formatted_duration || formatDurationMs(report.metadata.total_duration_ms)}
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                  <Layers className="w-3 h-3 text-indigo-400" /> 轮次规格
+                </div>
+                <div className="font-semibold text-slate-200 font-mono">
+                  共 {report.summary?.total_trials ?? report.metadata.total_trials} 轮 (预热 {report.metadata.warmup_trials ?? 10})
+                </div>
+              </div>
+            </div>
+
+            {report.metadata.persona && (
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 text-xs">
+                <span className="text-[10px] text-slate-400 font-semibold">Agent 人设设定：</span>
+                <span className="text-slate-300 ml-1">{report.metadata.persona}</span>
+              </div>
+            )}
+
+            {report.metadata.token_usage && (
+              <div className="p-3 rounded-xl bg-black/40 border border-cyan-500/10 space-y-2">
+                <div className="text-[11px] font-semibold text-cyan-200 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Coins className="w-3.5 h-3.5" /> Token 资源消耗账单
+                  </span>
+                  <span className="font-mono text-cyan-300">
+                    总计 {formatTokens(report.metadata.token_usage.total_tokens)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+                  <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
+                    <div className="text-[10px] text-slate-400">输入 (Prompt)</div>
+                    <div className="text-slate-200 font-bold">{formatTokens(report.metadata.token_usage.prompt_tokens)}</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
+                    <div className="text-[10px] text-slate-400">缓存命中 (Cache)</div>
+                    <div className="text-emerald-300 font-bold">{formatTokens(report.metadata.token_usage.cached_tokens)}</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
+                    <div className="text-[10px] text-slate-400">输出 (Completion)</div>
+                    <div className="text-purple-300 font-bold">{formatTokens(report.metadata.token_usage.completion_tokens)}</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
+                    <div className="text-[10px] text-slate-400">思维链推理</div>
+                    <div className="text-amber-300 font-bold">{formatTokens(report.metadata.token_usage.reasoning_tokens)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 试次明细与单步资源消耗列表 */}
+        {report.records && report.records.length > 0 && (
+          <div className="space-y-3 p-4 rounded-2xl bg-slate-900/60 border border-white/10">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Activity className="w-4 h-4 text-amber-400" /> 单步试次明细与决策过程
+                <span className="text-[10px] text-slate-400 font-mono">({report.records.length} 轮)</span>
+              </div>
+              <button
+                onClick={() => setShowRecords(!showRecords)}
+                className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+              >
+                <span>{showRecords ? "收起明细" : "展开明细"}</span>
+                {showRecords ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {showRecords && (
+              <div className="max-h-64 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/80">
+                <table className="w-full text-left text-[11px] font-mono border-collapse">
+                  <thead className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 text-slate-400">
+                    <tr>
+                      <th className="py-2 px-2.5">#</th>
+                      <th className="py-2 px-2">阶段</th>
+                      <th className="py-2 px-2">难度</th>
+                      <th className="py-2 px-2">一元推导</th>
+                      <th className="py-2 px-2">二元决策</th>
+                      <th className="py-2 px-2">耗时</th>
+                      <th className="py-2 px-2">Token</th>
+                      <th className="py-2 px-2">操作过程</th>
+                      <th className="py-2 px-2 text-right">得分变动</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-slate-300">
+                    {report.records.map((rec: any, idx: number) => {
+                      const isCorrect = rec.is_correct_first_order;
+                      const hasHint = rec.hints_unlocked && rec.hints_unlocked > 0;
+                      return (
+                        <tr key={idx} className="hover:bg-white/[0.02]">
+                          <td className="py-1.5 px-2.5 text-slate-400">{rec.trial_index}</td>
+                          <td className="py-1.5 px-2">
+                            {rec.is_warmup ? (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-slate-800 text-slate-400">预热</span>
+                            ) : (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-cyan-950 text-cyan-300">正式</span>
+                            )}
+                          </td>
+                          <td className="py-1.5 px-2 text-slate-400">{rec.difficulty_level?.toFixed(2) ?? "--"}</td>
+                          <td className="py-1.5 px-2">
+                            <span className={isCorrect ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                              [{rec.first_order_choice}] {isCorrect ? "✓" : "✗"}
+                            </span>
+                          </td>
+                          <td className="py-1.5 px-2">
+                            <span className={rec.action === "HIGH_BET" ? "text-amber-300" : "text-slate-400"}>
+                              {rec.action === "HIGH_BET" ? "高注" : "保底"}
+                            </span>
+                            {rec.confidence_level !== undefined && (
+                              <span className="text-[10px] text-slate-500 ml-1">({Math.round(rec.confidence_level * 100)}%)</span>
+                            )}
+                          </td>
+                          <td className="py-1.5 px-2 text-emerald-400">
+                            {formatDurationMs(rec.duration_ms)}
+                          </td>
+                          <td className="py-1.5 px-2 text-slate-400">
+                            {rec.token_usage ? formatTokens(rec.token_usage.total_tokens) : "--"}
+                          </td>
+                          <td className="py-1.5 px-2 text-[10px] text-slate-400">
+                            {hasHint ? (
+                              <span className="text-amber-300">线索T{rec.hints_unlocked}</span>
+                            ) : (
+                              <span className="text-slate-500">直决</span>
+                            )}
+                            {rec.operations && rec.operations.length > 0 && (
+                              <span className="text-slate-500 ml-1">({rec.operations.length}步)</span>
+                            )}
+                          </td>
+                          <td className={`py-1.5 px-2 text-right font-bold ${rec.score_delta > 0 ? "text-emerald-400" : rec.score_delta < 0 ? "text-rose-400" : "text-slate-400"}`}>
+                            {rec.score_delta > 0 ? `+${rec.score_delta}` : rec.score_delta}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-end pt-2">
           <button

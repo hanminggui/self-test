@@ -137,8 +137,8 @@ export class StaircaseController {
    * Computes normalized first-order difficulty capacity D* in [0, 1].
    * D* = (delta_max - delta*) / (delta_max - delta_min) = (0.85 - delta*) / 0.80
    */
-  computeDStar(deltaStar?: number): number {
-    const delta = deltaStar !== undefined ? deltaStar : this.getEstimatedThreshold();
+  computeDStar(deltaStar?: number, warmupCutoff: number = 5): number {
+    const delta = deltaStar !== undefined ? deltaStar : this.getEstimatedThreshold(warmupCutoff);
     const dStar = (this.maxDelta - delta) / (this.maxDelta - this.minDelta);
     const clamped = Math.max(0.0, Math.min(1.0, dStar));
     return Math.round(clamped * 10000) / 10000;

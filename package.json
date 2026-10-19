@@ -7,9 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "start": "bun src/backend/server.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "provider:config": "bun run src/cli/wizard.ts",
+    "eval": "bun run src/cli/eval.ts",
+    "eval:debug": "bun run src/cli/eval.ts --debug",
+    "eval:mock": "bun run src/cli/eval.ts --mock"
   },
   "devDependencies": {
+    "@clack/prompts": "^1.8.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/bun": "latest",
     "@types/canvas-confetti": "^1.9.0",

@@ -21,6 +21,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .env.test.local
 .env.production.local
 .env.local
+.eval_config.json
+.eval_providers.json
 
 # caches
 .eslintcache
@@ -34,7 +36,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 
 # Temporary scratch and local databases
-scratch/
+scratch
 *.sqlite
 *.sqlite-journal
 
