@@ -83,7 +83,8 @@ export class SessionManager {
         };
       }
     }
-    this.initDb();
+    // Schema is guaranteed to be provisioned at startup (LocalSqliteAdapter.ensureSchema) or deploy-time (D1 migrations).
+    // SessionManager contains zero DDL logic during business runtime.
     if (this.storage instanceof LocalSqliteAdapter) {
       this.migrateFromLegacyJson(path.join(process.cwd(), "data", "persisted_sessions.json"));
       this.recalibrateHistoricalSessions();
@@ -92,90 +93,6 @@ export class SessionManager {
 
   getStorage(): StorageAdapter {
     return this.storage;
-  }
-
-  private initDb() {
-    const createCompletedSql = `
-      CREATE TABLE IF NOT EXISTS completed_sessions (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        subject_type TEXT,
-        first_order_accuracy REAL,
-        second_order_accuracy REAL,
-        d_prime REAL,
-        meta_d_prime REAL,
-        m_ratio REAL,
-        calibration_bias REAL,
-        final_score INTEGER,
-        created_at TEXT,
-        role_title TEXT,
-        quadrant_code TEXT,
-        full_report_json TEXT,
-        d_star REAL,
-        ive REAL,
-        clinical_summary TEXT,
-        total_duration_ms INTEGER,
-        persona TEXT,
-        thinking_effort TEXT,
-        token_usage_json TEXT
-      )
-    `;
-
-    const createActiveSql = `
-      CREATE TABLE IF NOT EXISTS active_sessions (
-        id TEXT PRIMARY KEY,
-        subject_type TEXT,
-        subject_name TEXT,
-        total_trials INTEGER,
-        warmup_trials INTEGER,
-        current_trial_index INTEGER,
-        current_phase TEXT,
-        score INTEGER,
-        staircase_state_json TEXT,
-        task_generator_state_json TEXT,
-        current_task_json TEXT,
-        records_json TEXT,
-        is_completed INTEGER,
-        staged_p1_choice TEXT,
-        hint_revealed INTEGER,
-        hints_unlocked INTEGER,
-        hints_unlocked_before_p1 INTEGER,
-        hints_cost INTEGER,
-        created_at TEXT,
-        start_time_ms INTEGER,
-        metadata_json TEXT,
-        updated_at TEXT
-      )
-    `;
-
-    if (this.storage.execSync) {
-      this.storage.execSync(createCompletedSql);
-      this.storage.execSync(createActiveSql);
-    } else {
-      this.storage.exec(createCompletedSql).catch((e) => console.warn(e));
-      this.storage.exec(createActiveSql).catch((e) => console.warn(e));
-    }
-
-    // Safe migration for existing sqlite databases
-    const alterColumns = [
-      "ALTER TABLE completed_sessions ADD COLUMN d_star REAL",
-      "ALTER TABLE completed_sessions ADD COLUMN ive REAL",
-      "ALTER TABLE completed_sessions ADD COLUMN clinical_summary TEXT",
-      "ALTER TABLE completed_sessions ADD COLUMN total_duration_ms INTEGER",
-      "ALTER TABLE completed_sessions ADD COLUMN persona TEXT",
-      "ALTER TABLE completed_sessions ADD COLUMN thinking_effort TEXT",
-      "ALTER TABLE completed_sessions ADD COLUMN token_usage_json TEXT",
-    ];
-
-    for (const alterSql of alterColumns) {
-      try {
-        if (this.storage.runSync) {
-          this.storage.runSync(alterSql);
-        } else {
-          this.storage.run(alterSql).catch(() => {});
-        }
-      } catch {}
-    }
   }
 
   /**

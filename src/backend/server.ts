@@ -404,5 +404,7 @@ export default {
 
 // If run directly via `bun src/backend/server.ts`
 if (typeof import.meta !== "undefined" && (import.meta as any).main) {
+  // Startup bootstrap: ensure local database storage is checked and ready before serving requests
+  getDefaultSessionManager();
   printAdminBanner(HOST, PORT);
 }
