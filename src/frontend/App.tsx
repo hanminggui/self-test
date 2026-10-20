@@ -14,12 +14,23 @@ import {
   Stars,
   Feather,
   Dices,
+  Link2,
+  Copy,
+  Check,
+  Bookmark,
+  AlertCircle,
 } from "lucide-react";
 
 import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
 import { useLocale } from "./contexts/LocaleContext";
 import { LanguageToggle } from "./components/LanguageToggle";
 import { PosterModal } from "./components/share/PosterModal";
+import {
+  extractSessionIdFromUrl,
+  buildSessionReportUrl,
+  saveLastCompletedSession,
+  getLastCompletedSession,
+} from "./utils/sessionRoute";
 
 interface TrialPayload {
   stimulus_id: string;
@@ -233,13 +244,89 @@ export default function App() {
   const [report, setReport] = useState<ReportData | null>(null);
   const [showPosterModal, setShowPosterModal] = useState(false);
   const [placeholderCodename, setPlaceholderCodename] = useState(() => generateRandomCodename(locale));
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportNotFound, setReportNotFound] = useState(false);
+  const [copiedPermalink, setCopiedPermalink] = useState(false);
+  const [lastSessionRecord, setLastSessionRecord] = useState<{ sessionId: string; timestamp: number } | null>(() => getLastCompletedSession());
 
   useEffect(() => {
     setPlaceholderCodename(generateRandomCodename(locale));
   }, [locale]);
 
+  // 按会话 ID 加载专属报告
+  const loadReportById = useCallback(async (targetId: string, updateUrl: boolean = false) => {
+    if (!targetId) return;
+    setReportLoading(true);
+    setReportNotFound(false);
+    setErrorMsg("");
+    try {
+      const res = await fetch(`/api/sessions/${encodeURIComponent(targetId)}/report?lang=${encodeURIComponent(locale)}`, {
+        headers: { "Accept-Language": locale },
+      });
+      if (!res.ok) {
+        setReportNotFound(true);
+        return;
+      }
+      const repData = await res.json();
+      setSessionId(targetId);
+      setReport(repData);
+      setStage("REPORT");
+      saveLastCompletedSession(targetId);
+      setLastSessionRecord(getLastCompletedSession());
+
+      if (updateUrl && typeof window !== "undefined") {
+        const targetUrl = buildSessionReportUrl(targetId);
+        window.history.pushState({ sessionId: targetId }, "", targetUrl);
+      }
+    } catch (e: any) {
+      setErrorMsg(e.message || t.app.networkErrorFallback);
+      setReportNotFound(true);
+    } finally {
+      setReportLoading(false);
+    }
+  }, [locale, t]);
+
+  // 监听浏览器路由变化与初次加载专用路由 (/report/:id, ?session_id=xxx 等)
+  useEffect(() => {
+    const handlePopState = () => {
+      const targetId = extractSessionIdFromUrl();
+      if (targetId) {
+        loadReportById(targetId, false);
+      } else {
+        // 返回首页
+        setReport(null);
+        setReportNotFound(false);
+        setStage("WELCOME");
+      }
+    };
+
+    // 初次挂载时检查 URL 是否携带专用路由
+    const initialSessionId = extractSessionIdFromUrl();
+    if (initialSessionId) {
+      loadReportById(initialSessionId, false);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [loadReportById]);
+
   // Current trial hint cost
   const hintsCost = unlockedHints.length === 0 ? 0 : unlockedHints.length === 1 ? 1 : 3;
+
+  // 复制专属会话报告链接
+  const handleCopyReportLink = async () => {
+    if (!report?.session_id) return;
+    const permalink = buildSessionReportUrl(report.session_id);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(permalink);
+      }
+      setCopiedPermalink(true);
+      setTimeout(() => setCopiedPermalink(false), 2500);
+    } catch (e) {
+      console.warn("Failed to copy link:", e);
+    }
+  };
 
   // Start a new exploration session
   const startSession = async () => {
@@ -360,6 +447,12 @@ export default function App() {
         }
         setReport(repData);
         setStage("REPORT");
+        saveLastCompletedSession(sessionId);
+        setLastSessionRecord(getLastCompletedSession());
+        if (typeof window !== "undefined") {
+          const permalink = buildSessionReportUrl(sessionId);
+          window.history.pushState({ sessionId }, "", permalink);
+        }
         confetti({
           particleCount: 150,
           spread: 90,
@@ -446,11 +539,75 @@ export default function App() {
 
       {/* 主体区域 */}
       <main className="flex-1 flex flex-col justify-center">
+        {/* 专属报告加载中骨架态 */}
+        {reportLoading && (
+          <div className="flex flex-col items-center justify-center p-12 text-center space-y-4 animate-in fade-in duration-300">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-xl shadow-amber-500/20">
+              <Compass className="w-8 h-8 text-amber-300 animate-spin" />
+            </div>
+            <div className="text-base font-bold text-white tracking-wide">{t.app.reportLoadingText}</div>
+            <p className="text-xs text-slate-400 font-mono">
+              SESSION: {extractSessionIdFromUrl() || sessionId || "..."}
+            </p>
+          </div>
+        )}
+
+        {/* 会话未找到或已清理提示卡片 */}
+        {!reportLoading && reportNotFound && (
+          <div className="glass-panel rounded-3xl p-8 md:p-12 text-center max-w-lg mx-auto w-full shadow-2xl border border-rose-500/30 space-y-5 animate-in fade-in duration-300">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 flex items-center justify-center mx-auto shadow-lg shadow-rose-950/40">
+              <AlertCircle className="w-7 h-7" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white mb-2">{t.app.reportNotFoundTitle}</h2>
+              <p className="text-xs md:text-sm text-slate-300 leading-relaxed font-sans">
+                {t.app.reportNotFoundDesc}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setReportNotFound(false);
+                setStage("WELCOME");
+                if (typeof window !== "undefined") {
+                  window.history.pushState(null, "", "/");
+                }
+              }}
+              className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs inline-flex items-center gap-2 cursor-pointer transition-colors border border-white/10 mx-auto"
+            >
+              <RotateCcw className="w-4 h-4" /> {t.app.backToHomeBtn}
+            </button>
+          </div>
+        )}
+
         {/* 1. 欢迎探索阶段：极致温暖、毫无防备、尊崇体验 */}
-        {stage === "WELCOME" && (
+        {!reportLoading && !reportNotFound && stage === "WELCOME" && (
           <div className="glass-panel rounded-3xl p-8 md:p-12 text-center max-w-2xl mx-auto w-full shadow-2xl relative overflow-hidden border border-white/10">
             <div className="absolute -top-32 -left-32 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* 快速找回上次已完成的会话结果 */}
+            {lastSessionRecord && (
+              <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-slate-900/60 to-indigo-500/15 border border-amber-500/30 flex items-center justify-between gap-3 text-left shadow-lg shadow-amber-950/20">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                    <Bookmark className="w-4 h-4 text-amber-300" />
+                  </div>
+                  <div className="overflow-hidden">
+                    <div className="text-xs font-bold text-amber-200 truncate">{t.app.resumeLastReportBtn}</div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate">{lastSessionRecord.sessionId}</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadReportById(lastSessionRecord.sessionId, true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shrink-0 cursor-pointer transition-all shadow-md active:scale-95 flex items-center gap-1"
+                >
+                  <span>查看</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 mb-6 font-medium">
               <Stars className="w-3.5 h-3.5" />
@@ -828,6 +985,46 @@ export default function App() {
               </p>
             </div>
 
+            {/* 专属永久报告链接卡片 (避免丢失后再也无法找回) */}
+            <div className="p-5 md:p-6 rounded-2xl bg-slate-900/90 border border-amber-500/25 space-y-2.5 text-left shadow-xl shadow-amber-950/20">
+              <div className="flex items-center justify-between">
+                <span className="text-xs md:text-sm font-bold text-amber-300 flex items-center gap-1.5 font-serif">
+                  <Link2 className="w-4 h-4 text-amber-400" /> {t.app.permanentLinkTitle}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                  ID: {report.session_id}
+                </span>
+              </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={buildSessionReportUrl(report.session_id)}
+                  className="flex-1 bg-black/70 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-amber-200 selection:bg-amber-500/30 truncate select-all focus:outline-none focus:border-amber-400/50"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyReportLink}
+                  className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md shadow-amber-500/20 shrink-0"
+                >
+                  {copiedPermalink ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-950" />
+                      <span>已复制！</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>{t.app.copyReportLinkBtn}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                {t.app.permanentLinkDesc}
+              </p>
+            </div>
+
             {/* 按钮区 */}
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
               <button
@@ -836,6 +1033,10 @@ export default function App() {
                   setStage("WELCOME");
                   setReport(null);
                   setTrialData(null);
+                  setSessionId("");
+                  if (typeof window !== "undefined") {
+                    window.history.pushState(null, "", "/");
+                  }
                 }}
                 className="px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors border border-white/10 shadow-lg"
               >

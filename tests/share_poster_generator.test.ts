@@ -219,5 +219,10 @@ describe("Unified Share Suite: Poster Generator Engine & Text Purging", () => {
     expect(renderedTexts.some((t) => t.includes("d'"))).toBe(false);
     expect(renderedTexts.some((t) => t.includes("Meta-d'"))).toBe(false);
     expect(renderedTexts.some((t) => t.includes("☰"))).toBe(false);
+
+    // 验证新版横排二维码与紧凑黄金比例 (告别 1920 冗余长条与巨大居中二维码)
+    expect(mockCanvas.height).toBe(1380);
+    expect(renderedTexts.some((t) => t.includes("长按扫码 · 探索你的心智本命"))).toBe(true);
+    expect(renderedTexts.some((t) => t.includes("Two-Tier Metacognitive Manifold Test"))).toBe(true);
   });
 });

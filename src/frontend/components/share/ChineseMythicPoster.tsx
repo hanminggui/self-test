@@ -34,6 +34,7 @@ import {
   PosterShareData,
   SkillDisplayItem,
 } from "./posterGenerator";
+import { buildSessionReportUrl } from "../../utils/sessionRoute";
 import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 
 export interface ChineseMythicPosterProps {
@@ -98,14 +99,18 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   const [copyingImage, setCopyingImage] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const posterCardRef = React.useRef<HTMLDivElement>(null);
 
   const resolvedUrl = useMemo(() => {
     if (entryUrl) return entryUrl;
+    if (report?.session_id) {
+      return buildSessionReportUrl(report.session_id);
+    }
     if (typeof window !== "undefined") {
       return `${window.location.origin}/`;
     }
     return "http://localhost:8000/";
-  }, [entryUrl]);
+  }, [entryUrl, report?.session_id]);
 
   const empoweringFeedback = useMemo(() => {
     return profile.empowering_feedback || archetypeConfig.totemAphorism || "自强不息，知行自洽。";
@@ -146,7 +151,7 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   const handleDownload = async () => {
     try {
       setDownloading(true);
-      await downloadPoster(shareData);
+      await downloadPoster(shareData, undefined, posterCardRef.current);
       showToast("高清海报下载已开始！");
     } catch (err: any) {
       console.error(err);
@@ -160,7 +165,7 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   const handleCopyImage = async () => {
     try {
       setCopyingImage(true);
-      const res = await copyPosterImageToClipboard(shareData);
+      const res = await copyPosterImageToClipboard(shareData, posterCardRef.current);
       if (res.fallback) {
         showToast("您的浏览器不支持直接复制图片，已为您自动下载！");
       } else if (res.success) {
@@ -171,7 +176,7 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
     } catch (err: any) {
       console.error(err);
       showToast("复制海报失败，已为您自动下载");
-      await downloadPoster(shareData);
+      await downloadPoster(shareData, undefined, posterCardRef.current);
     } finally {
       setCopyingImage(false);
     }
@@ -208,6 +213,7 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
 
       {/* 核心海报视觉卡片容器 (DOM 实时高清预览) */}
       <div
+        ref={posterCardRef}
         className="relative w-full rounded-3xl overflow-hidden shadow-2xl border transition-all duration-300"
         style={{
           borderColor: colors.cardBorder,
@@ -224,10 +230,10 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
             className="text-[13px] font-bold tracking-[0.25em] font-serif"
             style={{ color: colors.secondaryGold }}
           >
-            东方认知流形 · 心智图谱
+            认知流形 · 心智图谱
           </div>
           <div className="text-[9px] tracking-[0.15em] text-slate-400 uppercase mt-0.5 font-mono">
-            CHINESE COGNITIVE MANIFOLD ARCHETYPE SPECTRUM
+            COGNITIVE MANIFOLD ARCHETYPE SPECTRUM
           </div>
         </div>
 

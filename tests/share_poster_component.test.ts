@@ -87,9 +87,11 @@ describe("Unified Share Suite: Component Rendering & Data Sanitization", () => {
     expect(html).toContain("天元");
     expect(html).toContain("统御");
 
-    // 8. 原创正向赋能描述
+    // 8. 原创正向赋能描述与去“东方”开头
     expect(html).toContain("认知心智 · 赋能启示");
     expect(html).toContain("您展现出令人叹为观止的‘人形外挂’级顶尖素养");
+    expect(html).toContain("认知流形 · 心智图谱");
+    expect(html).not.toContain("东方认知流形");
 
     // 9. 一键操作按钮
     expect(html).toContain("下载高清海报 (PNG)");
@@ -176,14 +178,16 @@ describe("Unified Share Suite: Component Rendering & Data Sanitization", () => {
     expect(html).toContain("Copy Poster to Clipboard");
     expect(html).toContain("Copy Share Text");
 
-    // 绝无中文遗留与敏感指标
+    // 绝无中文遗留、敏感指标与“WESTERN”开头
     expect(html).not.toContain("人形外挂");
     expect(html).not.toContain("Q1-CAL");
     expect(html).not.toContain("2.45");
+    expect(html).toContain("ARCANE ORDER · COGNITIVE SPECTRUM");
+    expect(html).not.toContain("WESTERN ARCANE ORDER");
   });
 
-  it("Issue #27: PosterModal 单入口多语言自适应分流", () => {
-    // 1. 中文状态分流至东方神话画像分享卡
+  it("Issue #27: PosterModal 单入口多语言自适应分流，且分享卡文本绝对不以‘东方’‘西方’开头", () => {
+    // 1. 中文状态分流至神话画像分享卡
     const modalHtmlZh = renderToString(
       React.createElement(PosterModal, {
         isOpen: true,
@@ -193,12 +197,13 @@ describe("Unified Share Suite: Component Rendering & Data Sanitization", () => {
       })
     );
 
-    expect(modalHtmlZh).toContain("东方认知流形 · 原创画像专属分享卡");
+    expect(modalHtmlZh).toContain("认知流形 · 原创画像专属分享卡");
+    expect(modalHtmlZh).not.toContain("东方认知流形");
     expect(modalHtmlZh).toContain("data-share-poster=\"chinese-mythic\"");
     expect(modalHtmlZh).toContain("人形外挂");
     expect(modalHtmlZh).toContain("算力透视");
 
-    // 2. 英文状态自适应分流至西方秘法秩序分享卡
+    // 2. 英文状态自适应分流至秘法秩序分享卡
     const modalHtmlEn = renderToString(
       React.createElement(PosterModal, {
         isOpen: true,
@@ -211,7 +216,8 @@ describe("Unified Share Suite: Component Rendering & Data Sanitization", () => {
       })
     );
 
-    expect(modalHtmlEn).toContain("Western Arcane Order · Cognitive Archetype Seal");
+    expect(modalHtmlEn).toContain("Arcane Order · Cognitive Archetype Seal");
+    expect(modalHtmlEn).not.toContain("Western Arcane Order");
     expect(modalHtmlEn).toContain("data-share-poster=\"western-arcane\"");
     expect(modalHtmlEn).toContain("The Grand Archmage");
     expect(modalHtmlEn).toContain("Eye of Aether");

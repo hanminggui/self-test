@@ -76,8 +76,8 @@ export const PosterModal: React.FC<PosterModalProps> = ({
             <Sparkles className={`w-4 h-4 ${isEn ? "text-purple-400" : "text-amber-400"}`} />
             <span>
               {isEn
-                ? "Western Arcane Order · Cognitive Archetype Seal"
-                : "东方认知流形 · 原创画像专属分享卡"}
+                ? "Arcane Order · Cognitive Archetype Seal"
+                : "认知流形 · 原创画像专属分享卡"}
             </span>
           </div>
 

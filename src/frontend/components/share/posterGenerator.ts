@@ -14,6 +14,7 @@
  */
 
 import QRCode from "qrcode";
+import { toBlob as htmlToBlob } from "html-to-image";
 import { CognitiveArchetype } from "../../../backend/models";
 import { getMythicArchetype, MythicArchetypeConfig } from "./mythicArchetypes";
 import { getArcaneArchetype, ArcaneArchetypeConfig } from "./arcaneArchetypes";
@@ -252,15 +253,33 @@ function drawWrappedText(
 }
 
 /**
- * 渲染全量超高清 (1080 x 1920) 专属分享海报至 Canvas
- * 1:1 完整复刻网页端背景光晕、暗金沉底渐变与细密星尘粒子质感
+ * 从 HTML 元素直接高保真导出图片 Blob (DOM 渲染所见即所得)
+ */
+export async function generatePosterBlobFromElement(
+  element: HTMLElement,
+  options?: { pixelRatio?: number }
+): Promise<Blob> {
+  const pixelRatio = options?.pixelRatio || 2;
+  const blob = await htmlToBlob(element, {
+    pixelRatio,
+    cacheBust: true,
+  });
+  if (!blob) {
+    throw new Error("Failed to export HTML element to PNG blob via html-to-image");
+  }
+  return blob;
+}
+
+/**
+ * 渲染全量超高清 (1080 x 1380) 专属分享海报至 Canvas
+ * 1:1 完整复刻网页端背景光晕、暗金流光沉底渐变、胶囊横排二维码与细密星尘粒子质感
  */
 export async function renderPosterToCanvas(
   data: PosterShareData,
   scale: number = 1
 ): Promise<HTMLCanvasElement> {
   const WIDTH = 1080 * scale;
-  const HEIGHT = 1920 * scale;
+  const HEIGHT = 1380 * scale;
 
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
@@ -271,7 +290,7 @@ export async function renderPosterToCanvas(
   ctx.scale(scale, scale);
 
   const W = 1080;
-  const H = 1920;
+  const H = 1380;
   const isEn = data.locale === "en-US" || (typeof data.archetype === "string" && data.archetype.includes("Archmage"));
 
   const mythicConfig = getMythicArchetype(data.archetype);
@@ -318,8 +337,8 @@ export async function renderPosterToCanvas(
   ctx.fillStyle = topGlowGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // 底部暗金/流光沉底渐变 (消除黑底生硬感)
-  const bottomGlowGrad = ctx.createRadialGradient(W / 2, H * 0.98, 80, W / 2, H * 0.82, W * 0.75);
+  // 底部暗金/流光沉底渐变
+  const bottomGlowGrad = ctx.createRadialGradient(W / 2, H * 0.95, 60, W / 2, H * 0.8, W * 0.75);
   bottomGlowGrad.addColorStop(0, colorScheme.bgRadialInner);
   bottomGlowGrad.addColorStop(0.65, colorScheme.bgRadialOuter);
   bottomGlowGrad.addColorStop(1, "transparent");
@@ -327,10 +346,10 @@ export async function renderPosterToCanvas(
   ctx.fillRect(0, 0, W, H);
 
   // ==========================================
-  // 2. 细密星尘粒子噪点 (180+ 粒子随机分布)
+  // 2. 细密星尘粒子噪点 (160+ 粒子随机分布)
   // ==========================================
   ctx.save();
-  for (let i = 0; i < 180; i++) {
+  for (let i = 0; i < 160; i++) {
     const px = ((i * 197 + 83) % (W - 80)) + 40;
     const py = ((i * 311 + 47) % (H - 80)) + 40;
     const pr = ((i % 5) + 1) * 0.6;
@@ -357,35 +376,27 @@ export async function renderPosterToCanvas(
   ctx.restore();
 
   // ==========================================
-  // 3. 双层边框与典雅角标
+  // 3. 典雅双层圆角边框 (与 DOM 预览卡片一致)
   // ==========================================
-  const m = 44; // 边距
+  const m = 36; // 边距
   const primaryColor = colorScheme.primaryGold;
 
-  // 外框单线
-  ctx.strokeStyle = "rgba(254, 240, 138, 0.25)";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(m - 8, m - 8, W - (m - 8) * 2, H - (m - 8) * 2);
-
-  // 主金线框
+  // 外框圆角流光金线
   ctx.strokeStyle = primaryColor;
-  ctx.lineWidth = 2.5;
-  ctx.strokeRect(m, m, W - m * 2, H - m * 2);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(m, m, W - m * 2, H - m * 2, 28);
+  ctx.stroke();
 
-  // 内侧金线
-  ctx.strokeStyle = "rgba(254, 240, 138, 0.4)";
+  // 内侧柔和金线
+  ctx.strokeStyle = "rgba(254, 240, 138, 0.3)";
   ctx.lineWidth = 1;
-  ctx.strokeRect(m + 8, m + 8, W - (m + 8) * 2, H - (m + 8) * 2);
-
-  // 四角回纹
-  const fretSize = 36;
-  drawCornerFret(ctx, m + 8, m + 8, fretSize, 1, 1, primaryColor);
-  drawCornerFret(ctx, W - m - 8, m + 8, fretSize, -1, 1, primaryColor);
-  drawCornerFret(ctx, m + 8, H - m - 8, fretSize, 1, -1, primaryColor);
-  drawCornerFret(ctx, W - m - 8, H - m - 8, fretSize, -1, -1, primaryColor);
+  ctx.beginPath();
+  ctx.roundRect(m + 6, m + 6, W - (m + 6) * 2, H - (m + 6) * 2, 24);
+  ctx.stroke();
 
   // ==========================================
-  // 4. 顶部标头 (Header)
+  // 4. 顶部标头横批 (Header)
   // ==========================================
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -396,129 +407,129 @@ export async function renderPosterToCanvas(
     : `bold 24px "Songti SC", "SimSun", "STSong", serif`;
   ctx.letterSpacing = isEn ? "4px" : "6px";
   ctx.fillText(
-    isEn ? "WESTERN ARCANE ORDER · COGNITIVE SPECTRUM" : "东方认知流形 · 心智图谱",
+    isEn ? "ARCANE ORDER · COGNITIVE SPECTRUM" : "认知流形 · 心智图谱",
     W / 2,
-    110
+    95
   );
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-  ctx.font = `600 13px system-ui, -apple-system, sans-serif`;
-  ctx.letterSpacing = "4px";
+  ctx.font = `600 12px system-ui, -apple-system, sans-serif`;
+  ctx.letterSpacing = "3px";
   ctx.fillText(
-    isEn ? "ORDO ARCANUM · METACOGNITIVE TESTING LAB" : "CHINESE COGNITIVE MANIFOLD ARCHETYPE SPECTRUM",
+    isEn ? "ORDO ARCANUM · METACOGNITIVE TESTING LAB" : "COGNITIVE MANIFOLD ARCHETYPE SPECTRUM",
     W / 2,
-    140
+    122
   );
 
   // 分隔细金线
   ctx.strokeStyle = "rgba(254, 240, 138, 0.35)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(W / 2 - 160, 160);
-  ctx.lineTo(W / 2 + 160, 160);
+  ctx.moveTo(W / 2 - 160, 142);
+  ctx.lineTo(W / 2 + 160, 142);
   ctx.stroke();
 
   // ==========================================
   // 5. 头像框与专属图腾 (Avatar Emblem)
   // ==========================================
-  const avatarY = 280;
+  const avatarY = 225;
 
   // 头像背后强烈多层放射辉光
-  const avatarAura = ctx.createRadialGradient(W / 2, avatarY, 20, W / 2, avatarY, 180);
+  const avatarAura = ctx.createRadialGradient(W / 2, avatarY, 15, W / 2, avatarY, 140);
   avatarAura.addColorStop(0, colorScheme.glowColor);
   avatarAura.addColorStop(0.8, `${colorScheme.primaryGold}22`);
   avatarAura.addColorStop(1, "transparent");
   ctx.fillStyle = avatarAura;
   ctx.beginPath();
-  ctx.arc(W / 2, avatarY, 180, 0, Math.PI * 2);
+  ctx.arc(W / 2, avatarY, 140, 0, Math.PI * 2);
   ctx.fill();
 
   // 外层金色同心罗盘环
   ctx.strokeStyle = primaryColor;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.arc(W / 2, avatarY, 80, 0, Math.PI * 2);
+  ctx.arc(W / 2, avatarY, 65, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.strokeStyle = "rgba(254, 240, 138, 0.4)";
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
-  ctx.arc(W / 2, avatarY, 90, 0, Math.PI * 2);
+  ctx.arc(W / 2, avatarY, 73, 0, Math.PI * 2);
   ctx.stroke();
 
   // 刻度星点
   for (let a = 0; a < 8; a++) {
     const rad = (a * Math.PI) / 4;
-    const px = W / 2 + Math.cos(rad) * 85;
-    const py = avatarY + Math.sin(rad) * 85;
+    const px = W / 2 + Math.cos(rad) * 69;
+    const py = avatarY + Math.sin(rad) * 69;
     ctx.fillStyle = colorScheme.secondaryGold;
     ctx.beginPath();
-    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+    ctx.arc(px, py, 2, 0, Math.PI * 2);
     ctx.fill();
   }
 
   // 中心圆内背景
   ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
   ctx.beginPath();
-  ctx.arc(W / 2, avatarY, 78, 0, Math.PI * 2);
+  ctx.arc(W / 2, avatarY, 63, 0, Math.PI * 2);
   ctx.fill();
 
   // 头像框中心专属图腾图标/字符
   ctx.fillStyle = colorScheme.secondaryGold;
-  ctx.font = `bold 52px system-ui, -apple-system, sans-serif`;
+  ctx.font = `bold 44px system-ui, -apple-system, sans-serif`;
   const emblemGlyph = isEn ? arcaneConfig.crestSymbol : (skills[0]?.icon || "✦");
   ctx.fillText(emblemGlyph, W / 2, avatarY);
 
   // ==========================================
   // 6. 头像框下方长条徽带 (展示用户真实昵称)
   // ==========================================
-  const ribbonY = 410;
+  const ribbonY = 325;
   const subjectName = data.subjectName || (isEn ? "Explorer" : "探索者");
   const nicknameText = isEn ? `Explorer · ${subjectName}` : `探索者 · ${subjectName}`;
 
   ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
   ctx.beginPath();
-  ctx.roundRect(W / 2 - 220, ribbonY - 22, 440, 44, 22);
+  ctx.roundRect(W / 2 - 200, ribbonY - 18, 400, 36, 18);
   ctx.fill();
   ctx.strokeStyle = primaryColor;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.2;
   ctx.stroke();
 
   ctx.fillStyle = colorScheme.secondaryGold;
-  ctx.font = isEn ? `bold 20px system-ui, sans-serif` : `bold 20px "STKaiti", "Songti SC", serif`;
-  ctx.letterSpacing = "2px";
+  ctx.font = isEn ? `bold 17px system-ui, sans-serif` : `bold 18px "STKaiti", "Songti SC", serif`;
+  ctx.letterSpacing = "1.5px";
   ctx.fillText(nicknameText, W / 2, ribbonY);
 
   // ==========================================
   // 7. 角色大标题与赞许金句 (Role Title & Tagline)
   // ==========================================
-  const roleY = 515;
+  const roleY = 410;
 
   // 渐变曜金角色大字
-  const roleGrad = ctx.createLinearGradient(W / 2 - 200, roleY - 30, W / 2 + 200, roleY + 30);
+  const roleGrad = ctx.createLinearGradient(W / 2 - 180, roleY - 25, W / 2 + 180, roleY + 25);
   roleGrad.addColorStop(0, "#ffffff");
   roleGrad.addColorStop(0.35, colorScheme.secondaryGold);
   roleGrad.addColorStop(0.7, colorScheme.primaryGold);
   roleGrad.addColorStop(1, colorScheme.secondaryGold);
   ctx.fillStyle = roleGrad;
   ctx.font = isEn
-    ? `900 64px system-ui, -apple-system, sans-serif`
-    : `900 80px "STKaiti", "Songti SC", "SimSun", serif`;
-  ctx.letterSpacing = isEn ? "3px" : "8px";
+    ? `900 58px system-ui, -apple-system, sans-serif`
+    : `900 68px "STKaiti", "Songti SC", "SimSun", serif`;
+  ctx.letterSpacing = isEn ? "3px" : "6px";
   ctx.shadowColor = colorScheme.glowColor;
-  ctx.shadowBlur = 24;
+  ctx.shadowBlur = 22;
   ctx.fillText(roleTitle, W / 2, roleY);
   ctx.shadowBlur = 0;
 
   // 赞许金句 Tagline
-  const tagY = 595;
+  const tagY = 472;
   ctx.fillStyle = "#fef08a";
-  ctx.font = isEn ? `600 24px system-ui, sans-serif` : `600 26px "STKaiti", "Songti SC", serif`;
-  ctx.letterSpacing = "2px";
+  ctx.font = isEn ? `600 21px system-ui, sans-serif` : `600 22px "STKaiti", "Songti SC", serif`;
+  ctx.letterSpacing = "1.5px";
   ctx.fillText(`“ ${praiseTagline} ”`, W / 2, tagY);
 
   // 高光标签 (Tags)
-  const tagsY = 655;
+  const tagsY = 522;
   const tagTotalW = strengthTags.length * 165;
   let tagStartX = (W - tagTotalW) / 2 + 80;
   for (const tag of strengthTags) {
@@ -526,12 +537,12 @@ export async function renderPosterToCanvas(
     ctx.strokeStyle = "rgba(254, 240, 138, 0.35)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(tagStartX - 75, tagsY - 18, 150, 36, 18);
+    ctx.roundRect(tagStartX - 75, tagsY - 16, 150, 32, 16);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = colorScheme.secondaryGold;
-    ctx.font = `bold 14px system-ui, sans-serif`;
+    ctx.font = `bold 13px system-ui, sans-serif`;
     ctx.letterSpacing = "1px";
     ctx.fillText(`#${tag}`, tagStartX, tagsY);
     tagStartX += 165;
@@ -539,11 +550,10 @@ export async function renderPosterToCanvas(
 
   // ==========================================
   // 8. 4 项专属正向认知特技 (2x2 Grid)
-  // 彻底置换原 4D 指标，全中文无杂质 / 英文全纯正
   // ==========================================
-  const skillsStartY = 720;
+  const skillsStartY = 575;
   const cardW = 460;
-  const cardH = 155;
+  const cardH = 135;
 
   for (let idx = 0; idx < 4; idx++) {
     const skill = skills[idx] || {
@@ -556,79 +566,79 @@ export async function renderPosterToCanvas(
     const row = Math.floor(idx / 2);
     const col = idx % 2;
     const cx = col === 0 ? W / 2 - cardW / 2 - 12 : W / 2 + cardW / 2 + 12;
-    const cy = skillsStartY + row * (cardH + 18) + cardH / 2;
+    const cy = skillsStartY + row * (cardH + 14) + cardH / 2;
 
     // 单项玻璃拟态卡片背景
     ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
-    ctx.strokeStyle = "rgba(254, 240, 138, 0.3)";
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(254, 240, 138, 0.25)";
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.roundRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, 18);
+    ctx.roundRect(cx - cardW / 2, cy - cardH / 2, cardW, cardH, 16);
     ctx.fill();
     ctx.stroke();
 
     // 技能图标 (左侧)
     ctx.textAlign = "center";
-    ctx.font = `32px system-ui, sans-serif`;
-    ctx.fillText(skill.icon || "✦", cx - cardW / 2 + 40, cy - cardH / 2 + 45);
+    ctx.font = `28px system-ui, sans-serif`;
+    ctx.fillText(skill.icon || "✦", cx - cardW / 2 + 36, cy - cardH / 2 + 38);
 
     // 技能类型徽章 (Pill Badge)
     ctx.textAlign = "left";
     ctx.fillStyle = colorScheme.badgeBg;
     ctx.beginPath();
-    ctx.roundRect(cx - cardW / 2 + 75, cy - cardH / 2 + 20, isEn ? 120 : 80, 24, 6);
+    ctx.roundRect(cx - cardW / 2 + 65, cy - cardH / 2 + 18, isEn ? 115 : 78, 22, 6);
     ctx.fill();
 
     ctx.fillStyle = colorScheme.secondaryGold;
-    ctx.font = `bold 12px system-ui, sans-serif`;
+    ctx.font = `bold 11px system-ui, sans-serif`;
     ctx.letterSpacing = "1px";
-    ctx.fillText(skill.type, cx - cardW / 2 + 82, cy - cardH / 2 + 36);
+    ctx.fillText(skill.type, cx - cardW / 2 + 72, cy - cardH / 2 + 33);
 
     // 技能名称 (Bold Header)
     ctx.fillStyle = "#ffffff";
-    ctx.font = isEn ? `bold 20px system-ui, sans-serif` : `bold 22px "STKaiti", "Songti SC", serif`;
+    ctx.font = isEn ? `bold 18px system-ui, sans-serif` : `bold 20px "STKaiti", "Songti SC", serif`;
     ctx.letterSpacing = "1px";
-    ctx.fillText(skill.name, cx - cardW / 2 + (isEn ? 205 : 165), cy - cardH / 2 + 37);
+    ctx.fillText(skill.name, cx - cardW / 2 + (isEn ? 190 : 152), cy - cardH / 2 + 34);
 
-    // 技能精炼描述 (Wrapped Text)
+    // 技能描述 (Wrapped Text)
     ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-    ctx.font = `14px system-ui, sans-serif`;
+    ctx.font = `13px system-ui, sans-serif`;
     ctx.letterSpacing = "0.5px";
     drawWrappedText(
       ctx,
       skill.desc,
-      cx - cardW / 2 + 24,
-      cy - cardH / 2 + 80,
-      cardW - 48,
-      22,
-      3
+      cx - cardW / 2 + 20,
+      cy - cardH / 2 + 72,
+      cardW - 40,
+      20,
+      2
     );
   }
 
   // ==========================================
   // 9. 赋能启示古训/箴言横幅与印章 (Empowering Banner & Seal)
   // ==========================================
-  const bannerY = 1145;
-  ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-  ctx.strokeStyle = "rgba(254, 240, 138, 0.35)";
+  const bannerY = 920;
+  ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+  ctx.strokeStyle = "rgba(254, 240, 138, 0.3)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(W / 2 - 470, bannerY - 45, 940, 110, 18);
+  ctx.roundRect(W / 2 - 470, bannerY - 42, 940, 108, 16);
   ctx.fill();
   ctx.stroke();
 
   ctx.textAlign = "left";
   ctx.fillStyle = colorScheme.secondaryGold;
-  ctx.font = isEn ? `bold 16px system-ui, sans-serif` : `bold 17px "Songti SC", serif`;
+  ctx.font = isEn ? `bold 15px system-ui, sans-serif` : `bold 16px "Songti SC", serif`;
   ctx.letterSpacing = "2px";
   ctx.fillText(
     isEn ? "[ ORDO ARCANUM · EMPOWERING INSIGHT ]" : "【 认知心智 · 赋能启示 】",
     W / 2 - 440,
-    bannerY - 18
+    bannerY - 16
   );
 
   ctx.fillStyle = "#f3f4f6";
-  ctx.font = isEn ? `italic 15px system-ui, sans-serif` : `italic 16px "STKaiti", "Songti SC", serif`;
+  ctx.font = isEn ? `italic 14px system-ui, sans-serif` : `italic 15px "STKaiti", "Songti SC", serif`;
   ctx.letterSpacing = "1px";
   drawWrappedText(
     ctx,
@@ -636,31 +646,68 @@ export async function renderPosterToCanvas(
     W / 2 - 440,
     bannerY + 12,
     760,
-    22,
-    3
+    20,
+    2
   );
 
   // 右侧朱砂/秘法印章
   const sealText = isEn ? arcaneConfig.sealText : mythicConfig.sealText;
-  drawSeal(ctx, W / 2 + 340, bannerY - 35, 90, sealText, isEn);
+  drawSeal(ctx, W / 2 + 355, bannerY - 33, 80, sealText, isEn);
 
   // ==========================================
-  // 10. 动态二维码扫码区域 (Dynamic QR Code)
+  // 10. 动态二维码扫码区域 (水平横条胶囊布局，与 DOM 预览严格 1:1)
   // ==========================================
-  const qrSectionY = 1430;
+  const qrBarY = 1060;
+  const qrBarW = 940;
+  const qrBarH = 135;
   const qrUrl = data.entryUrl || (typeof window !== "undefined" ? window.location.href : "http://localhost:8000/");
 
-  const qrBoxSize = 220;
-  const qrBoxX = W / 2 - qrBoxSize / 2;
-  const qrBoxY = qrSectionY - 40;
+  // 二维码横条外框背景
+  ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.roundRect(W / 2 - qrBarW / 2, qrBarY, qrBarW, qrBarH, 18);
+  ctx.fill();
+  ctx.stroke();
 
-  // 二维码白底
+  // 左侧扫码呼召文案
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = isEn ? `bold 20px system-ui, sans-serif` : `bold 21px "STKaiti", "Songti SC", serif`;
+  ctx.letterSpacing = "1.5px";
+  ctx.fillText(
+    isEn ? "Scan to Discover Your Cognitive Archetype" : "长按扫码 · 探索你的心智本命",
+    W / 2 - qrBarW / 2 + 36,
+    qrBarY + 48
+  );
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+  ctx.font = `13px system-ui, sans-serif`;
+  ctx.letterSpacing = "2px";
+  ctx.fillText(
+    "Two-Tier Metacognitive Manifold Test",
+    W / 2 - qrBarW / 2 + 36,
+    qrBarY + 84
+  );
+
+  // 右侧二维码视窗 (紧凑方块，告别原本 220px 巨大方块)
+  const qrBoxSize = 104;
+  const qrBoxX = W / 2 + qrBarW / 2 - qrBoxSize - 20;
+  const qrBoxY = qrBarY + (qrBarH - qrBoxSize) / 2;
+
+  // 二维码白底与圆角
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
-  ctx.roundRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 16);
+  ctx.roundRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 12);
   ctx.fill();
 
-  // 绘制动态生成的 QR Code 图片
+  // 细金边框
+  ctx.strokeStyle = `${primaryColor}66`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 绘制动态二维码
   try {
     const qrDataUrl = await generatePosterQrCodeDataUrl(qrUrl, "#0b0d13", "#ffffff");
     const qrImg = new Image();
@@ -669,47 +716,24 @@ export async function renderPosterToCanvas(
       qrImg.onload = resolve;
       qrImg.onerror = reject;
     });
-    ctx.drawImage(qrImg, qrBoxX + 10, qrBoxY + 10, qrBoxSize - 20, qrBoxSize - 20);
+    ctx.drawImage(qrImg, qrBoxX + 6, qrBoxY + 6, qrBoxSize - 12, qrBoxSize - 12);
   } catch {
     ctx.fillStyle = "#000000";
-    ctx.font = `14px monospace`;
-    ctx.fillText("QR CODE", W / 2, qrSectionY + 70);
+    ctx.font = `12px monospace`;
+    ctx.textAlign = "center";
+    ctx.fillText("QR CODE", qrBoxX + qrBoxSize / 2, qrBoxY + qrBoxSize / 2);
   }
-
-  // 二维码装饰金框
-  ctx.strokeStyle = primaryColor;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(qrBoxX - 6, qrBoxY - 6, qrBoxSize + 12, qrBoxSize + 12);
-
-  // 扫码呼召文案
-  ctx.textAlign = "center";
-  ctx.fillStyle = colorScheme.secondaryGold;
-  ctx.font = isEn ? `bold 22px system-ui, sans-serif` : `bold 22px "STKaiti", "Songti SC", serif`;
-  ctx.letterSpacing = "2px";
-  ctx.fillText(
-    isEn ? "Scan to Discover Your Cognitive Archetype" : "长按识别二维码 · 测算你的认知本命流形",
-    W / 2,
-    qrSectionY + 235
-  );
-
-  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-  ctx.font = `13px system-ui, sans-serif`;
-  ctx.letterSpacing = "2px";
-  ctx.fillText(
-    isEn ? "TWO-TIER METACOGNITIVE MANIFOLD TEST" : "TWO-TIER METACOGNITIVE MANIFOLD TEST",
-    W / 2,
-    qrSectionY + 268
-  );
 
   // ==========================================
   // 11. 底部脚注 (Footer)
   // ==========================================
-  const footerY = 1845;
+  const footerY = 1270;
+  ctx.textAlign = "center";
   ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-  ctx.font = `13px "SF Mono", monospace`;
+  ctx.font = `12px "SF Mono", monospace`;
   ctx.letterSpacing = "1.5px";
   const dateStr = data.dateText || new Date().toISOString().split("T")[0];
-  ctx.fillText(`VERIFIED INFERENCE · ${dateStr} · SYSTEM V2.0 · LAB DEPT.`, W / 2, footerY);
+  ctx.fillText(`VERIFIED BY METACOGNITIVE TESTING LAB · ${dateStr} · SYSTEM V2.0`, W / 2, footerY);
 
   return canvas;
 }
@@ -728,11 +752,27 @@ export async function generatePosterBlob(data: PosterShareData, scale: number = 
 }
 
 /**
- * 一键下载高清海报 PNG
+ * 一键下载高清海报 PNG (优先 DOM 所见即所得，自动回退 Canvas 引擎)
  */
-export async function downloadPoster(data: PosterShareData, customFilename?: string): Promise<void> {
+export async function downloadPoster(
+  data: PosterShareData,
+  customFilename?: string,
+  element?: HTMLElement | null
+): Promise<void> {
   const isEn = data.locale === "en-US";
-  const blob = await generatePosterBlob(data, 2);
+  let blob: Blob;
+
+  if (element && typeof window !== "undefined") {
+    try {
+      blob = await generatePosterBlobFromElement(element, { pixelRatio: 2 });
+    } catch (domErr) {
+      console.warn("DOM-to-Image export failed, falling back to Canvas rendering engine:", domErr);
+      blob = await generatePosterBlob(data, 2);
+    }
+  } else {
+    blob = await generatePosterBlob(data, 2);
+  }
+
   const url = URL.createObjectURL(blob);
 
   const cleanName = (data.subjectName || "explorer").replace(/[/\\?%*:|"<>]/g, "");
@@ -755,13 +795,25 @@ export async function downloadPoster(data: PosterShareData, customFilename?: str
 }
 
 /**
- * 一键复制海报图片到剪贴板
+ * 一键复制海报图片到剪贴板 (优先 DOM 所见即所得，自动回退 Canvas 引擎)
  */
 export async function copyPosterImageToClipboard(
-  data: PosterShareData
+  data: PosterShareData,
+  element?: HTMLElement | null
 ): Promise<{ success: boolean; fallback?: boolean; error?: string }> {
   try {
-    const blob = await generatePosterBlob(data, 2);
+    let blob: Blob;
+
+    if (element && typeof window !== "undefined") {
+      try {
+        blob = await generatePosterBlobFromElement(element, { pixelRatio: 2 });
+      } catch (domErr) {
+        console.warn("DOM-to-Image copy failed, falling back to Canvas rendering engine:", domErr);
+        blob = await generatePosterBlob(data, 2);
+      }
+    } else {
+      blob = await generatePosterBlob(data, 2);
+    }
 
     if (navigator?.clipboard?.write && typeof ClipboardItem !== "undefined") {
       try {
@@ -773,12 +825,12 @@ export async function copyPosterImageToClipboard(
         return { success: true };
       } catch (clipErr: any) {
         console.warn("ClipboardItem image write failed, falling back to download:", clipErr);
-        await downloadPoster(data);
+        await downloadPoster(data, undefined, element);
         return { success: true, fallback: true, error: clipErr.message };
       }
     }
 
-    await downloadPoster(data);
+    await downloadPoster(data, undefined, element);
     return { success: true, fallback: true };
   } catch (err: any) {
     return { success: false, error: err.message || "Failed to copy poster" };
