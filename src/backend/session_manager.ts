@@ -774,7 +774,8 @@ export class SessionManager {
       duration_ms?: number;
       token_usage?: TokenUsageStats;
       operations?: any[];
-    }
+    },
+    locale?: SupportedLocale
   ): any {
     const session = this.getSession(sessionId);
     if (!session) throw new Error(`Session '${sessionId}' not found.`);
@@ -784,7 +785,7 @@ export class SessionManager {
         trial_index: session.currentTrialIndex,
         status: "COMPLETED",
         is_completed: true,
-        report: session.finalReport || this.finalizeReport(session),
+        report: session.finalReport ? this.localizeReport(session.finalReport, locale) : this.finalizeReport(session, locale),
       };
     }
     if (session.stagedP1Choice === null) throw new Error("Phase 1 choice has not been submitted yet.");
@@ -872,7 +873,7 @@ export class SessionManager {
       session.isCompleted = true;
       session.currentPhase = PhaseType.COMPLETED;
       session.currentTask = null;
-      const finalReport = this.finalizeReport(session);
+      const finalReport = this.finalizeReport(session, locale);
       this.removeActiveSession(session.sessionId);
 
       return {
@@ -917,10 +918,11 @@ export class SessionManager {
       duration_ms?: number;
       token_usage?: TokenUsageStats;
       operations?: any[];
-    }
+    },
+    locale?: SupportedLocale
   ): Promise<any> {
     await this.getSessionAsync(sessionId);
-    const res = this.submitPhase2(sessionId, action, confidenceLevel, revisedChoice, metricsPayload);
+    const res = this.submitPhase2(sessionId, action, confidenceLevel, revisedChoice, metricsPayload, locale);
     const session = this.getSession(sessionId);
     if (session) {
       if (session.isCompleted) {

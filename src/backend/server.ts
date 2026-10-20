@@ -230,13 +230,16 @@ app.post("/api/sessions/:id/hint", async (c) => {
 app.post("/api/sessions/:id/phase2", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
+  const locale = c.get("locale");
   const sm = getSessionManagerForContext(c);
   try {
     return c.json(await sm.submitPhase2Async(
       id,
       body.action as MetacognitiveAction,
       body.confidence_level,
-      body.revised_choice
+      body.revised_choice,
+      undefined,
+      locale
     ));
   } catch (e: any) {
     return c.json({ error: e.message }, 400);

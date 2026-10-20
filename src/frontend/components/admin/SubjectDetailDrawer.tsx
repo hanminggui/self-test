@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { X, Brain, Sparkles, Trash2, Cpu, Clock, Coins, Layers, Activity, ChevronDown, ChevronUp, Share2 } from "lucide-react";
 import { useLocale } from "../../contexts/LocaleContext";
 import { PosterModal } from "../share/PosterModal";
+import { CognitiveArchetype } from "../../../backend/models";
+import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 
 interface SubjectDetailDrawerProps {
   report: any | null;
@@ -35,6 +37,42 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
 
   const isSubEn = report.metadata?.locale === "en-US";
 
+  const localizedReport = useMemo(() => {
+    if (!report?.diagnostic_profile) return report;
+    const rawProfile = report.diagnostic_profile;
+    const archKey = (
+      rawProfile.archetype ||
+      rawProfile.quadrant_code ||
+      rawProfile.role_title ||
+      CognitiveArchetype.SOVEREIGN
+    ) as CognitiveArchetype;
+    const def = getArchetypeDefinition(archKey, locale);
+    return {
+      ...report,
+      diagnostic_profile: {
+        ...rawProfile,
+        role_title: def.role_title,
+        praise_tagline: def.praise_tagline,
+        strength_tags: def.strength_tags && def.strength_tags.length > 0 ? def.strength_tags : rawProfile.strength_tags,
+        empowering_feedback: def.empowering_feedback || rawProfile.empowering_feedback,
+        growth_advice: def.growth_advice || rawProfile.growth_advice,
+        skills: (rawProfile.skills || def.skills).map((origSkill: any, idx: number) => {
+          const defSkill = def.skills[idx];
+          return {
+            ...origSkill,
+            icon: origSkill.icon || defSkill?.icon || "✨",
+            type: defSkill?.type || origSkill.type,
+            name: defSkill?.name || origSkill.name,
+            desc: defSkill?.desc || origSkill.desc,
+          };
+        }),
+        clinical_summary: def.clinical_summary || rawProfile.clinical_summary,
+      },
+    };
+  }, [report, locale]);
+
+  const activeReport = localizedReport || report;
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="glass-panel rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-6 md:p-8 border border-white/10 space-y-6 animate-in fade-in zoom-in-95 duration-200">
@@ -43,7 +81,7 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               {isEn ? "Two-Tier Metacognitive Diagnostic Report" : "受测者双层诊断报告"}
               <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono">
-                {report.diagnostic_profile.quadrant_code}
+                {activeReport.diagnostic_profile.quadrant_code}
               </span>
               <span
                 className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border ${
@@ -91,10 +129,10 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
         {/* 顶栏展示：用户展示层专属称号 */}
         <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">
           <div className="text-2xl font-black text-amber-300">
-            {report.diagnostic_profile.role_title}
+            {activeReport.diagnostic_profile.role_title}
           </div>
           <div className="text-xs text-amber-200/80 mt-1">
-            “{report.diagnostic_profile.praise_tagline}”
+            “{activeReport.diagnostic_profile.praise_tagline}”
           </div>
         </div>
 
@@ -153,8 +191,8 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
           {/* 客观临床诊断摘要 */}
           <div className="p-3 rounded-xl bg-black/40 border border-indigo-500/10 text-xs text-indigo-100 leading-relaxed">
             <span className="font-semibold text-indigo-300">{isEn ? "Clinical Truth Attribution: " : "临床真值归因："}</span>
-            {report.diagnostic_profile.clinical_summary ||
-              report.diagnostic_profile.critical_weakness}
+            {activeReport.diagnostic_profile.clinical_summary ||
+              activeReport.diagnostic_profile.critical_weakness}
           </div>
         </div>
 
@@ -165,13 +203,13 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
           </div>
 
           <div className="text-xs text-slate-300 leading-relaxed bg-black/30 p-4 rounded-xl border border-white/5">
-            {report.diagnostic_profile.empowering_feedback}
+            {activeReport.diagnostic_profile.empowering_feedback}
           </div>
 
           <div className="space-y-2">
             <div className="text-xs font-bold text-white">{isEn ? "Unique Skill Hierarchy Matrix:" : "专属技能卡片矩阵："}</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {report.diagnostic_profile.skills.map((s: any, idx: number) => (
+              {activeReport.diagnostic_profile.skills.map((s: any, idx: number) => (
                 <div
                   key={idx}
                   className="p-2.5 rounded-lg bg-slate-900/60 border border-white/5 space-y-1"
@@ -382,7 +420,7 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
       {showPosterModal && report && (
         <PosterModal
           isOpen={showPosterModal}
-          report={report}
+          report={activeReport}
           locale={locale}
           onClose={() => setShowPosterModal(false)}
         />

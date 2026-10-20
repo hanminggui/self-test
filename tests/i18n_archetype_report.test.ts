@@ -58,6 +58,11 @@ describe("Seam 3: Western Arcane Archetypes, Codenames & Dynamic Report Localiza
       const defZH = getArchetypeDefinition(arch, "zh-CN");
       expect(defZH.role_title).toBe(expected.zh);
       expect(defZH.skills[0].type).toMatch(/技能|特技|绝技|羁绊/);
+      expect(defZH.skills.length).toBe(4);
+      for (const sk of defZH.skills) {
+        expect(sk.name).not.toMatch(/[a-zA-Z]/);
+        expect(sk.name).not.toMatch(/[()（）]/);
+      }
 
       // 2. 英文定义
       const defEN = getArchetypeDefinition(arch, "en-US");
@@ -184,5 +189,61 @@ describe("Seam 3: Western Arcane Archetypes, Codenames & Dynamic Report Localiza
     const subject = cohortEN.subjects.find((s) => s.id === sessionId);
     expect(subject).toBeDefined();
     expect(subject!.role_title).toBe("The Solar Conqueror");
+  });
+
+  it("getArchetypeDefinition 支持 QuadrantCode 和中英称号解析并支持动态语言切换", () => {
+    // 象限代码解析
+    const defFromQuadZH = getArchetypeDefinition("Q1-CAL", "zh-CN");
+    expect(defFromQuadZH.role_title).toBe("人形外挂");
+    expect(defFromQuadZH.skills[0].name).toBe("算力透视");
+
+    const defFromQuadEN = getArchetypeDefinition("Q1-CAL", "en-US");
+    expect(defFromQuadEN.role_title).toBe("The Grand Archmage");
+
+    // 称号解析
+    const defFromTitle = getArchetypeDefinition("人形外挂", "en-US");
+    expect(defFromTitle.role_title).toBe("The Grand Archmage");
+
+    const defFromEnTitle = getArchetypeDefinition("The Solar Conqueror", "zh-CN");
+    expect(defFromEnTitle.role_title).toBe("飞龙在天");
+  });
+
+  it("客户端名片结果页动态本地化映射：无需重新答题，报告卡片全字段即时响应语言切换", () => {
+    // 模拟服务端生成的一份初始中文报告
+    const mockReportZH = {
+      session_id: "sess-test-dyn",
+      subject_name: "探索者 · 01",
+      diagnostic_profile: {
+        archetype: "SOVEREIGN",
+        quadrant_code: "Q1-CAL",
+        role_title: "人形外挂",
+        praise_tagline: "你开了 · 诗人握持",
+        strength_tags: ["高维逻辑底蕴", "算力降维压制"],
+        empowering_feedback: "您展现出令人叹为观止的‘人形外挂’级顶尖素养！",
+        growth_advice: "具备全维度的战略全局观与决策定力",
+        skills: [
+          { icon: "👁️", type: "被动特技", name: "算力透视", desc: "面临复杂抽象推演..." },
+          { icon: "🎯", type: "核心特技", name: "精准制导", desc: "对自我的决断状态..." },
+          { icon: "⚡", type: "觉醒绝技", name: "知行律动", desc: "决策博弈与客观规律..." },
+          { icon: "🌟", type: "战场羁绊", name: "核心战略指挥官", desc: "颠覆性架构攻坚..." },
+        ],
+      },
+    };
+
+    // 切换到 en-US 时进行动态本地化映射
+    const defEN = getArchetypeDefinition(mockReportZH.diagnostic_profile.archetype, "en-US");
+    expect(defEN.role_title).toBe("The Grand Archmage");
+    expect(defEN.praise_tagline).toBe("Sight Beyond the Veil · Unerring Decree");
+    expect(defEN.growth_advice).toContain("high-complexity");
+    expect(defEN.empowering_feedback).toContain("Grand Archmage");
+    expect(defEN.skills[0].name).toContain("Eye of Aether");
+    expect(defEN.skills[0].type).toBe("Passive Trait");
+
+    // 切换回 zh-CN 时
+    const defZH = getArchetypeDefinition(mockReportZH.diagnostic_profile.archetype, "zh-CN");
+    expect(defZH.role_title).toBe("人形外挂");
+    expect(defZH.praise_tagline).toBe("你开了 · 诗人握持");
+    expect(defZH.skills[0].name).toBe("算力透视");
+    expect(defZH.skills[0].name).not.toMatch(/[a-zA-Z()（）]/);
   });
 });

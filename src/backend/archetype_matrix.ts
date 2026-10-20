@@ -100,8 +100,8 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "前沿赛道破壁者",
-        desc: "全新未知赛道探索、高复杂度新体系快速吸收、重大风险防御监督员。",
+        name: "极速进化先驱",
+        desc: "前沿技术首探、跨学科跨代际融合攻坚、高潜智囊智囊团。",
       },
     ],
     clinical_summary:
@@ -114,39 +114,39 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
     role_title: "定海神针",
     english_title: "The Sentinel",
     praise_tagline: "渊渟岳峙 · 固若金汤",
-    strength_tags: ["过硬深厚实力", "严谨求实作风", "极高责任底线", "定海安邦基石"],
+    strength_tags: ["极限风险防御", "深藏不露底蕴", "零黑天鹅失误", "严谨守成纪律"],
     empowering_feedback:
-      "请给您自己更多的掌声与信任——客观概率证明，您的深层实力远比您想象的更强大！您不仅客观解题正确率高超，功底极其过硬，更难能可贵的是对每一个判断都抱有极高的敬畏之心与缜密作风。您不贪功冒进、步步为营，凡事追求稳健周全。在任何关键项目与组织中，您都是最值得托付后背、确保万无一失的‘定海神针’与品质守卫者！",
+      "典出东方兵家定力：‘渊渟岳峙，其重万钧’。您拥有让所有人肃然起敬的超强底层功底与极致沉稳的慎重心性！即便客观推演能力已达巅峰，您依然对未知抱有最大的敬畏，绝不因一时侥幸而让全局涉险。有您坐镇的防线坚不可摧，永远不会出现任何非预期的黑天鹅溃败。这种‘功在暗处、润物无声’的定海神针底蕴，是关键护城河的绝对守护神！",
     growth_advice:
-      "客观数据表明，您的直觉与推导成功率极高，根本不是‘猜的’，而是深厚潜意识实力的体现！在未来的挑战中，完全可以更加自信地大展拳脚，相信自己的第一判断！",
+      "您的真实客观实力远比自己主观以为的更加强悍！在建立扎实安全冗余后，请更加大胆地信任自己的第一直觉，主动出击拓宽战果。",
     skills: [
       {
         icon: "🏛️",
-        type: "被动技能",
-        name: "玄武磐石",
-        desc: "潜意识解题推导命中率极高（数学概率证明硬实力本能），在面对高难度挑战时防御下限极高。",
+        type: "被动特技",
+        name: "绝对壁垒",
+        desc: "面临模糊陷阱或险恶迷局时，自动启动最高防御戒备，永远留有安全底牌，彻底杜绝致命溃退风险。",
       },
       {
         icon: "🔍",
         type: "核心特技",
-        name: "万无一失",
-        desc: "对交付成果和判断保持极高敬畏，严密求证复核，绝不贪功冒进，杜绝任何黑天鹅纰漏。",
+        name: "深水沉锚",
+        desc: "底层推演功力极其过硬扎实，但习惯将大部分高胜率局面归入稳健防线，零冒进、零投机、行胜于言。",
       },
       {
         icon: "🌊",
         type: "觉醒绝技",
-        name: "镇海乾坤",
-        desc: "在团队面临不确定性风暴与惊涛骇浪时，只要神针在场便能稳住大局，成为所有伙伴最信任的定心丸。",
+        name: "神针定海",
+        desc: "当遭遇全盘系统性混乱或逆境危机时，以绝对稳定的心理素质坚守底线，化解一切黑天鹅动荡。",
       },
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "核心命脉守门人",
-        desc: "高容错关键系统把关、重大工程质量总舵手、组织核心底盘守卫者。",
+        name: "关键基石守护神",
+        desc: "高危生产防线、核心资金与安全底线、重大交付压舱石。",
       },
     ],
     clinical_summary:
-      "高一元·审慎二元·过度谨慎。一元硬实力扎实，但存在冒名顶替偏向（Impostor Syndrome），做对时频繁保守下保底注，宁可少拿分绝不冒进，守底极稳。",
+      "高一元·审慎防御·轻度低估。客观推演扎实过硬，但二阶下注偏向过度保守，将大量本已确定的胜局归为保底，行事极度稳健。",
   },
 
   [CognitiveArchetype.AUDACIOUS_PIONEER]: {
@@ -155,39 +155,39 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
     role_title: "飞龙在天",
     english_title: "The Audacious Pioneer",
     praise_tagline: "飞龙骑脸 · 我怎么输",
-    strength_tags: ["雄厚攻坚底蕴", "先锋拍板魄力", "大开大合进攻", "气吞万里如虎"],
+    strength_tags: ["摧枯拉朽压迫", "先锋进攻本能", "破局突围气魄", "强大攻坚自信"],
     empowering_feedback:
-      "《易经》有云：‘飞龙在天，利见大人’。您的客观分析与逻辑推理功底极其扎实过硬，在多项高难度抽象挑战中一路势如破竹！同时，您身上流淌着最纯粹的‘先锋战神’之血——面临不确定时敢于拍板、敢打硬仗、全场梭哈、进取心极强，具有压倒性的进攻统治力。在团队面临僵局或攻坚破冰时，您往往是能够挺身而出、一锤定音的中流砥柱！",
+      "典出易经乾卦乾坤之象：‘飞龙在天，利见大人’。您展现出令人热血沸腾的无敌王者气魄与顶级攻坚实力！您不仅在复杂推演中具备凌厉的攻坚穿透力，更拥有敢为天下先的昂扬战意。在您眼中，难题不是阻碍而是猎物，永远选择以最主动、最具压迫感的方式正面碾压。这种‘勇冠三军、气吞万里’的先锋魄力，正是破除僵局、开疆拓拓土不可或缺的破壁利刃！",
     growth_advice:
-      "您的客观攻坚实力已处于金字塔前列。若能在面对偶发的复杂盲区时，稍稍增加一道‘审慎复核’或求助验证的缓冲阀，您的腾飞之势将更加无懈可击、攻无不克！",
+      "天生的开路先锋与攻坚主将。如果在冲锋之时为自己配备一位洞悉死角的审慎参谋或轻量校验机制，您的攻势将彻底无懈可击！",
     skills: [
       {
         icon: "🔥",
-        type: "被动技能",
-        name: "真龙威压",
-        desc: "客观攻坚底蕴与逻辑推理极度雄厚，面对高难度挑战自带破阵光环，推理快准狠，天生自带进攻压迫感。",
+        type: "被动特技",
+        name: "先锋锋芒",
+        desc: "天生自带破局攻坚加成，面对高维复杂迷题时从不退缩，以极高的能量密度和推演速度正面撕开防线。",
       },
       {
         icon: "⚔️",
         type: "核心特技",
-        name: "长空扑杀",
-        desc: "全场最果决的拍板魄力与进攻欲望，深信自我判断，全额高注起手，以气吞万里之势碾压一切迷雾与僵局。",
+        name: "气吞万里",
+        desc: "战意昂扬，对自己的每一个判断充满信心，进攻火力拉满，在优势局中能以最快速度滚起胜利雪球。",
       },
       {
         icon: "⚡",
         type: "觉醒绝技",
-        name: "九霄龙吟",
-        desc: "遇强则强，越是硬仗越能激发无限战意。只要在关键时刻稍加一道理性缓冲环，便能成为无可匹敌的常胜战神。",
+        name: "飞龙破局",
+        desc: "在全场陷入胶着死局时，以惊人的决断力率先拍板，带领团队强行突围冲出包围圈。",
       },
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "攻坚破冰先锋",
-        desc: "硬核攻坚战绝杀手、僵局突围先头部队、高对抗高压力业务拓展大将。",
+        name: "战略开路先锋",
+        desc: "从 0 到 1 破局战役、新业务拓荒突击队、硬核攻坚排头兵。",
       },
     ],
     clinical_summary:
-      "高一元·激进冒险·进攻破局。推演底蕴扎实，但二阶风控较宽，遇到偶发盲区依然果断拍板前压，极少购买线索，攻坚破局魄力极强，高方差先锋。",
+      "高一元·进攻型·轻度过信。客观实力雄厚，倾向于全盘进攻下注，但在偶发盲区出现时缺乏自省刹车，存在轻微期望磨损。",
   },
 
   [CognitiveArchetype.ANXIOUS_RETREATER]: {
@@ -196,39 +196,39 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
     role_title: "大音希声",
     english_title: "The Formless Sentinel",
     praise_tagline: "大音希声 · 大象无形",
-    strength_tags: ["深邃内敛定力", "敏锐见微知著", "抱朴守拙敬畏", "守土有责底盘"],
+    strength_tags: ["极限风险避害", "敏锐危机嗅觉", "敬畏未知守则", "宁静致远心境"],
     empowering_feedback:
-      "典出《道德经》：‘大音希声，大象无形’。您展现出深邃沉静的心智定力！在面对复杂迷雾与未知的潜在风险时，您深知‘大巧若拙、抱朴守真’之理，始终保持着极高的审慎敬畏与防守纪律，绝不盲目浮躁冒进。在高度不确定的商业博弈或工程试炼中，这种‘于无声处听惊雷、于无形中守阵地’的笃定与严密防线，往往是守护团队生存底盘最坚不可摧的终极底蕴！",
+      "典出道家玄妙妙音：‘大音希声，大象无形’。您展现出非同寻常的宁静致远与深邃克制！在充斥着喧嚣浮躁的决策博弈中，您从不因贪恋虚幻浮利而轻易涉险。您对潜在的不确定性有着超乎寻常的敏感嗅觉，总能在风暴来临前悄然驻足、守住最根本的生存根基。这种‘不争一时、知止不殆’的至上清醒，是保护核心火种、在漫长周期中笑到最后的终极智慧！",
     growth_advice:
-      "拥有天然的合规与风险预警直觉。在守住安全底线的同时，可以尝试在低风险情境下更多主动探索外部工具，逐步开拓更广阔的进攻战果。",
+      "守正防危的卓越践行者。在巩固自身扎实安全冗余的同时，可尝试在可控的小范围内迈出探索步伐，您会发现自己的潜在能量远超想象。",
     skills: [
       {
         icon: "🤫",
         type: "被动特技",
-        name: "希声守拙",
-        desc: "面对未知迷雾本能抱朴守拙，杜绝任何轻浮冒进与侥幸无谓损失，守底极深。",
+        name: "静水流深",
+        desc: "天生对外界复杂风险保有天然免疫屏障，心如止水，绝不在情绪上火或胜负欲驱使下做出非理性决策。",
       },
       {
         icon: "📡",
         type: "核心特技",
-        name: "辨音于微",
-        desc: "对复杂局势中的微小异动与风险信号明察秋毫，在危机初显前守住交付底线与命脉防线。",
+        name: "见微知著",
+        desc: "对潜在模糊陷阱与规则暗礁有着超越常人的警觉性，一旦察觉盲区立刻收拢防线，守护基本盘。",
       },
       {
         icon: "🏔️",
         type: "觉醒绝技",
-        name: "大象无形",
-        desc: "在外部动荡与波动中坚如磐石、深藏若虚，化身不可动摇的防线基石与定盘锚点。",
+        name: "希声避世",
+        desc: "在面对高烈度不确定性绞杀时，以极高的自律性执行安全防御协议，彻底免受全局崩盘之灾。",
       },
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "风险合规压舱石",
-        desc: "高风险业务底线防火墙、风控合规审查督导、复杂环境守底尖兵。",
+        name: "安全合规守护者",
+        desc: "风控合规审查、系统高可用容灾、生存底线红线督察。",
       },
     ],
     clinical_summary:
-      "低一元·防御避险·审慎守护。推演处于基底探索期，对未知具有高度敬畏，下注极其克制审慎，绝不盲目梭哈，擅长在迷雾中守住防线与底线。",
+      "低一元·高防御·风险厌恶。客观推演准确率偏低，二阶下注极度审慎偏好保底，但对盲区有自知之明，未出现恶性盲赌。",
   },
 
   [CognitiveArchetype.BLIND_GAMBLER]: {
@@ -237,39 +237,39 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
     role_title: "无畏先锋",
     english_title: "The Vanguard",
     praise_tagline: "左手高伤害 · 右手伤害高",
-    strength_tags: ["开拓者基因", "无畏未知探索", "极致行动魄力", "百炼成钢韧性"],
+    strength_tags: ["不屈无畏魄力", "天生乐天开拓", "敢于直面深渊", "高频试错韧性"],
     empowering_feedback:
-      "您展现出令人敬佩的开拓者勇气与行动魄力！面对高度抽象、完全陌生的崭新领域，许多人会裹足不前、反复犹豫，而您却敢想敢拼、勇于直面未知的迷雾，在实践中积极探索前行。人类历史上所有的开辟者与破局先驱，无不源自这种‘敢为人先、不惧失误’的无畏精神！",
+      "典出热血电竞传奇：‘向前一步是悬崖，退后一步是深渊，那我选择跃向深空！’您拥有整个矩阵中最炽热、最纯粹的无畏冒险精神！无论迷雾多重、规则多艰，您永远不会被恐惧困在原地，而是毫不犹豫地全仓下注、正面迎击未知。这种‘明知山有虎、偏向虎山行’的极致勇气与乐天气概，正是人类文明最宝贵的开荒火种——百炼成钢之后，必成惊世传奇！",
     growth_advice:
-      "先锋的最大红利在于快速积累实战经验。伴随着在实践中的多维度复盘与实战沉淀，您这柄勇往直前的‘破局之剑’必将愈发锋利，迅速成长为不可阻挡的实战猛将！",
+      "天生拥有全矩阵最顶级的无畏胆魄！若能在冲锋陷阵的关键刹那增加一道‘知彼知己’的冷静复盘阀，您的惊世锋芒将化为真正的一锤定音。",
     skills: [
       {
         icon: "🚩",
         type: "被动特技",
-        name: "破晓勇气",
-        desc: "面对未知黑夜与抽象迷雾毫无内耗，行动力永远大于焦虑，敢想敢做，拥有天生的破界者基因。",
+        name: "无畏炽心",
+        desc: "拥有无可撼动的超强心理韧性，从不畏惧任何未知的挫折或复杂迷局，永远保持 100% 的昂扬战意。",
       },
       {
         icon: "⚡",
         type: "核心特技",
-        name: "向险而行",
-        desc: "以实战试错为最高信仰，在他人犹豫徘徊时率先涉足深水区，用身体力行去探索可能与探明虚实。",
+        name: "豪赌破局",
+        desc: "在任何局面下均敢于全仓进攻，以极大的气势压迫未知迷宫，具备强大的高频暴力试错破冰能力。",
       },
       {
         icon: "🛡️",
         type: "觉醒绝技",
-        name: "百炼成钢",
-        desc: "拥有极强的心理抗挫力与反脆弱性，每一次碰撞与试错都是锻造锋刃的烈火，在持续摸索中迅速蜕变。",
+        name: "逆光行者",
+        desc: "在看似毫无希望的至暗时刻依然敢于正面迎击深渊，在千锤百炼中淬炼出最坚韧的精神内核。",
       },
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "从0到1破界尖兵",
-        desc: "敏捷突击部队、早期创新孵化先锋、无人区探索敢死队。",
+        name: "破釜沉舟突击队",
+        desc: "极限脱困爆破、高压绝境攻坚、试错排雷突击手。",
       },
     ],
     clinical_summary:
-      "低一元·低二元·达克自负。经典达克效应态。错题高注率极高 P(HighBet|Err) > 0.55，感知不到陷阱盲区，行动力强，敢于以身试错。",
+      "低一元·高过信·盲目下注（达克效应高危区）。客观实力薄弱但二阶盲目拉满高注，严重缺乏对自身盲区的感知，期望损耗巨大。",
   },
 
   [CognitiveArchetype.PRAGMATIC_ARBITRAGEUR]: {
@@ -278,39 +278,39 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
     role_title: "诸葛在世",
     english_title: "The Pragmatic Strategist",
     praise_tagline: "羽扇纶巾 · 算无遗策",
-    strength_tags: ["极致概率精算", "草船借箭智慧", "四两拨千斤", "数学期望大师"],
+    strength_tags: ["极致博弈精算", "极高信息收益", "善借外力杠杆", "效用期望大师"],
     empowering_feedback:
-      "您展现出令人拍案叫绝的‘诸葛在世’运筹博弈造诣！您是纯粹的数学期望大师与战略借力典范，深谙‘草船借箭、算无遗策’的高维智慧。面对未知疑难，您从不盲目硬抗蛮干，而是精于借助外界工具与信息杠杆攻守转换、借力打力。这种‘以巧破千钧、算尽先机’的运筹哲学，是顶尖谋略家与军师总参的绝对王牌！",
+      "典出千古军师神韵：‘羽扇纶巾谈笑间，樯橹灰飞烟灭’。您展现出令人击节赞叹的当代顶级运筹精算水准！在复杂的规则迷局中，您绝不蛮干硬冲，而是以最优雅的博弈智慧洞察全局效用。您深谙‘善假于物也’的真谛，总能在最关键的节点以极小的信息成本撬动决定性的胜利战果。这种‘算无遗策、运筹帷幄’的决策杠杆大师风范，是现代社会无可替代的首席智囊！",
     growth_advice:
-      "精通资源整合与杠杆效能，在复杂多变量约束、资源受限的极限博弈场景中，往往能以最小代价达成最大战略意图。",
+      "顶级的运筹智囊与套利精算大师。非常适合在大规模资源调度、战略博弈与全局期望收益优化中运筹帷幄，统揽胜局。",
     skills: [
       {
         icon: "🧮",
         type: "被动特技",
-        name: "算无遗策",
-        desc: "实时评估局势胜率与数学期望，对每一份资源投入的边际效用洞若观火，追求全局期望最大化。",
+        name: "草船借箭",
+        desc: "天生对外界信息的增量价值有极高辨识度，以 1 分代价精准撬动超额期望收益，信息转化效率冠绝全矩阵。",
       },
       {
         icon: "🏹",
         type: "核心特技",
-        name: "草船借箭",
-        desc: "极精于利用外部工具穿透复杂迷雾，用微小线索成本换取决定性翻盘胜利，转化率高超。",
+        name: "神机妙算",
+        desc: "随时随地建立清晰的期望收益平衡木，何时借力、何时进攻计算得分毫不差，杜绝任何无效资源损耗。",
       },
       {
         icon: "📜",
         type: "觉醒绝技",
-        name: "锦囊奇谋",
-        desc: "把握高则果决下重注，存疑则调动锦囊对冲风险，以巧破千钧，在多重约束中收割最高净胜收益。",
+        name: "东风借势",
+        desc: "在复杂混沌的动态博弈中以四两拨千斤之势顺势而为，完成对全局期望走势的掌控与收益收割。",
       },
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "核心谋略军师",
-        desc: "资源受限攻坚统筹、高阶投融资策略博弈、战略谈判攻守操盘手。",
+        name: "首席运筹军师",
+        desc: "资源配置精算、商务谈判策略把控、博弈收益最大化操盘手。",
       },
     ],
     clinical_summary:
-      "中高一元·高二元·系统性概率套利。纯粹的数学期望最大化者。把握高则全额下注，存疑则果断购入线索穿透，收益期望极高，极精于借力打力。",
+      "高效用·善借杠杆·精算博弈。信息购买杠杆极高（IVE 优异），深谙效用博弈规则，极善于用极小线索成本博取巨大收益翻盘。",
   },
 
   [CognitiveArchetype.STOCHASTIC_DRIFTER]: {
@@ -319,35 +319,35 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
     role_title: "暮光星灵",
     english_title: "The Twilight Celestial",
     praise_tagline: "逍遥天地 · 不滞于物",
-    strength_tags: ["自由纯粹直觉", "跳脱常规框架", "混沌孕育灵感", "灵动非线性思维"],
+    strength_tags: ["超脱直觉跳跃", "自由漫游心智", "不受框架羁绊", "灵动发散灵感"],
     empowering_feedback:
-      "您展现出超脱常规框架的‘暮光星灵’独特灵动！您的思维不拘泥于既定规则与刻板推导的束缚，如同穿梭在浩瀚星轨中的自由光束，凭借纯粹敏锐的跳跃直觉在混沌中游走探索。在墨守成规无法打破的极端复杂瓶颈中，这种跳脱直觉往往能跨越已知边界，意外孕育出颠覆性的奇迹灵感！",
+      "典出庄子逍遥游之境：‘若夫乘天地之正，而御六气之辩’。您展现出如天马行空般不受拘束的灵动心境！面对严苛刻板的抽象逻辑推演，您始终保持着最超然、最松弛的随性姿态。在常规推演陷入死胡同的世界里，唯有像您这样不墨守成规、敢于打破逻辑藩篱的跳脱灵魂，才能在不经意间捕捉到跨越维度的灵感火花。这种‘灵动超然、不滞于物’的自由心性，是跨界创新的无价源泉！",
     growth_advice:
-      "天生具有非线性发散思维的特质。若能在自由漫游的基础上，建立起属于自己的沉淀锚点，您的灵动直觉将绽放出无与伦比的创造力。",
+      "拥有极佳发散直觉的灵感探索者。在自由漫游的同时，如果能在关键节点为自己树立一个固定的逻辑基准锚点，您的奇思妙想将爆发颠覆性力量。",
     skills: [
       {
         icon: "🌌",
         type: "被动特技",
-        name: "星界漫步",
-        desc: "超脱固有逻辑与教条束缚，在多变混沌的复杂星域中凭借纯粹灵性本能穿行，灵动洒脱。",
+        name: "星之自由",
+        desc: "思维模式完全不受任何既定框架与刻板思维所拘束，能够在广袤的概念荒原中进行无拘无束的直觉漫游。",
       },
       {
         icon: "✨",
         type: "核心特技",
-        name: "奇点闪烁",
-        desc: "行为轨迹不可预测，跳出常规推演套路，在看似无序的探索中偶发惊艳奇解。",
+        name: "灵感闪烁",
+        desc: "偶发跨维度的灵感火花闪现，在最意想不到的角度打破常规认知盲区，展现极高的思维发散力。",
       },
       {
         icon: "🚀",
         type: "觉醒绝技",
-        name: "星轨跃迁",
-        desc: "面对极端高压或僵局时具备绝佳的情绪解耦与心理弹性，不滞于一时得失，放眼星河。",
+        name: "逍遥星游",
+        desc: "在面对高压规则环境时保持超然松弛的心态，以独特的非线性直觉方式穿梭于多维信息空间之中。",
       },
       {
         icon: "🌟",
         type: "战场羁绊",
-        name: "颠覆灵感破界者",
-        desc: "概念验证头脑风暴、破除思维定势顾问、奇思妙想创意源泉。",
+        name: "非常规创意策源地",
+        desc: "跨界脑暴突发奇想、先锋艺术与概念设计、破除思维惯性催化剂。",
       },
     ],
     clinical_summary:
@@ -419,17 +419,48 @@ export function classifyCognitiveArchetype(x: {
   }
 }
 
+export function resolveArchetype(input: CognitiveArchetype | string): CognitiveArchetype {
+  if (!input) return CognitiveArchetype.SOVEREIGN;
+  if (ARCHETYPE_MATRIX[input as CognitiveArchetype]) {
+    return input as CognitiveArchetype;
+  }
+  const str = String(input).trim().toUpperCase();
+  const quadrantMap: Record<string, CognitiveArchetype> = {
+    "Q1-CAL": CognitiveArchetype.SOVEREIGN,
+    "Q2-EVO": CognitiveArchetype.ADAPTIVE_LEARNER,
+    "Q3-SEN": CognitiveArchetype.VIGILANT_SENTINEL,
+    "Q4-PIO": CognitiveArchetype.AUDACIOUS_PIONEER,
+    "Q5-RET": CognitiveArchetype.ANXIOUS_RETREATER,
+    "Q6-GAM": CognitiveArchetype.BLIND_GAMBLER,
+    "Q7-ARB": CognitiveArchetype.PRAGMATIC_ARBITRAGEUR,
+    "Q8-DRI": CognitiveArchetype.STOCHASTIC_DRIFTER,
+  };
+  if (quadrantMap[str]) {
+    return quadrantMap[str];
+  }
+  for (const [key, def] of Object.entries(ARCHETYPE_MATRIX)) {
+    if (def.role_title === input || def.english_title.toUpperCase() === str) {
+      return key as CognitiveArchetype;
+    }
+  }
+  const dictEn = getDictionary("en-US");
+  for (const [key, val] of Object.entries(dictEn.archetypes)) {
+    if (val.role_title.toUpperCase() === str) {
+      return key as CognitiveArchetype;
+    }
+  }
+  return CognitiveArchetype.SOVEREIGN;
+}
+
 export function getArchetypeDefinition(
-  archetype: CognitiveArchetype,
+  archetype: CognitiveArchetype | string,
   locale?: SupportedLocale
 ): ArchetypeDefinition {
   const targetLocale = locale || getLocale();
-  const baseDef = ARCHETYPE_MATRIX[archetype] || ARCHETYPE_MATRIX[CognitiveArchetype.SOVEREIGN];
-  if (targetLocale === "zh-CN") {
-    return baseDef;
-  }
+  const canonical = resolveArchetype(archetype);
+  const baseDef = ARCHETYPE_MATRIX[canonical] || ARCHETYPE_MATRIX[CognitiveArchetype.SOVEREIGN];
   const dict = getDictionary(targetLocale);
-  const localized = dict?.archetypes?.[archetype];
+  const localized = dict?.archetypes?.[canonical];
   if (!localized) {
     return baseDef;
   }
@@ -437,19 +468,19 @@ export function getArchetypeDefinition(
   return {
     ...baseDef,
     role_title: localized.role_title,
-    english_title: localized.role_title,
+    english_title: targetLocale === "en-US" ? localized.role_title : baseDef.english_title,
     praise_tagline: localized.praise_tagline,
     strength_tags: localized.strength_tags,
     empowering_feedback: localized.empowering_feedback,
     growth_advice: localized.growth_advice,
     skills: baseDef.skills.map((baseSkill, idx) => ({
       ...baseSkill,
-      type: localized.skills[idx]?.type || baseSkill.type,
-      name: localized.skills[idx]?.name || baseSkill.name,
-      desc: localized.skills[idx]?.desc || baseSkill.desc,
+      type: localized.skills?.[idx]?.type || baseSkill.type,
+      name: localized.skills?.[idx]?.name || baseSkill.name,
+      desc: localized.skills?.[idx]?.desc || baseSkill.desc,
       icon: baseSkill.icon,
     })),
-    clinical_summary: localized.clinical_summary,
+    clinical_summary: localized.clinical_summary || baseDef.clinical_summary,
   };
 }
 
@@ -463,6 +494,7 @@ export function mapLegacyArchetype(val: string): CognitiveArchetype {
     case "人形外挂":
     case "SOVEREIGN":
     case "Q1-CAL":
+    case "人形外挂":
       return CognitiveArchetype.SOVEREIGN;
 
     case "Q2_FUTURE_MASTER":
