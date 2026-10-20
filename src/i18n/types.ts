@@ -74,6 +74,7 @@ export interface AppDictionary {
   strategicAdvice: string;
   restartVoyage: string;
   orientalPosterBtn: string;
+  shareBtn: string;
   posterModalTitle: string;
   copyCard: string;
   copiedAlert: string;

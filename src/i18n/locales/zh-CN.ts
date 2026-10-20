@@ -33,17 +33,17 @@ export const zhCN: I18nDictionary = {
       skills: [
         {
           type: "被动特技",
-          name: "算力透视 (Mental Aimbot)",
+          name: "算力透视",
           desc: "面临复杂抽象推演时，自动过滤 90% 以上无效干扰信息，直击底层规律本质，底层客观胜率始终维持在顶峰。",
         },
         {
           type: "核心特技",
-          name: "精准制导 (Precision Lock)",
+          name: "精准制导",
           desc: "对自我的决断状态拥有超高分辨率，结论成立瞬间即可锁定 100% 把握度，在确定项上从不犹豫 0.1 秒。",
         },
         {
           type: "觉醒绝技",
-          name: "知行律动 (Sovereign Execution)",
+          name: "知行律动",
           desc: "决策博弈与客观规律达成神级共振，胜券在握时果断全额下注，攻守自如，斩获最高净胜收益。",
         },
         {
@@ -67,17 +67,17 @@ export const zhCN: I18nDictionary = {
       skills: [
         {
           type: "被动特技",
-          name: "灵台自照 (Epistemic Mirror)",
+          name: "灵台自照",
           desc: "天生具备超高灵觉敏锐度，无论规则多陌生，都能瞬间感知‘哪里是已知，哪里是盲区’，对不知抱有绝对清醒。",
         },
         {
           type: "核心特技",
-          name: "灵台避险 (Intuitive Caution)",
+          name: "灵台避险",
           desc: "感知到视野模糊或不确定陷阱时触发避险雷达，善于借助外界线索启发与审慎保底完成安全过渡。",
         },
         {
           type: "觉醒绝技",
-          name: "灵窍蜕变 (Epiphanic Breakthrough)",
+          name: "灵窍蜕变",
           desc: "拥有全矩阵中最高倍率的学习吸收上限，每一个外界线索与失误都会被极速转化为底层认知资产，厚积薄发。",
         },
         {
@@ -101,17 +101,17 @@ export const zhCN: I18nDictionary = {
       skills: [
         {
           type: "被动特技",
-          name: "绝对壁垒 (Ironclad Bastion)",
+          name: "绝对壁垒",
           desc: "面临模糊陷阱或险恶迷局时，自动启动最高防御戒备，永远留有安全底牌，彻底杜绝致命溃退风险。",
         },
         {
           type: "核心特技",
-          name: "深水沉锚 (Deepwater Anchor)",
+          name: "深水沉锚",
           desc: "底层推演功力极其过硬扎实，但习惯将大部分高胜率局面归入稳健防线，零冒进、零投机、行胜于言。",
         },
         {
           type: "觉醒绝技",
-          name: "神针定海 (Unshakeable Citadel)",
+          name: "神针定海",
           desc: "当遭遇全盘系统性混乱或逆境危机时，以绝对稳定的心理素质坚守底线，化解一切黑天鹅动荡。",
         },
         {
@@ -135,17 +135,17 @@ export const zhCN: I18nDictionary = {
       skills: [
         {
           type: "被动特技",
-          name: "先锋锋芒 (Vanguard Edge)",
+          name: "先锋锋芒",
           desc: "天生自带破局攻坚加成，面对高维复杂迷题时从不退缩，以极高的能量密度和推演速度正面撕开防线。",
         },
         {
           type: "核心特技",
-          name: "气吞万里 (Conqueror's Charge)",
+          name: "气吞万里",
           desc: "战意昂扬，对自己的每一个判断充满信心，进攻火力拉满，在优势局中能以最快速度滚起胜利雪球。",
         },
         {
           type: "觉醒绝技",
-          name: "飞龙破局 (Dragon Strike)",
+          name: "飞龙破局",
           desc: "在全场陷入胶着死局时，以惊人的决断力率先拍板，带领团队强行突围冲出包围圈。",
         },
         {
@@ -169,17 +169,17 @@ export const zhCN: I18nDictionary = {
       skills: [
         {
           type: "被动特技",
-          name: "静水流深 (Still Waters)",
+          name: "静水流深",
           desc: "天生对外界复杂风险保有天然免疫屏障，心如止水，绝不在情绪上火或胜负欲驱使下做出非理性决策。",
         },
         {
           type: "核心特技",
-          name: "见微知著 (Danger Radar)",
+          name: "见微知著",
           desc: "对潜在模糊陷阱与规则暗礁有着超越常人的警觉性，一旦察觉盲区立刻收拢防线，守护基本盘。",
         },
         {
           type: "觉醒绝技",
-          name: "希声避世 (Sanctuary Ward)",
+          name: "希声避世",
           desc: "在面对高烈度不确定性绞杀时，以极高的自律性执行安全防御协议，彻底免受全局崩盘之灾。",
         },
         {
@@ -203,17 +203,17 @@ export const zhCN: I18nDictionary = {
       skills: [
         {
           type: "被动特技",
-          name: "无畏炽心 (Blazing Valour)",
+          name: "无畏炽心",
           desc: "拥有无可撼动的超强心理韧性，从不畏惧任何未知的挫折或复杂迷局，永远保持 100% 的昂扬战意。",
         },
         {
           type: "核心特技",
-          name: "豪赌破局 (Gung-Ho Charge)",
+          name: "豪赌破局",
           desc: "在任何局面下均敢于全仓进攻，以极大的气势压迫未知迷宫，具备强大的高频暴力试错破冰能力。",
         },
         {
           type: "觉醒绝技",
-          name: "逆光行者 (Defy the Odds)",
+          name: "逆光行者",
           desc: "在看似毫无希望的至暗时刻依然敢于正面迎击深渊，在千锤百炼中淬炼出最坚韧的精神内核。",
         },
         {
@@ -237,17 +237,17 @@ export const zhCN: I18nDictionary = {
       skills: [
         {
           type: "被动特技",
-          name: "草船借箭 (Information Leverage)",
+          name: "草船借箭",
           desc: "天生对外界信息的增量价值有极高辨识度，以 1 分代价精准撬动超额期望收益，信息转化效率冠绝全矩阵。",
         },
         {
           type: "核心特技",
-          name: "神机妙算 (Calculated Arbitrage)",
+          name: "神机妙算",
           desc: "随时随地建立清晰的期望收益平衡木，何时借力、何时进攻计算得分毫不差，杜绝任何无效资源损耗。",
         },
         {
           type: "觉醒绝技",
-          name: "东风借势 (Master of Winds)",
+          name: "东风借势",
           desc: "在复杂混沌的动态博弈中以四两拨千斤之势顺势而为，完成对全局期望走势的掌控与收益收割。",
         },
         {
@@ -271,17 +271,17 @@ export const zhCN: I18nDictionary = {
       skills: [
         {
           type: "被动特技",
-          name: "星之自由 (Cosmic Freedom)",
+          name: "星之自由",
           desc: "思维模式完全不受任何既定框架与刻板思维所拘束，能够在广袤的概念荒原中进行无拘无束的直觉漫游。",
         },
         {
           type: "核心特技",
-          name: "灵感闪烁 (Intuitive Spark)",
+          name: "灵感闪烁",
           desc: "偶发跨维度的灵感火花闪现，在最意想不到的角度打破常规认知盲区，展现极高的思维发散力。",
         },
         {
           type: "觉醒绝技",
-          name: "逍遥星游 (Astral Transcendence)",
+          name: "逍遥星游",
           desc: "在面对高压规则环境时保持超然松弛的心态，以独特的非线性直觉方式穿梭于多维信息空间之中。",
         },
         {
@@ -403,7 +403,8 @@ export const zhCN: I18nDictionary = {
     strategicAdvice: "进阶赋能战略启示",
     restartVoyage: "重新启程探索",
     orientalPosterBtn: "东方神话分享卡",
-    posterModalTitle: "东方认知流形 · 易经八卦神话分享卡",
+    shareBtn: "分享",
+    posterModalTitle: "东方认知流形 · 原创画像专属分享卡",
     copyCard: "复制专属名片",
     copiedAlert: "专属本命名片文案已复制至剪贴板，可随心分享！",
     footerText: "思维星图 · 映照真实的直觉与自我掌控",

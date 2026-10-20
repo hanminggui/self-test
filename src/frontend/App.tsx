@@ -847,32 +847,19 @@ export default function App() {
                 onClick={() => setShowPosterModal(true)}
                 className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-amber-500/30 active:scale-[0.98]"
               >
-                <Sparkles className="w-4 h-4 text-slate-950" /> {t.app.orientalPosterBtn}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const shareText = isEn
-                    ? `[${report.diagnostic_profile.role_title}]\n"${report.diagnostic_profile.praise_tagline}"\nExplorer: ${report.subject_name}\nTags: ${report.diagnostic_profile.strength_tags.map(t => `#${t}`).join(" ")}\n\n${report.diagnostic_profile.empowering_feedback}`
-                    : `【${report.diagnostic_profile.role_title}】\n“${report.diagnostic_profile.praise_tagline}”\n探索者：${report.subject_name}\n标签：${report.diagnostic_profile.strength_tags.map(t => `#${t}`).join(" ")}\n\n${report.diagnostic_profile.empowering_feedback}`;
-                  navigator.clipboard?.writeText(shareText);
-                  alert(t.app.copiedAlert);
-                }}
-                className="px-6 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-amber-200 border border-amber-500/30 font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg"
-              >
-                <Share2 className="w-4 h-4 text-amber-400" /> {t.app.copyCard}
+                <Share2 className="w-4 h-4 text-slate-950" /> {t.app.shareBtn}
               </button>
             </div>
           </div>
         )}
       </main>
 
-      {/* 东方神话分享海报弹窗 */}
+      {/* 统一分享海报弹窗 (多语言自适应分流) */}
       {showPosterModal && report && (
         <PosterModal
           isOpen={showPosterModal}
           report={report}
+          locale={locale}
           onClose={() => setShowPosterModal(false)}
         />
       )}

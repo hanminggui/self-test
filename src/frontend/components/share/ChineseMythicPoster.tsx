@@ -2,12 +2,18 @@
  * Chinese Oriental Mythic Share Poster Component (ChineseMythicPoster.tsx)
  * 
  * Renders an ultra-high-definition, oriental brush/gold aesthetic share card
- * for the 8 cognitive archetypes (Bagua / I-Ching philosophy).
- * Features 4D cognitive metrics, mythic totems, hexagram aphorisms,
- * vermilion seals, dynamic QR code, and one-click copy & download actions.
+ * for the 8 cognitive archetypes.
+ * 
+ * Revamped:
+ * - 4D raw metrics & quadrant codes completely hidden
+ * - Zhouyi Bagua symbols & trigram lines completely de-bagua-fied
+ * - User nickname displayed in ribbon under avatar frame
+ * - 4 Original Positive Cognitive Skills in 2x2 grid with pure Chinese names
+ * - Vermilion seal & empowering feedback banner
+ * - Dynamic QR code and one-click actions (download PNG, copy image, copy text)
  */
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Download,
   Copy,
@@ -15,24 +21,20 @@ import {
   Check,
   Sparkles,
   QrCode,
-  ShieldCheck,
-  Compass,
-  Flame,
 } from "lucide-react";
 import {
   getMythicArchetype,
   MythicArchetypeConfig,
 } from "./mythicArchetypes";
 import {
-  formatCognitiveMetric,
-  formatBiasMetric,
-  formatMRatioMetric,
   generatePosterQrCodeSvg,
   downloadPoster,
   copyPosterImageToClipboard,
   copyShareTextToClipboard,
   PosterShareData,
+  SkillDisplayItem,
 } from "./posterGenerator";
+import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 
 export interface ChineseMythicPosterProps {
   report: {
@@ -54,6 +56,7 @@ export interface ChineseMythicPosterProps {
       strength_tags?: string[];
       empowering_feedback?: string;
       growth_advice?: string;
+      skills?: SkillDisplayItem[];
     };
   };
   entryUrl?: string;
@@ -68,13 +71,27 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   className = "",
 }) => {
   const profile = report.diagnostic_profile || {};
-  const metrics = report.metacognitive_metrics || {};
   const subjectName = report.subject_name || "探索者";
 
-  // 解析对应的八卦神话画像配置
+  // 解析对应的画像配置
   const archetypeConfig: MythicArchetypeConfig = useMemo(() => {
     return getMythicArchetype(profile.archetype || profile.quadrant_code || profile.role_title || "");
   }, [profile.archetype, profile.quadrant_code, profile.role_title]);
+
+  // 解析 4 项专属认知特技 (确保全中文无杂质)
+  const skills: SkillDisplayItem[] = useMemo(() => {
+    if (profile.skills && profile.skills.length >= 4) {
+      return profile.skills.map((s) => ({
+        ...s,
+        name: s.name.replace(/\s*\([^)]*\)/g, ""), // 去除任何英文括号后缀
+      }));
+    }
+    const def = getArchetypeDefinition(archetypeConfig.archetype, "zh-CN");
+    return (def.skills || []).map((s) => ({
+      ...s,
+      name: s.name.replace(/\s*\([^)]*\)/g, ""),
+    }));
+  }, [profile.skills, archetypeConfig.archetype]);
 
   const [qrSvg, setQrSvg] = useState<string>("");
   const [downloading, setDownloading] = useState(false);
@@ -90,6 +107,10 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
     return "http://localhost:8000/";
   }, [entryUrl]);
 
+  const empoweringFeedback = useMemo(() => {
+    return profile.empowering_feedback || archetypeConfig.totemAphorism || "自强不息，知行自洽。";
+  }, [profile.empowering_feedback, archetypeConfig.totemAphorism]);
+
   // 组装 PosterShareData
   const shareData: PosterShareData = useMemo(() => {
     return {
@@ -100,17 +121,12 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
       strengthTags: profile.strength_tags && profile.strength_tags.length > 0
         ? profile.strength_tags
         : ["高维逻辑底蕴", "算力降维压制", "知行绝对自洽", "手术刀级决断"],
-      metrics: {
-        d_prime: metrics.d_prime,
-        meta_d_prime: metrics.meta_d_prime,
-        m_ratio: metrics.m_ratio,
-        calibration_bias: metrics.calibration_bias,
-        d_star: metrics.d_star,
-        ive: metrics.info_buying_efficiency,
-      },
+      skills,
+      empoweringFeedback,
+      locale: "zh-CN",
       entryUrl: resolvedUrl,
     };
-  }, [subjectName, archetypeConfig, profile, metrics, resolvedUrl]);
+  }, [subjectName, archetypeConfig, profile, skills, empoweringFeedback, resolvedUrl]);
 
   // 动态渲染二维码 SVG
   useEffect(() => {
@@ -205,10 +221,10 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
         {/* 顶部殿阁横批 */}
         <div className="pt-6 pb-3 text-center border-b border-white/10 relative z-10 bg-black/20">
           <div
-            className="text-[12px] font-bold tracking-[0.25em] font-serif"
+            className="text-[13px] font-bold tracking-[0.25em] font-serif"
             style={{ color: colors.secondaryGold }}
           >
-            东方认知流形 · 周易八卦心智图谱
+            东方认知流形 · 心智图谱
           </div>
           <div className="text-[9px] tracking-[0.15em] text-slate-400 uppercase mt-0.5 font-mono">
             CHINESE COGNITIVE MANIFOLD ARCHETYPE SPECTRUM
@@ -217,7 +233,7 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
 
         {/* 主体卡片区域 */}
         <div className="p-6 md:p-8 space-y-6 relative z-10">
-          {/* 1. 八卦图腾中央罗盘徽章 */}
+          {/* 1. 图腾罗盘徽章 (去卦象化，展现专属原创神兽/心智图腾) */}
           <div className="relative flex flex-col items-center justify-center pt-2">
             {/* 背部外发光 */}
             <div
@@ -225,66 +241,37 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
               style={{ backgroundColor: colors.glowColor }}
             />
 
-            {/* 八卦外环 */}
+            {/* 图腾外环 */}
             <div
               className="w-24 h-24 rounded-full border-2 flex flex-col items-center justify-center relative shadow-inner"
               style={{
                 borderColor: colors.primaryGold,
-                backgroundColor: "rgba(0, 0, 0, 0.45)",
+                backgroundColor: "rgba(0, 0, 0, 0.55)",
               }}
             >
               <div
                 className="text-4xl font-black font-serif leading-none select-none drop-shadow-md"
                 style={{ color: colors.secondaryGold }}
               >
-                {archetypeConfig.baguaSymbol}
-              </div>
-
-              {/* 三爻示意线 */}
-              <div className="flex flex-col gap-1 mt-1.5 w-10">
-                {[2, 1, 0].map((idx) => {
-                  const isYang = archetypeConfig.trigramLines[idx];
-                  return isYang ? (
-                    <div
-                      key={idx}
-                      className="h-1 rounded-full w-full"
-                      style={{ backgroundColor: colors.secondaryGold }}
-                    />
-                  ) : (
-                    <div key={idx} className="flex justify-between gap-1 w-full">
-                      <div
-                        className="h-1 rounded-full w-[45%]"
-                        style={{ backgroundColor: colors.secondaryGold }}
-                      />
-                      <div
-                        className="h-1 rounded-full w-[45%]"
-                        style={{ backgroundColor: colors.secondaryGold }}
-                      />
-                    </div>
-                  );
-                })}
+                {skills[0]?.icon || "✦"}
               </div>
             </div>
 
-            {/* 图腾称号徽带 */}
+            {/* 头像框下方长条徽带 (展示用户真实昵称，如“探索者 · 伏羲042”) */}
             <div
-              className="mt-3 px-4 py-1 rounded-full border text-xs font-semibold tracking-wider font-serif shadow-md"
+              className="mt-3 px-5 py-1 rounded-full border text-xs font-semibold tracking-wider font-serif shadow-md"
               style={{
                 borderColor: colors.primaryGold,
-                backgroundColor: "rgba(0,0,0,0.6)",
+                backgroundColor: "rgba(0,0,0,0.75)",
                 color: colors.secondaryGold,
               }}
             >
-              【 {archetypeConfig.mythicTotem} · {archetypeConfig.baguaName}为{archetypeConfig.baguaNature} 】
+              {`探索者 · ${subjectName}`}
             </div>
           </div>
 
-          {/* 2. 探索者与核心大标题 */}
+          {/* 2. 核心大标题与金句 */}
           <div className="text-center space-y-1">
-            <div className="text-xs tracking-widest text-slate-300 font-mono">
-              探索者 · {subjectName}
-            </div>
-
             <h2
               className="text-3xl md:text-5xl font-black tracking-wider font-serif drop-shadow-lg"
               style={{
@@ -294,13 +281,6 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
             >
               {profile.role_title || archetypeConfig.roleTitle}
             </h2>
-
-            <div
-              className="text-xs font-mono font-bold tracking-wider"
-              style={{ color: colors.accentColor }}
-            >
-              [ {archetypeConfig.quadrantCode} ]
-            </div>
 
             <p className="text-sm md:text-base text-amber-100 font-serif font-medium pt-1">
               “{profile.praise_tagline || archetypeConfig.praiseTagline}”
@@ -329,66 +309,42 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
             ))}
           </div>
 
-          {/* 4. 4D 认知流形指标矩阵 (2x2 Grid) */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">一元辨别力 d'</span>
-                <span className="text-[10px] text-slate-500 font-mono">Type-1</span>
-              </div>
+          {/* 4. 4 项原创专属认知特技 (2x2 Grid) - 彻底置换原 4D 敏感指标 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            {skills.slice(0, 4).map((skill, idx) => (
               <div
-                className="text-2xl font-black font-mono"
-                style={{ color: colors.secondaryGold }}
+                key={idx}
+                className="p-3.5 rounded-2xl bg-black/60 border border-white/10 space-y-1.5 transition-all hover:border-amber-400/40"
               >
-                {formatCognitiveMetric(metrics.d_prime)}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{skill.icon || "✦"}</span>
+                    <span
+                      className="text-xs font-bold font-serif"
+                      style={{ color: colors.secondaryGold }}
+                    >
+                      {skill.name}
+                    </span>
+                  </div>
+                  <span
+                    className="px-2 py-0.5 rounded text-[10px] font-semibold border"
+                    style={{
+                      backgroundColor: colors.badgeBg,
+                      borderColor: `${colors.primaryGold}44`,
+                      color: colors.secondaryGold,
+                    }}
+                  >
+                    {skill.type}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed font-sans line-clamp-2">
+                  {skill.desc}
+                </p>
               </div>
-              <div className="text-[10px] text-slate-400 leading-tight">底层推导客观硬战力</div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">二元觉察力 Meta-d'</span>
-                <span className="text-[10px] text-slate-500 font-mono">Type-2</span>
-              </div>
-              <div
-                className="text-2xl font-black font-mono"
-                style={{ color: colors.secondaryGold }}
-              >
-                {formatCognitiveMetric(metrics.meta_d_prime)}
-              </div>
-              <div className="text-[10px] text-slate-400 leading-tight">知己掌控与边界洞察</div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">二元自洽率 M_ratio</span>
-                <span className="text-[10px] text-slate-500 font-mono">Align</span>
-              </div>
-              <div
-                className="text-2xl font-black font-mono"
-                style={{ color: colors.secondaryGold }}
-              >
-                {formatMRatioMetric(metrics.m_ratio)}
-              </div>
-              <div className="text-[10px] text-slate-400 leading-tight">元认知杠杆对齐效能</div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">校准偏置 Bias</span>
-                <span className="text-[10px] text-slate-500 font-mono">Prudence</span>
-              </div>
-              <div
-                className="text-2xl font-black font-mono"
-                style={{ color: colors.secondaryGold }}
-              >
-                {formatBiasMetric(metrics.calibration_bias)}
-              </div>
-              <div className="text-[10px] text-slate-400 leading-tight">冒险攻坚 vs 审慎避险</div>
-            </div>
+            ))}
           </div>
 
-          {/* 5. 易经象辞古训典故与朱砂红印 */}
+          {/* 5. 认知赋能启示与朱砂红印 (去卦象化，展现原创赋能解读) */}
           <div className="p-4 rounded-2xl bg-black/40 border border-white/10 relative overflow-hidden">
             {/* 右下角朱砂方印 */}
             <div className="absolute right-3.5 bottom-3.5 w-14 h-14 rounded-lg bg-red-700 border border-yellow-200/80 shadow-md flex items-center justify-center p-1 select-none pointer-events-none transform rotate-3">
@@ -404,10 +360,10 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
                 className="text-[11px] font-bold font-serif tracking-widest"
                 style={{ color: colors.secondaryGold }}
               >
-                【 周易 · 象辞古训 】
+                【 认知心智 · 赋能启示 】
               </div>
-              <p className="text-xs text-slate-300 font-serif leading-relaxed italic">
-                “{archetypeConfig.hexagramAphorism}”
+              <p className="text-xs text-slate-300 font-serif leading-relaxed italic line-clamp-3">
+                “{empoweringFeedback}”
               </p>
             </div>
           </div>
@@ -451,39 +407,43 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
           type="button"
           onClick={handleDownload}
           disabled={downloading}
-          className="flex-1 min-w-[150px] px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+          className="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg active:scale-95 disabled:opacity-50"
+          style={{
+            backgroundColor: colors.primaryGold,
+            color: "#080709",
+            boxShadow: `0 4px 14px ${colors.glowColor}`,
+          }}
         >
           <Download className="w-4 h-4" />
-          {downloading ? "生成海报中..." : "下载高清海报 (PNG)"}
+          <span>{downloading ? "正在渲染海报..." : "下载高清海报 (PNG)"}</span>
         </button>
 
-        {/* 2. 一键复制海报图片到剪贴板 */}
+        {/* 2. 复制海报图片到剪贴板 */}
         <button
           type="button"
           onClick={handleCopyImage}
           disabled={copyingImage}
-          className="flex-1 min-w-[150px] px-5 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 text-amber-200 border border-amber-500/30 hover:border-amber-400 font-semibold text-xs flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+          className="px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95 disabled:opacity-50"
         >
           <Copy className="w-4 h-4 text-amber-400" />
-          {copyingImage ? "复制处理中..." : "复制海报到剪贴板"}
+          <span>{copyingImage ? "正在复制图片..." : "复制海报到剪贴板"}</span>
         </button>
 
         {/* 3. 复制分享文案 */}
         <button
           type="button"
           onClick={handleCopyText}
-          className="px-4 py-3 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-white/10 hover:border-white/20 text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-          title="复制文字文案"
+          className="px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95"
         >
           {copiedText ? (
             <>
               <Check className="w-4 h-4 text-emerald-400" />
-              <span className="text-emerald-400 font-medium">已复制</span>
+              <span className="text-emerald-300">文案已复制！</span>
             </>
           ) : (
             <>
-              <Share2 className="w-4 h-4 text-slate-400" />
-              <span>复制文案</span>
+              <Share2 className="w-4 h-4 text-amber-400" />
+              <span>复制分享文案</span>
             </>
           )}
         </button>

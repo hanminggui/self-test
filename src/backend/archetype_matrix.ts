@@ -41,19 +41,19 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "👁️",
         type: "被动特技",
-        name: "算力透视 (Mental Aimbot)",
+        name: "算力透视",
         desc: "面临复杂抽象推演时，自动过滤 90% 以上无效干扰信息，直击底层规律本质，底层客观胜率始终维持在顶峰。",
       },
       {
         icon: "🎯",
         type: "核心特技",
-        name: "精准制导 (Precision Lock)",
+        name: "精准制导",
         desc: "对自我的决断状态拥有超高分辨率，结论成立瞬间即可锁定 100% 把握度，在确定项上从不犹豫 0.1 秒。",
       },
       {
         icon: "⚡",
         type: "觉醒绝技",
-        name: "知行律动 (Sovereign Execution)",
+        name: "知行律动",
         desc: "决策博弈与客观规律达成神级共振，胜券在握时果断全额下注，攻守自如，斩获最高净胜收益。",
       },
       {
@@ -82,19 +82,19 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "🪞",
         type: "被动特技",
-        name: "灵台自照 (Epistemic Mirror)",
+        name: "灵台自照",
         desc: "天生具备超高灵觉敏锐度，无论规则多陌生，都能瞬间感知‘哪里是已知，哪里是盲区’，对不知抱有绝对清醒。",
       },
       {
         icon: "🛡️",
         type: "核心特技",
-        name: "灵台避险 (Intuitive Caution)",
+        name: "灵台避险",
         desc: "感知到视野模糊或不确定陷阱时触发避险雷达，善于借助外界线索启发与审慎保底完成安全过渡。",
       },
       {
         icon: "⚡",
         type: "觉醒绝技",
-        name: "灵窍蜕变 (Epiphanic Breakthrough)",
+        name: "灵窍蜕变",
         desc: "拥有全矩阵中最高倍率的学习吸收上限，每一个外界线索与失误都会被极速转化为底层认知资产，厚积薄发。",
       },
       {
@@ -123,19 +123,19 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "🏛️",
         type: "被动技能",
-        name: "玄武磐石 (Subconscious Mastery)",
+        name: "玄武磐石",
         desc: "潜意识解题推导命中率极高（数学概率证明硬实力本能），在面对高难度挑战时防御下限极高。",
       },
       {
         icon: "🔍",
         type: "核心特技",
-        name: "万无一失 (Zero-Defect Vigilance)",
+        name: "万无一失",
         desc: "对交付成果和判断保持极高敬畏，严密求证复核，绝不贪功冒进，杜绝任何黑天鹅纰漏。",
       },
       {
         icon: "🌊",
         type: "觉醒绝技",
-        name: "镇海乾坤 (Anchor of the Sea)",
+        name: "镇海乾坤",
         desc: "在团队面临不确定性风暴与惊涛骇浪时，只要神针在场便能稳住大局，成为所有伙伴最信任的定心丸。",
       },
       {
@@ -164,19 +164,19 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "🔥",
         type: "被动技能",
-        name: "真龙威压 (Overwhelming Dominance)",
+        name: "真龙威压",
         desc: "客观攻坚底蕴与逻辑推理极度雄厚，面对高难度挑战自带破阵光环，推理快准狠，天生自带进攻压迫感。",
       },
       {
         icon: "⚔️",
         type: "核心特技",
-        name: "长空扑杀 (Skyfall Strike)",
+        name: "长空扑杀",
         desc: "全场最果决的拍板魄力与进攻欲望，深信自我判断，全额高注起手，以气吞万里之势碾压一切迷雾与僵局。",
       },
       {
         icon: "⚡",
         type: "觉醒绝技",
-        name: "九霄龙吟 (Apex Resurgence)",
+        name: "九霄龙吟",
         desc: "遇强则强，越是硬仗越能激发无限战意。只要在关键时刻稍加一道理性缓冲环，便能成为无可匹敌的常胜战神。",
       },
       {
@@ -205,19 +205,19 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "🤫",
         type: "被动特技",
-        name: "希声守拙 (Silent Restraint)",
+        name: "希声守拙",
         desc: "面对未知迷雾本能抱朴守拙，杜绝任何轻浮冒进与侥幸无谓损失，守底极深。",
       },
       {
         icon: "📡",
         type: "核心特技",
-        name: "辨音于微 (Perception in Silence)",
+        name: "辨音于微",
         desc: "对复杂局势中的微小异动与风险信号明察秋毫，在危机初显前守住交付底线与命脉防线。",
       },
       {
         icon: "🏔️",
         type: "觉醒绝技",
-        name: "大象无形 (Formless Anchor)",
+        name: "大象无形",
         desc: "在外部动荡与波动中坚如磐石、深藏若虚，化身不可动摇的防线基石与定盘锚点。",
       },
       {
@@ -246,19 +246,19 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "🚩",
         type: "被动特技",
-        name: "破晓勇气 (Fearless Drive)",
+        name: "破晓勇气",
         desc: "面对未知黑夜与抽象迷雾毫无内耗，行动力永远大于焦虑，敢想敢做，拥有天生的破界者基因。",
       },
       {
         icon: "⚡",
         type: "核心特技",
-        name: "向险而行 (Vanguard Charge)",
+        name: "向险而行",
         desc: "以实战试错为最高信仰，在他人犹豫徘徊时率先涉足深水区，用身体力行去探索可能与探明虚实。",
       },
       {
         icon: "🛡️",
         type: "觉醒绝技",
-        name: "百炼成钢 (Trial by Fire)",
+        name: "百炼成钢",
         desc: "拥有极强的心理抗挫力与反脆弱性，每一次碰撞与试错都是锻造锋刃的烈火，在持续摸索中迅速蜕变。",
       },
       {
@@ -287,19 +287,19 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "🧮",
         type: "被动特技",
-        name: "算无遗策 (Expected Value Sight)",
+        name: "算无遗策",
         desc: "实时评估局势胜率与数学期望，对每一份资源投入的边际效用洞若观火，追求全局期望最大化。",
       },
       {
         icon: "🏹",
         type: "核心特技",
-        name: "草船借箭 (Borrowed Leverage)",
+        name: "草船借箭",
         desc: "极精于利用外部工具穿透复杂迷雾，用微小线索成本换取决定性翻盘胜利，转化率高超。",
       },
       {
         icon: "📜",
         type: "觉醒绝技",
-        name: "锦囊奇谋 (Pragmatic Arbitrage)",
+        name: "锦囊奇谋",
         desc: "把握高则果决下重注，存疑则调动锦囊对冲风险，以巧破千钧，在多重约束中收割最高净胜收益。",
       },
       {
@@ -328,19 +328,19 @@ export const ARCHETYPE_MATRIX: Record<CognitiveArchetype, ArchetypeDefinition> =
       {
         icon: "🌌",
         type: "被动特技",
-        name: "星界漫步 (Stochastic Flow)",
+        name: "星界漫步",
         desc: "超脱固有逻辑与教条束缚，在多变混沌的复杂星域中凭借纯粹灵性本能穿行，灵动洒脱。",
       },
       {
         icon: "✨",
         type: "核心特技",
-        name: "奇点闪烁 (Spontaneous Spark)",
+        name: "奇点闪烁",
         desc: "行为轨迹不可预测，跳出常规推演套路，在看似无序的探索中偶发惊艳奇解。",
       },
       {
         icon: "🚀",
         type: "觉醒绝技",
-        name: "星轨跃迁 (Cosmic Drift)",
+        name: "星轨跃迁",
         desc: "面对极端高压或僵局时具备绝佳的情绪解耦与心理弹性，不滞于一时得失，放眼星河。",
       },
       {
