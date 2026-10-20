@@ -169,9 +169,20 @@ function saveConfig(cfg: SavedConfig) {
   } catch { }
 }
 
-async function checkServerHealth(apiBase: string): Promise<boolean> {
+export function normalizeApiUrl(rawUrl?: string): string {
+  if (!rawUrl) return "http://localhost:8000";
+  return rawUrl.trim().replace(/\/+$/, "");
+}
+
+export async function checkServerHealth(apiBase: string): Promise<boolean> {
+  const timeoutMs = apiBase.startsWith("http://localhost") || apiBase.startsWith("http://127.0.0.1") ? 1500 : 5000;
   try {
-    const res = await fetch(`${apiBase}/api/cohort/scatter`, { signal: AbortSignal.timeout(1200) });
+    const res = await fetch(`${apiBase}/api/health`, { signal: AbortSignal.timeout(timeoutMs) });
+    if (res.ok) return true;
+  } catch {}
+
+  try {
+    const res = await fetch(`${apiBase}/api/cohort/scatter`, { signal: AbortSignal.timeout(timeoutMs) });
     return res.ok || res.status === 404;
   } catch {
     return false;
@@ -227,7 +238,7 @@ async function resolveConfiguration(): Promise<EvalConfig> {
     rawThinking = "medium";
   }
 
-  const chosenApiBase: string = rawApiUrl || process.env.API_BASE || saved.api_base || "http://localhost:8000";
+  const chosenApiBase: string = normalizeApiUrl(rawApiUrl || process.env.API_BASE || saved.api_base);
   let chosenBaseUrl: string = rawBaseUrl || process.env.OPENAI_BASE_URL || saved.openai_base_url || "";
   let chosenModel: string = rawModel || process.env.MODEL_NAME || saved.model || "";
   let chosenKey: string = rawKey || process.env.OPENAI_API_KEY || saved.openai_api_key || "";

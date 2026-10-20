@@ -11,6 +11,7 @@ import * as fs from "fs";
 import { RunResult, StorageAdapter } from "./adapter";
 
 export class LocalSqliteAdapter implements StorageAdapter {
+  readonly engine = "local_sqlite";
   private db: Database;
 
   constructor(dbPathOrDb?: string | Database) {
