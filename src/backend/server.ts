@@ -5,7 +5,20 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { getCookie, setCookie, deleteCookie } from "hono/cookie";
+import * as path from "path";
+import * as fs from "fs";
 import { SessionManager } from "./session_manager";
+import { UserManager } from "./user_manager";
+import { User } from "../storage/user";
+import {
+  createAuthToken,
+  verifyAuthToken,
+  setAuthCookie,
+  clearAuthCookie,
+  extractToken,
+} from "./auth/jwt";
+import { oauthService, OAuthService } from "./auth/oauth";
 import { D1StorageAdapter } from "../storage/d1";
 import type { D1Database } from "@cloudflare/workers-types";
 import { MetacognitiveAction, SubjectType, TrialResponse } from "./models";
@@ -21,6 +34,8 @@ export type CloudflareBindings = {
 export type AppVariables = {
   locale: SupportedLocale;
   sessionManager?: SessionManager;
+  user?: User | null;
+  userManager?: UserManager;
 };
 
 const app = new Hono<{ Bindings: CloudflareBindings; Variables: AppVariables }>();
@@ -112,8 +127,45 @@ export const sessionManager: SessionManager = new Proxy({} as SessionManager, {
   },
 });
 
-// Cache D1-backed SessionManager instances per D1 database binding
+let _defaultUserManager: UserManager | null = null;
+export function getDefaultUserManager(): UserManager {
+  if (!_defaultUserManager) {
+    _defaultUserManager = new UserManager(getDefaultSessionManager().getStorage());
+  }
+  return _defaultUserManager;
+}
+
+export const userManager: UserManager = new Proxy({} as UserManager, {
+  get(_target, prop, receiver) {
+    if (prop === "then" || prop === "$$typeof" || prop === "toJSON") {
+      return undefined;
+    }
+    const um = getDefaultUserManager();
+    const val = Reflect.get(um, prop, um);
+    if (typeof val === "function") {
+      return val.bind(um);
+    }
+    return val;
+  },
+  set(_target, prop, value) {
+    const um = getDefaultUserManager();
+    return Reflect.set(um, prop, value, um);
+  },
+  has(_target, prop) {
+    const um = getDefaultUserManager();
+    return Reflect.has(um, prop);
+  },
+  getPrototypeOf(_target) {
+    const um = getDefaultUserManager();
+    return Reflect.getPrototypeOf(um);
+  },
+});
+
+export { oauthService, OAuthService };
+
+// Cache D1-backed SessionManager and UserManager instances per D1 database binding
 const d1SessionManagers = new WeakMap<object, SessionManager>();
+const d1UserManagers = new WeakMap<object, UserManager>();
 
 export function getSessionManagerForContext(c: any): SessionManager {
   if (c.get?.("sessionManager")) {
@@ -129,6 +181,59 @@ export function getSessionManagerForContext(c: any): SessionManager {
     return sm;
   }
   return sessionManager;
+}
+
+export function getUserManagerForContext(c: any): UserManager {
+  if (c.get?.("userManager")) {
+    return c.get("userManager");
+  }
+  const db = c.env?.DB;
+  if (db) {
+    let um = d1UserManagers.get(db);
+    if (!um) {
+      um = new UserManager(new D1StorageAdapter(db));
+      d1UserManagers.set(db, um);
+    }
+    return um;
+  }
+  return userManager;
+}
+
+// Auth extraction middleware
+app.use("*", async (c, next) => {
+  const token = extractToken(c);
+  if (token) {
+    const payload = await verifyAuthToken(token);
+    if (payload && payload.id) {
+      const um = getUserManagerForContext(c);
+      const user = await um.getUserById(payload.id);
+      if (user) {
+        c.set("user", user);
+        return next();
+      }
+      // If user row is temporarily unavailable in memory adapter, fallback to JWT payload
+      c.set("user", {
+        id: payload.id,
+        email: payload.email,
+        display_name: payload.display_name,
+        avatar_url: payload.avatar_url,
+        primary_provider: payload.primary_provider,
+        created_at: new Date(payload.iat * 1000).toISOString(),
+        updated_at: new Date(payload.iat * 1000).toISOString(),
+        metadata: payload.metadata,
+      });
+      return next();
+    }
+  }
+  c.set("user", null);
+  return next();
+});
+
+function getOrigin(c: any): string {
+  const reqUrl = new URL(c.req.url);
+  const proto = c.req.header("x-forwarded-proto") || reqUrl.protocol.replace(":", "");
+  const host = c.req.header("x-forwarded-host") || c.req.header("host") || reqUrl.host;
+  return `${proto}://${host}`;
 }
 
 // --- REST API Routes ---
@@ -172,9 +277,12 @@ app.post("/api/sessions/start", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const locale = c.get("locale");
   const sm = getSessionManagerForContext(c);
+  const user = c.get("user");
+  const userId = body.user_id || user?.id || null;
   const session = await sm.createSessionAsync({
     sessionId: body.session_id,
-    subjectName: body.subject_name,
+    userId,
+    subjectName: body.subject_name || (user ? user.display_name : undefined),
     subjectType: body.subject_type || SubjectType.HUMAN,
     totalTrials: body.total_trials ?? 30,
     warmupTrials: body.warmup_trials ?? 10,
@@ -184,6 +292,7 @@ app.post("/api/sessions/start", async (c) => {
     thinkingEffort: body.thinking_effort,
     metadata: {
       locale,
+      ...(user ? { user_id: user.id, user_display_name: user.display_name } : {}),
       ...(body.metadata || {}),
     },
   });
@@ -300,6 +409,174 @@ app.get("/api/cohort/scatter", async (c) => {
   const locale = c.get("locale");
   const sm = getSessionManagerForContext(c);
   return c.json(await sm.getCohortScatterDataAsync(currentSessionId, locale));
+});
+
+// --- Auth & OAuth Matrix Routes ---
+
+// Current User Profile
+app.get("/api/auth/me", (c) => {
+  const user = c.get("user");
+  return c.json({ user: user || null });
+});
+
+// Logout
+app.post("/api/auth/logout", (c) => {
+  clearAuthCookie(c);
+  return c.json({ success: true });
+});
+
+// User Completed Sessions
+app.get("/api/auth/sessions", async (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const sessions = await sessionManager.getUserSessionsAsync(user.id);
+  return c.json({ sessions });
+});
+
+// GitHub OAuth: Authorization Redirect
+app.get("/api/auth/github", (c) => {
+  const state = crypto.randomUUID();
+  setCookie(c, "oauth_state", state, { httpOnly: true, sameSite: "Lax", path: "/", maxAge: 600 });
+  const origin = getOrigin(c);
+  const redirectUri = `${origin}/api/auth/github/callback`;
+  const authUrl = oauthService.getGithubAuthUrl(state, redirectUri);
+  return c.redirect(authUrl);
+});
+
+// GitHub OAuth: Callback
+app.get("/api/auth/github/callback", async (c) => {
+  const code = c.req.query("code");
+  const state = c.req.query("state");
+  const savedState = getCookie(c, "oauth_state");
+  deleteCookie(c, "oauth_state", { path: "/" });
+
+  if (!code) {
+    return c.json({ error: "Missing authorization code" }, 400);
+  }
+  if (savedState && state && savedState !== state) {
+    return c.json({ error: "Invalid state parameter" }, 400);
+  }
+
+  const origin = getOrigin(c);
+  const redirectUri = `${origin}/api/auth/github/callback`;
+  try {
+    const profile = await oauthService.handleGithubCallback(code, redirectUri);
+    const user = await userManager.upsertUser({
+      primary_provider: "github",
+      provider_id: profile.provider_id,
+      email: profile.email,
+      display_name: profile.display_name,
+      avatar_url: profile.avatar_url,
+      metadata: profile.metadata,
+    });
+    const token = await createAuthToken(user);
+    setAuthCookie(c, token);
+
+    if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
+      return c.json({ success: true, token, user });
+    }
+    return c.redirect("/");
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// LinuxDo OAuth: Authorization Redirect
+app.get("/api/auth/linuxdo", (c) => {
+  const state = crypto.randomUUID();
+  setCookie(c, "oauth_state", state, { httpOnly: true, sameSite: "Lax", path: "/", maxAge: 600 });
+  const origin = getOrigin(c);
+  const redirectUri = `${origin}/api/auth/linuxdo/callback`;
+  const authUrl = oauthService.getLinuxDoAuthUrl(state, redirectUri);
+  return c.redirect(authUrl);
+});
+
+// LinuxDo OAuth: Callback
+app.get("/api/auth/linuxdo/callback", async (c) => {
+  const code = c.req.query("code");
+  const state = c.req.query("state");
+  const savedState = getCookie(c, "oauth_state");
+  deleteCookie(c, "oauth_state", { path: "/" });
+
+  if (!code) {
+    return c.json({ error: "Missing authorization code" }, 400);
+  }
+  if (savedState && state && savedState !== state) {
+    return c.json({ error: "Invalid state parameter" }, 400);
+  }
+
+  const origin = getOrigin(c);
+  const redirectUri = `${origin}/api/auth/linuxdo/callback`;
+  try {
+    const profile = await oauthService.handleLinuxDoCallback(code, redirectUri);
+    const user = await userManager.upsertUser({
+      primary_provider: "linuxdo",
+      provider_id: profile.provider_id,
+      email: profile.email,
+      display_name: profile.display_name,
+      avatar_url: profile.avatar_url,
+      metadata: profile.metadata,
+    });
+    const token = await createAuthToken(user);
+    setAuthCookie(c, token);
+
+    if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
+      return c.json({ success: true, token, user });
+    }
+    return c.redirect("/");
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// Google Identity OAuth: Authorization Redirect
+app.get("/api/auth/google", (c) => {
+  const state = crypto.randomUUID();
+  setCookie(c, "oauth_state", state, { httpOnly: true, sameSite: "Lax", path: "/", maxAge: 600 });
+  const origin = getOrigin(c);
+  const redirectUri = `${origin}/api/auth/google/callback`;
+  const authUrl = oauthService.getGoogleAuthUrl(state, redirectUri);
+  return c.redirect(authUrl);
+});
+
+// Google Identity OAuth: Callback (with account deduplication by verified email)
+app.get("/api/auth/google/callback", async (c) => {
+  const code = c.req.query("code");
+  const state = c.req.query("state");
+  const savedState = getCookie(c, "oauth_state");
+  deleteCookie(c, "oauth_state", { path: "/" });
+
+  if (!code) {
+    return c.json({ error: "Missing authorization code" }, 400);
+  }
+  if (savedState && state && savedState !== state) {
+    return c.json({ error: "Invalid state parameter" }, 400);
+  }
+
+  const origin = getOrigin(c);
+  const redirectUri = `${origin}/api/auth/google/callback`;
+  try {
+    const profile = await oauthService.handleGoogleCallback(code, redirectUri);
+    const user = await userManager.upsertUser({
+      primary_provider: "google",
+      provider_id: profile.provider_id,
+      email: profile.email,
+      display_name: profile.display_name,
+      avatar_url: profile.avatar_url,
+      metadata: profile.metadata,
+    });
+    const token = await createAuthToken(user);
+    setAuthCookie(c, token);
+
+    if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
+      return c.json({ success: true, token, user });
+    }
+    return c.redirect("/");
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
 });
 
 const extractAdminToken = async (c: any): Promise<string | undefined> => {

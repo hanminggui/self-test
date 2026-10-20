@@ -25,6 +25,7 @@ import { generateSubjectCodename as generateRandomCodename } from "../backend/co
 import { CognitiveArchetype } from "../backend/models";
 import { getArchetypeDefinition } from "../backend/archetype_matrix";
 import { useLocale } from "./contexts/LocaleContext";
+import { useUser } from "./contexts/UserContext";
 import { LanguageToggle } from "./components/LanguageToggle";
 import { PosterModal } from "./components/share/PosterModal";
 import {
@@ -33,6 +34,7 @@ import {
   saveLastCompletedSession,
   getLastCompletedSession,
 } from "./utils/sessionRoute";
+import { UserNav } from "./components/auth/UserNav";
 
 interface TrialPayload {
   stimulus_id: string;
@@ -229,6 +231,7 @@ const renderPrompt = (rawPrompt: string) => {
 
 export default function App() {
   const { locale, t, formatMessage } = useLocale();
+  const { user } = useUser();
   const isEn = locale === "en-US";
 
   const [stage, setStage] = useState<"WELCOME" | "TESTING" | "REPORT">("WELCOME");
@@ -403,7 +406,7 @@ export default function App() {
   const startSession = async () => {
     setLoading(true);
     setErrorMsg("");
-    const finalName = subjectName.trim() || placeholderCodename;
+    const finalName = subjectName.trim() || user?.display_name || placeholderCodename;
     try {
       const res = await fetch(`/api/sessions/start?lang=${encodeURIComponent(locale)}`, {
         method: "POST",
@@ -605,6 +608,7 @@ export default function App() {
             </div>
           )}
           <LanguageToggle />
+          <UserNav />
         </div>
       </header>
 

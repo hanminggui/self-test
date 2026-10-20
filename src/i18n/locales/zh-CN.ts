@@ -427,6 +427,19 @@ export const zhCN: I18nDictionary = {
     backToHomeBtn: "返回探索首页",
     reportLoadingText: "正在唤醒专属心智图景...",
   },
+  auth: {
+    signIn: "登录",
+    signOut: "退出登录",
+    authModalTitle: "探索者身份认证",
+    authModalDesc: "连接您的身份账号，云端同步二元认知流形评测记录与画像勋章",
+    loginWithGithub: "使用 GitHub 账号登录",
+    loginWithLinuxdo: "使用 LinuxDo Connect 登录",
+    loginWithGoogle: "使用 Google 账号登录",
+    guestExplorer: "匿名探索者",
+    loggedInAs: "已登录为",
+    accountLinked: "账号已关联绑定",
+    trustLevelLabel: "社区信任等级",
+  },
   cli: {
     gameRules: `【决策博弈效用规则】
 你正在参与一项问题的逻辑推演与决策博弈游戏，题目类型为4选1选择题。

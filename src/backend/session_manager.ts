@@ -8,7 +8,7 @@
 import * as path from "path";
 import * as fs from "fs";
 
-import { StorageAdapter, LocalSqliteAdapter } from "../storage";
+import { StorageAdapter, LocalSqliteAdapter, USERS_TABLE_SCHEMA_SQL } from "../storage";
 import {
   PhaseType,
   MetacognitiveAction,
@@ -33,6 +33,7 @@ import { getLocale, type SupportedLocale } from "../i18n";
 
 export interface SessionState {
   sessionId: string;
+  userId?: string | null;
   subjectType: string;
   subjectName: string;
   totalTrials: number;
@@ -94,6 +95,7 @@ export class SessionManager {
   getStorage(): StorageAdapter {
     return this.storage;
   }
+
 
   /**
    * Automatically recalibrates persisted historical sessions,
@@ -322,8 +324,8 @@ export class SessionManager {
         task_generator_state_json, current_task_json, records_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        metadata_json, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        metadata_json, updated_at, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       session.sessionId,
@@ -348,6 +350,7 @@ export class SessionManager {
       session.startTimeMs,
       session.metadata ? JSON.stringify(session.metadata) : null,
       new Date().toISOString(),
+      session.userId ?? null,
     ];
 
     if (this.storage.runSync) {
@@ -366,8 +369,8 @@ export class SessionManager {
         task_generator_state_json, current_task_json, records_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        metadata_json, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        metadata_json, updated_at, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       session.sessionId,
@@ -392,6 +395,7 @@ export class SessionManager {
       session.startTimeMs,
       session.metadata ? JSON.stringify(session.metadata) : null,
       new Date().toISOString(),
+      session.userId ?? null,
     ];
     await this.storage.run(sql, params);
   }
@@ -417,6 +421,7 @@ export class SessionManager {
 
     const restored: SessionState = {
       sessionId: row.id,
+      userId: row.user_id ?? null,
       subjectType: row.subject_type,
       subjectName: row.subject_name,
       totalTrials: row.total_trials,
@@ -468,6 +473,7 @@ export class SessionManager {
 
   createSession(params: {
     sessionId?: string;
+    userId?: string | null;
     subjectName?: string;
     subjectType?: string;
     totalTrials?: number;
@@ -512,6 +518,7 @@ export class SessionManager {
 
     const session: SessionState = {
       sessionId: sid,
+      userId: params.userId ?? null,
       subjectType,
       subjectName: sName,
       totalTrials,
@@ -543,6 +550,7 @@ export class SessionManager {
 
   async createSessionAsync(params: {
     sessionId?: string;
+    userId?: string | null;
     subjectName?: string;
     subjectType?: string;
     totalTrials?: number;
@@ -1024,8 +1032,8 @@ export class SessionManager {
 
       const insertSql = `
         INSERT OR REPLACE INTO completed_sessions
-        (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary, total_duration_ms, persona, thinking_effort, token_usage_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary, total_duration_ms, persona, thinking_effort, token_usage_json, user_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const params = [
         report.session_id,
@@ -1048,7 +1056,8 @@ export class SessionManager {
         report.metadata?.total_duration_ms ?? null,
         report.metadata?.persona ?? null,
         report.metadata?.thinking_effort ?? null,
-        report.metadata?.token_usage ? JSON.stringify(report.metadata.token_usage) : null
+        report.metadata?.token_usage ? JSON.stringify(report.metadata.token_usage) : null,
+        session.userId ?? null
       ];
 
       if (this.storage.runSync) {
@@ -1074,8 +1083,8 @@ export class SessionManager {
 
     const insertSql = `
       INSERT OR REPLACE INTO completed_sessions
-      (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary, total_duration_ms, persona, thinking_effort, token_usage_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary, total_duration_ms, persona, thinking_effort, token_usage_json, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       report.session_id,
@@ -1098,7 +1107,8 @@ export class SessionManager {
       report.metadata?.total_duration_ms ?? null,
       report.metadata?.persona ?? null,
       report.metadata?.thinking_effort ?? null,
-      report.metadata?.token_usage ? JSON.stringify(report.metadata.token_usage) : null
+      report.metadata?.token_usage ? JSON.stringify(report.metadata.token_usage) : null,
+      session.userId ?? null
     ];
     await this.storage.run(insertSql, params);
   }
@@ -1642,5 +1652,14 @@ export class SessionManager {
       mean_y: Math.round(mean(yVals) * 1000) / 1000,
       subjects,
     };
+  }
+
+  public getUserSessions(userId: string): any[] {
+    if (!this.storage.querySync) return [];
+    return this.storage.querySync("SELECT * FROM completed_sessions WHERE user_id = ? ORDER BY created_at DESC", [userId]);
+  }
+
+  public async getUserSessionsAsync(userId: string): Promise<any[]> {
+    return this.storage.query("SELECT * FROM completed_sessions WHERE user_id = ? ORDER BY created_at DESC", [userId]);
   }
 }

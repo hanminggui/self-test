@@ -427,6 +427,19 @@ export const enUS: I18nDictionary = {
     backToHomeBtn: "Return to Exploration Home",
     reportLoadingText: "Awakening your sovereign archetype...",
   },
+  auth: {
+    signIn: "Sign In",
+    signOut: "Sign Out",
+    authModalTitle: "Explorer Authentication",
+    authModalDesc: "Connect your account to sync metacognitive manifold records and archetype badges to the cloud",
+    loginWithGithub: "Continue with GitHub",
+    loginWithLinuxdo: "Continue with LinuxDo Connect",
+    loginWithGoogle: "Continue with Google",
+    guestExplorer: "Guest Explorer",
+    loggedInAs: "Logged in as",
+    accountLinked: "Account Linked",
+    trustLevelLabel: "Community Trust Level",
+  },
   cli: {
     gameRules: `【Decision Game Utility Rules】
 You are participating in a logical deduction and decision-theoretic game consisting of 4-alternative forced-choice (4AFC) puzzles.
