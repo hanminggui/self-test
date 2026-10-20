@@ -34,6 +34,7 @@ import {
   PosterShareData,
   SkillDisplayItem,
 } from "./posterGenerator";
+import { buildSessionReportUrl } from "../../utils/sessionRoute";
 
 export interface WesternArcanePosterProps {
   report: {
@@ -90,14 +91,18 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
   const [copyingImage, setCopyingImage] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const posterCardRef = React.useRef<HTMLDivElement>(null);
 
   const resolvedUrl = useMemo(() => {
     if (entryUrl) return entryUrl;
+    if (report?.session_id) {
+      return buildSessionReportUrl(report.session_id);
+    }
     if (typeof window !== "undefined") {
       return `${window.location.origin}/`;
     }
     return "http://localhost:8000/";
-  }, [entryUrl]);
+  }, [entryUrl, report?.session_id]);
 
   const empoweringFeedback = useMemo(() => {
     if (profile.empowering_feedback && !/[\u4e00-\u9fa5]/.test(profile.empowering_feedback)) {
@@ -141,7 +146,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
   const handleDownload = async () => {
     try {
       setDownloading(true);
-      await downloadPoster(shareData);
+      await downloadPoster(shareData, undefined, posterCardRef.current);
       showToast("HD Archetype Poster download started!");
     } catch (err: any) {
       console.error(err);
@@ -155,7 +160,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
   const handleCopyImage = async () => {
     try {
       setCopyingImage(true);
-      const res = await copyPosterImageToClipboard(shareData);
+      const res = await copyPosterImageToClipboard(shareData, posterCardRef.current);
       if (res.fallback) {
         showToast("Direct image copy not supported; auto-downloaded instead!");
       } else if (res.success) {
@@ -166,7 +171,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
     } catch (err: any) {
       console.error(err);
       showToast("Failed to copy poster, auto-downloading...");
-      await downloadPoster(shareData);
+      await downloadPoster(shareData, undefined, posterCardRef.current);
     } finally {
       setCopyingImage(false);
     }
@@ -203,6 +208,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
 
       {/* 核心海报视觉卡片容器 (DOM 实时高清预览) */}
       <div
+        ref={posterCardRef}
         className="relative w-full rounded-3xl overflow-hidden shadow-2xl border transition-all duration-300"
         style={{
           borderColor: colors.cardBorder,
@@ -219,7 +225,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
             className="text-[13px] font-bold tracking-[0.25em] font-sans"
             style={{ color: colors.secondaryGold }}
           >
-            WESTERN ARCANE ORDER · COGNITIVE SPECTRUM
+            ARCANE ORDER · COGNITIVE SPECTRUM
           </div>
           <div className="text-[9px] tracking-[0.15em] text-slate-400 uppercase mt-0.5 font-mono">
             ORDO ARCANUM · METACOGNITIVE TESTING LAB

@@ -87,6 +87,16 @@ export interface AppDictionary {
   confirmDecisionError: string;
   generateReportError: string;
   fetchNextTrialError: string;
+  permanentLinkTitle: string;
+  permanentLinkDesc: string;
+  copyReportLinkBtn: string;
+  reportLinkCopiedToast: string;
+  resumeLastReportBtn: string;
+  resumeLastReportDesc: string;
+  reportNotFoundTitle: string;
+  reportNotFoundDesc: string;
+  backToHomeBtn: string;
+  reportLoadingText: string;
 }
 
 export interface I18nDictionary {
