@@ -64,10 +64,10 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
             <button
               onClick={() => setShowPosterModal(true)}
               className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-medium text-xs transition-colors cursor-pointer flex items-center gap-1.5 border border-amber-500/30 shadow-sm"
-              title={isEn ? "Generate Oriental Mythic Share Poster" : "生成东方神话宣发海报"}
+              title={isEn ? "Open Archetype Share Card" : "打开专属分享卡"}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>{isEn ? "Mythic Poster" : "神话海报"}</span>
+              <span>{isEn ? "Share Card" : "分享卡"}</span>
             </button>
             {onDelete && (
               <button
@@ -383,6 +383,7 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
         <PosterModal
           isOpen={showPosterModal}
           report={report}
+          locale={locale}
           onClose={() => setShowPosterModal(false)}
         />
       )}
