@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { X, Brain, Sparkles, Trash2, Cpu, Clock, Coins, Layers, Activity, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Brain, Sparkles, Trash2, Cpu, Clock, Coins, Layers, Activity, ChevronDown, ChevronUp, Share2 } from "lucide-react";
 import { useLocale } from "../../contexts/LocaleContext";
+import { PosterModal } from "../share/PosterModal";
 
 interface SubjectDetailDrawerProps {
   report: any | null;
@@ -29,6 +30,7 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
   const { locale } = useLocale();
   const isEn = locale === "en-US";
   const [showRecords, setShowRecords] = useState(false);
+  const [showPosterModal, setShowPosterModal] = useState(false);
   if (!report) return null;
 
   const isSubEn = report.metadata?.locale === "en-US";
@@ -59,6 +61,14 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPosterModal(true)}
+              className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-medium text-xs transition-colors cursor-pointer flex items-center gap-1.5 border border-amber-500/30 shadow-sm"
+              title={isEn ? "Generate Oriental Mythic Share Poster" : "生成东方神话宣发海报"}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isEn ? "Mythic Poster" : "神话海报"}</span>
+            </button>
             {onDelete && (
               <button
                 onClick={() => onDelete(report.session_id, report.subject_name)}
@@ -368,6 +378,14 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
           </button>
         </div>
       </div>
+
+      {showPosterModal && report && (
+        <PosterModal
+          isOpen={showPosterModal}
+          report={report}
+          onClose={() => setShowPosterModal(false)}
+        />
+      )}
     </div>
   );
 }

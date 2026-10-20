@@ -402,6 +402,8 @@ export const enUS: I18nDictionary = {
     arsenalSubtitle: "Your Sovereign Cognitive Arsenal",
     strategicAdvice: "Arcane Strategic Ascension",
     restartVoyage: "Begin Anew",
+    orientalPosterBtn: "Mythic Share Poster",
+    posterModalTitle: "Oriental Cognitive Manifold · Mythic Share Poster",
     copyCard: "Copy Archetype Seal",
     copiedAlert: "Archetype Seal copied to clipboard! Ready to share.",
     footerText: "Mind Astrolabe · Reflecting Authentic Intuition & Sovereign Mastery",
