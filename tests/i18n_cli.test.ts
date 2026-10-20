@@ -1,10 +1,40 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, beforeAll, afterAll } from "bun:test";
 import { getBuyHintTool, getSchemas } from "../src/cli/lib/schema_builder";
 import { getPrompts } from "../src/cli/eval";
-import { spawnSync } from "child_process";
+import { spawn, spawnSync, type ChildProcess } from "child_process";
 import { sessionManager } from "../src/backend/server";
 
 describe("Seam 5: CLI Evaluator & Bilingual Schemas/Prompts", () => {
+  let serverProcess: ChildProcess | undefined;
+
+  beforeAll(async () => {
+    // Check if server is already running on port 8000
+    try {
+      const ping = await fetch("http://localhost:8000/api/admin/sessions", { signal: AbortSignal.timeout(300) });
+      if (ping) return; // already running
+    } catch {}
+
+    serverProcess = spawn("bun", ["run", "src/backend/server.ts"], {
+      cwd: process.cwd(),
+      stdio: "ignore",
+    });
+
+    // Wait for server to become responsive
+    for (let i = 0; i < 30; i++) {
+      try {
+        await fetch("http://localhost:8000/api/admin/sessions", { signal: AbortSignal.timeout(300) });
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
+  });
+
+  afterAll(() => {
+    if (serverProcess) {
+      serverProcess.kill();
+    }
+  });
   it("getSchemas 与 getBuyHintTool 正确提供英文字段描述与说明", () => {
     // 1. 中文 Schema 检查
     const schemasZH = getSchemas("zh-CN");
@@ -92,5 +122,5 @@ describe("Seam 5: CLI Evaluator & Bilingual Schemas/Prompts", () => {
     expect(resZh.stdout).toContain("大模型二元认知");
     expect(resZh.stdout).toContain("二元认知测评报告");
     expect(resZh.stdout).toContain("一元客观准确率");
-  });
+  }, 30000);
 });
