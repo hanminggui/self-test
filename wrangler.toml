@@ -1,0 +1,40 @@
+name = "self-test"
+main = "src/backend/server.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+preview_urls = true
+
+[previews]
+
+[alias]
+"bun:sqlite" = "./src/storage/bun_sqlite_stub.ts"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+html_handling = "auto-trailing-slash"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
+
+[observability.issues]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "self-test-db"
+migrations_dir = "migrations"
+

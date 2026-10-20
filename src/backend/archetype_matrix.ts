@@ -463,7 +463,6 @@ export function mapLegacyArchetype(val: string): CognitiveArchetype {
     case "人形外挂":
     case "SOVEREIGN":
     case "Q1-CAL":
-    case "人形外挂":
       return CognitiveArchetype.SOVEREIGN;
 
     case "Q2_FUTURE_MASTER":

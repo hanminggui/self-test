@@ -64,16 +64,30 @@ export class SessionManager {
     if (storageOrDbPath && typeof storageOrDbPath !== "string") {
       this.storage = storageOrDbPath;
     } else {
-      const dataDir = path.resolve(process.cwd(), "data");
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
+      let created = false;
+      try {
+        const dataDir = path.resolve(process.cwd(), "data");
+        if (!fs.existsSync(dataDir)) {
+          fs.mkdirSync(dataDir, { recursive: true });
+        }
+        const resolvedDbPath = storageOrDbPath || path.join(dataDir, "sessions.sqlite");
+        this.storage = new LocalSqliteAdapter(resolvedDbPath);
+        created = true;
+      } catch {
+        // Filesystem or bun:sqlite not available (e.g. edge / Cloudflare Workers runtime)
+        this.storage = {
+          engine: "edge_fallback",
+          query: async () => [],
+          run: async () => ({ changes: 0 }),
+          exec: async () => {},
+        };
       }
-      const resolvedDbPath = storageOrDbPath || path.join(dataDir, "sessions.sqlite");
-      this.storage = new LocalSqliteAdapter(resolvedDbPath);
     }
     this.initDb();
-    this.migrateFromLegacyJson(path.join(process.cwd(), "data", "persisted_sessions.json"));
-    this.recalibrateHistoricalSessions();
+    if (this.storage instanceof LocalSqliteAdapter) {
+      this.migrateFromLegacyJson(path.join(process.cwd(), "data", "persisted_sessions.json"));
+      this.recalibrateHistoricalSessions();
+    }
   }
 
   getStorage(): StorageAdapter {
@@ -737,6 +751,7 @@ export class SessionManager {
   }
 
   async submitPhase1Async(sessionId: string, choice: string): Promise<any> {
+    await this.getSessionAsync(sessionId);
     const res = this.submitPhase1(sessionId, choice);
     const session = this.getSession(sessionId);
     if (session) {
@@ -824,6 +839,7 @@ export class SessionManager {
   }
 
   async requestHintAsync(sessionId: string, locale?: SupportedLocale): Promise<any> {
+    await this.getSessionAsync(sessionId);
     const res = this.requestHint(sessionId, locale);
     const session = this.getSession(sessionId);
     if (session) {
@@ -986,10 +1002,12 @@ export class SessionManager {
       operations?: any[];
     }
   ): Promise<any> {
+    await this.getSessionAsync(sessionId);
     const res = this.submitPhase2(sessionId, action, confidenceLevel, revisedChoice, metricsPayload);
     const session = this.getSession(sessionId);
     if (session) {
       if (session.isCompleted) {
+        await this.persistCompletedSessionAsync(session);
         await this.removeActiveSessionAsync(session.sessionId);
       } else {
         await this.saveActiveSessionAsync(session);
@@ -1127,8 +1145,48 @@ export class SessionManager {
     return report;
   }
 
+  public async persistCompletedSessionAsync(session: SessionState): Promise<void> {
+    const report = session.finalReport || this.finalizeReport(session);
+    const evalRecords = session.records.filter(r => !r.is_warmup);
+    const target = evalRecords.length > 0 ? evalRecords : session.records;
+    const firstAcc = target.length > 0 ? target.filter(r => r.is_correct_first_order).length / target.length : 0;
+    const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
+    const metrics = report.metacognitive_metrics;
+
+    const insertSql = `
+      INSERT OR REPLACE INTO completed_sessions
+      (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary, total_duration_ms, persona, thinking_effort, token_usage_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      report.session_id,
+      report.subject_name,
+      report.subject_type,
+      firstAcc,
+      secondAcc,
+      metrics.d_prime,
+      metrics.meta_d_prime,
+      metrics.m_ratio,
+      metrics.calibration_bias,
+      report.summary.final_score,
+      session.createdAt,
+      report.diagnostic_profile.role_title,
+      report.diagnostic_profile.quadrant_code,
+      JSON.stringify(report),
+      metrics.d_star,
+      metrics.info_buying_efficiency,
+      report.diagnostic_profile.clinical_summary,
+      report.metadata?.total_duration_ms ?? null,
+      report.metadata?.persona ?? null,
+      report.metadata?.thinking_effort ?? null,
+      report.metadata?.token_usage ? JSON.stringify(report.metadata.token_usage) : null
+    ];
+    await this.storage.run(insertSql, params);
+  }
+
   async finalizeReportAsync(session: SessionState, locale?: SupportedLocale): Promise<FinalAssessmentReport> {
     const report = this.finalizeReport(session, locale);
+    await this.persistCompletedSessionAsync(session);
     await this.removeActiveSessionAsync(session.sessionId);
     return report;
   }
@@ -1240,6 +1298,108 @@ export class SessionManager {
           } else {
             this.storage.run(updateSql, params).catch((e) => console.warn(e));
           }
+          return rep;
+        } catch (e) {
+          console.warn("Error updating DB session metadata:", e);
+        }
+      }
+    }
+    return undefined;
+  }
+
+  async updateSessionMetadataAsync(sessionId: string, metadata: Partial<SessionExecutionMetadata>): Promise<FinalAssessmentReport | undefined> {
+    const session = await this.getSessionAsync(sessionId);
+    if (session) {
+      if (!session.metadata) {
+        session.metadata = {
+          model_name: session.subjectName,
+          total_trials: session.totalTrials,
+          completed_trials: session.records.length,
+          warmup_trials: session.warmupTrials,
+        };
+      }
+      Object.assign(session.metadata, metadata);
+      if (metadata.token_usage) {
+        session.metadata.token_usage = {
+          ...(session.metadata.token_usage || {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            cached_tokens: 0,
+            reasoning_tokens: 0,
+            total_tokens: 0,
+          }),
+          ...metadata.token_usage,
+        };
+      }
+      if (session.finalReport) {
+        session.finalReport.metadata = session.metadata;
+        const updateSql = `
+          UPDATE completed_sessions
+          SET full_report_json = ?,
+              total_duration_ms = COALESCE(?, total_duration_ms),
+              persona = COALESCE(?, persona),
+              thinking_effort = COALESCE(?, thinking_effort),
+              token_usage_json = COALESCE(?, token_usage_json)
+          WHERE id = ?
+        `;
+        const params = [
+          JSON.stringify(session.finalReport),
+          session.metadata.total_duration_ms ?? null,
+          session.metadata.persona ?? null,
+          session.metadata.thinking_effort ?? null,
+          session.metadata.token_usage ? JSON.stringify(session.metadata.token_usage) : null,
+          sessionId
+        ];
+        await this.storage.run(updateSql, params);
+        return session.finalReport;
+      } else {
+        await this.saveActiveSessionAsync(session);
+        return undefined;
+      }
+    } else {
+      const rows = await this.storage.query<any>("SELECT * FROM completed_sessions WHERE id = ?", [sessionId]);
+      const row = rows[0];
+      if (row && row.full_report_json) {
+        try {
+          const rep: FinalAssessmentReport = JSON.parse(row.full_report_json);
+          rep.metadata = {
+            ...(rep.metadata || {}),
+            ...metadata,
+            model_name: metadata.model_name || rep.metadata?.model_name || rep.subject_name,
+            total_trials: metadata.total_trials || rep.metadata?.total_trials || rep.summary.total_trials,
+            completed_trials: metadata.completed_trials || rep.metadata?.completed_trials || rep.summary.total_trials,
+            warmup_trials: metadata.warmup_trials || rep.metadata?.warmup_trials || 10,
+          };
+          if (metadata.token_usage) {
+            rep.metadata.token_usage = {
+              ...(rep.metadata.token_usage || {
+                prompt_tokens: 0,
+                completion_tokens: 0,
+                cached_tokens: 0,
+                reasoning_tokens: 0,
+                total_tokens: 0,
+              }),
+              ...metadata.token_usage,
+            };
+          }
+          const updateSql = `
+            UPDATE completed_sessions
+            SET full_report_json = ?,
+                total_duration_ms = COALESCE(?, total_duration_ms),
+                persona = COALESCE(?, persona),
+                thinking_effort = COALESCE(?, thinking_effort),
+                token_usage_json = COALESCE(?, token_usage_json)
+            WHERE id = ?
+          `;
+          const params = [
+            JSON.stringify(rep),
+            rep.metadata?.total_duration_ms ?? null,
+            rep.metadata?.persona ?? null,
+            rep.metadata?.thinking_effort ?? null,
+            rep.metadata?.token_usage ? JSON.stringify(rep.metadata.token_usage) : null,
+            sessionId
+          ];
+          await this.storage.run(updateSql, params);
           return rep;
         } catch (e) {
           console.warn("Error updating DB session metadata:", e);

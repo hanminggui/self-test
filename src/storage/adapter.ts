@@ -12,6 +12,11 @@ export interface RunResult {
 
 export interface StorageAdapter {
   /**
+   * Engine identifier name (e.g. 'local_sqlite', 'cloudflare_d1').
+   */
+  readonly engine?: string;
+
+  /**
    * Executes a SQL query with parameters and returns an array of result rows.
    */
   query<T = any>(sql: string, params?: any[]): Promise<T[]>;

@@ -1,21 +1,33 @@
 /**
- * Bun + Hono Web API Server for Metacognitive Testing System.
- * Serves REST endpoints, independent admin portal, and built frontend SPA.
+ * Unified Server Entry & Cloudflare Workers / Bun Dual-Runtime Server
+ * Serves REST endpoints, independent admin portal, health probes, and frontend SPA.
  */
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import * as path from "path";
-import * as fs from "fs";
 import { SessionManager } from "./session_manager";
+import { D1StorageAdapter } from "../storage/d1";
+import type { D1Database } from "@cloudflare/workers-types";
 import { MetacognitiveAction, SubjectType, TrialResponse } from "./models";
 import { runWithLocale, normalizeLocale, DEFAULT_LOCALE, type SupportedLocale } from "../i18n";
 
-const app = new Hono<{ Variables: { locale: SupportedLocale } }>();
+export type CloudflareBindings = {
+  DB?: D1Database;
+  ADMIN_PASSWORD?: string;
+  ASSETS?: { fetch: (request: Request) => Promise<Response> };
+  [key: string]: any;
+};
+
+export type AppVariables = {
+  locale: SupportedLocale;
+  sessionManager?: SessionManager;
+};
+
+const app = new Hono<{ Bindings: CloudflareBindings; Variables: AppVariables }>();
 
 app.use("*", cors({
   origin: "*",
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization", "X-Locale", "Accept-Language"],
 }));
 
@@ -33,9 +45,13 @@ app.use("*", async (c, next) => {
 });
 
 // Admin credentials
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin888";
-const HOST = process.env.HOST || "0.0.0.0";
-const PORT = parseInt(process.env.PORT || "8000", 10);
+export const ADMIN_PASSWORD = (typeof process !== "undefined" && process.env?.ADMIN_PASSWORD) || "admin888";
+const HOST = (typeof process !== "undefined" && process.env?.HOST) || "0.0.0.0";
+const PORT = parseInt((typeof process !== "undefined" && process.env?.PORT) || "8000", 10);
+
+const getAdminPassword = (c: any): string => {
+  return c.env?.ADMIN_PASSWORD || (typeof process !== "undefined" && process.env?.ADMIN_PASSWORD) || ADMIN_PASSWORD;
+};
 
 export function printAdminBanner(host: string = HOST, port: number = PORT) {
   const displayHost = host === "0.0.0.0" ? "localhost" : host;
@@ -51,15 +67,112 @@ export function printAdminBanner(host: string = HOST, port: number = PORT) {
   console.log(banner);
 }
 
-export const sessionManager = new SessionManager();
+// Default Bun local storage instance (lazily initialized for edge runtimes like Cloudflare Workers)
+let _defaultSessionManager: SessionManager | null = null;
+export function getDefaultSessionManager(): SessionManager {
+  if (!_defaultSessionManager) {
+    if (typeof Bun === "undefined") {
+      const edgeStorage: import("../storage/adapter").StorageAdapter = {
+        engine: "edge_fallback",
+        query: async () => [],
+        run: async () => ({ changes: 0 }),
+        exec: async () => {},
+      };
+      _defaultSessionManager = new SessionManager(edgeStorage);
+    } else {
+      _defaultSessionManager = new SessionManager();
+    }
+  }
+  return _defaultSessionManager;
+}
+
+export const sessionManager: SessionManager = new Proxy({} as SessionManager, {
+  get(_target, prop, receiver) {
+    if (prop === "then" || prop === "$$typeof" || prop === "toJSON") {
+      return undefined;
+    }
+    const sm = getDefaultSessionManager();
+    const val = Reflect.get(sm, prop, sm);
+    if (typeof val === "function") {
+      return val.bind(sm);
+    }
+    return val;
+  },
+  set(_target, prop, value) {
+    const sm = getDefaultSessionManager();
+    return Reflect.set(sm, prop, value, sm);
+  },
+  has(_target, prop) {
+    const sm = getDefaultSessionManager();
+    return Reflect.has(sm, prop);
+  },
+  getPrototypeOf(_target) {
+    const sm = getDefaultSessionManager();
+    return Reflect.getPrototypeOf(sm);
+  },
+});
+
+// Cache D1-backed SessionManager instances per D1 database binding
+const d1SessionManagers = new WeakMap<object, SessionManager>();
+
+export function getSessionManagerForContext(c: any): SessionManager {
+  if (c.get?.("sessionManager")) {
+    return c.get("sessionManager");
+  }
+  const db = c.env?.DB;
+  if (db) {
+    let sm = d1SessionManagers.get(db);
+    if (!sm) {
+      sm = new SessionManager(new D1StorageAdapter(db));
+      d1SessionManagers.set(db, sm);
+    }
+    return sm;
+  }
+  return sessionManager;
+}
 
 // --- REST API Routes ---
+
+// 0. Diagnostic Health Probe Endpoint (GitHub Issue #5)
+app.get("/api/health", async (c) => {
+  const sm = getSessionManagerForContext(c);
+  const isCloudflare = Boolean(c.env?.DB) || typeof Bun === "undefined" || (typeof navigator !== "undefined" && (navigator.userAgent?.includes("Cloudflare-Workers") || navigator.userAgent?.includes("Cloudflare")));
+  const runtime = isCloudflare ? "cloudflare-workers" : "bun";
+
+  const isD1 = sm.storage instanceof D1StorageAdapter || (sm.storage as any).engine === "cloudflare_d1";
+  const storageEngine = isD1 ? "cloudflare_d1" : "local_sqlite";
+
+  let connected = false;
+  let dbError: string | undefined = undefined;
+  try {
+    const res = await sm.storage.query("SELECT 1 AS probe");
+    connected = Array.isArray(res) && res.length > 0;
+  } catch (err: any) {
+    dbError = err?.message || String(err);
+  }
+
+  const responseBody = {
+    status: connected ? "healthy" : "degraded",
+    environment: runtime,
+    runtime,
+    storage: storageEngine,
+    storage_engine: storageEngine,
+    connected,
+    database: {
+      connected,
+      ...(dbError ? { error: dbError } : {}),
+    },
+  };
+
+  return c.json(responseBody, connected ? 200 : 503);
+});
 
 // 1. Start Session
 app.post("/api/sessions/start", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const locale = c.get("locale");
-  const session = sessionManager.createSession({
+  const sm = getSessionManagerForContext(c);
+  const session = await sm.createSessionAsync({
     sessionId: body.session_id,
     subjectName: body.subject_name,
     subjectType: body.subject_type || SubjectType.HUMAN,
@@ -74,15 +187,16 @@ app.post("/api/sessions/start", async (c) => {
       ...(body.metadata || {}),
     },
   });
-  return c.json(sessionManager.getTrialRequest(session.sessionId, locale));
+  return c.json(await sm.getTrialRequestAsync(session.sessionId, locale));
 });
 
 // 2. Get current trial
-app.get("/api/sessions/:id/trial", (c) => {
+app.get("/api/sessions/:id/trial", async (c) => {
   const id = c.req.param("id");
   const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
   try {
-    return c.json(sessionManager.getTrialRequest(id, locale));
+    return c.json(await sm.getTrialRequestAsync(id, locale));
   } catch (e: any) {
     return c.json({ error: e.message }, 404);
   }
@@ -92,19 +206,21 @@ app.get("/api/sessions/:id/trial", (c) => {
 app.post("/api/sessions/:id/phase1", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
+  const sm = getSessionManagerForContext(c);
   try {
-    return c.json(sessionManager.submitPhase1(id, body.choice));
+    return c.json(await sm.submitPhase1Async(id, body.choice));
   } catch (e: any) {
     return c.json({ error: e.message }, 400);
   }
 });
 
 // 4. Request Hint
-app.post("/api/sessions/:id/hint", (c) => {
+app.post("/api/sessions/:id/hint", async (c) => {
   const id = c.req.param("id");
   const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
   try {
-    return c.json(sessionManager.requestHint(id, locale));
+    return c.json(await sm.requestHintAsync(id, locale));
   } catch (e: any) {
     return c.json({ error: e.message }, 400);
   }
@@ -114,8 +230,9 @@ app.post("/api/sessions/:id/hint", (c) => {
 app.post("/api/sessions/:id/phase2", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
+  const sm = getSessionManagerForContext(c);
   try {
-    return c.json(sessionManager.submitPhase2(
+    return c.json(await sm.submitPhase2Async(
       id,
       body.action as MetacognitiveAction,
       body.confidence_level,
@@ -129,19 +246,21 @@ app.post("/api/sessions/:id/phase2", async (c) => {
 // 6. Unified step
 app.post("/api/sessions/step", async (c) => {
   const body = await c.req.json() as TrialResponse;
+  const sm = getSessionManagerForContext(c);
   try {
-    return c.json(sessionManager.processStep(body));
+    return c.json(await sm.processStepAsync(body));
   } catch (e: any) {
     return c.json({ error: e.message }, 400);
   }
 });
 
 // 7. Get Report
-app.get("/api/sessions/:id/report", (c) => {
+app.get("/api/sessions/:id/report", async (c) => {
   const id = c.req.param("id");
   const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
   try {
-    return c.json(sessionManager.getReport(id, locale));
+    return c.json(await sm.getReportAsync(id, locale));
   } catch (e: any) {
     return c.json({ error: e.message }, 404);
   }
@@ -151,8 +270,9 @@ app.get("/api/sessions/:id/report", (c) => {
 app.post("/api/sessions/:id/metadata", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => ({}));
+  const sm = getSessionManagerForContext(c);
   try {
-    const updated = sessionManager.updateSessionMetadata(id, body);
+    const updated = await sm.updateSessionMetadataAsync(id, body);
     return c.json({ success: true, report: updated });
   } catch (e: any) {
     return c.json({ error: e.message }, 400);
@@ -162,8 +282,9 @@ app.post("/api/sessions/:id/metadata", async (c) => {
 app.patch("/api/sessions/:id/metadata", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => ({}));
+  const sm = getSessionManagerForContext(c);
   try {
-    const updated = sessionManager.updateSessionMetadata(id, body);
+    const updated = await sm.updateSessionMetadataAsync(id, body);
     return c.json({ success: true, report: updated });
   } catch (e: any) {
     return c.json({ error: e.message }, 400);
@@ -171,10 +292,11 @@ app.patch("/api/sessions/:id/metadata", async (c) => {
 });
 
 // 8. Cohort Scatter
-app.get("/api/cohort/scatter", (c) => {
+app.get("/api/cohort/scatter", async (c) => {
   const currentSessionId = c.req.query("current_session_id");
   const locale = c.get("locale");
-  return c.json(sessionManager.getCohortScatterData(currentSessionId, locale));
+  const sm = getSessionManagerForContext(c);
+  return c.json(await sm.getCohortScatterDataAsync(currentSessionId, locale));
 });
 
 const extractAdminToken = async (c: any): Promise<string | undefined> => {
@@ -189,48 +311,90 @@ const extractAdminToken = async (c: any): Promise<string | undefined> => {
 // 9. Admin Verify
 app.post("/api/admin/verify", async (c) => {
   const body = await c.req.json().catch(() => ({}));
-  const valid = body.token === ADMIN_PASSWORD;
+  const valid = body.token === getAdminPassword(c);
   return c.json({ valid });
 });
 
 // 10. Admin Sessions List
 app.get("/api/admin/sessions", async (c) => {
   const token = await extractAdminToken(c);
-  if (token !== ADMIN_PASSWORD) {
+  if (token !== getAdminPassword(c)) {
     return c.json({ error: "Unauthorized" }, 401);
   }
   const locale = c.get("locale");
-  const data = sessionManager.getCohortScatterData(undefined, locale);
+  const sm = getSessionManagerForContext(c);
+  const data = await sm.getCohortScatterDataAsync(undefined, locale);
   return c.json({ sessions: data.subjects });
 });
 
 // 11. Admin Delete Session
 app.delete("/api/admin/sessions/:id", async (c) => {
   const token = await extractAdminToken(c);
-  if (token !== ADMIN_PASSWORD) {
+  if (token !== getAdminPassword(c)) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
   const id = c.req.param("id");
+  const sm = getSessionManagerForContext(c);
   try {
-    const success = sessionManager.deleteSession(id);
+    const success = await sm.deleteSessionAsync(id);
     return c.json({ success, id });
   } catch (e: any) {
     return c.json({ error: e.message }, 500);
   }
 });
 
-import { serveStatic } from "hono/bun";
+// Decoupled static asset serving for dual runtime (Bun + Cloudflare Workers)
+const serveAsset = (options: { root?: string; path?: string }) => {
+  return async (c: any, next: any) => {
+    // 1. Edge runtime (Cloudflare Workers Assets binding)
+    if (c.env?.ASSETS) {
+      if (options.path) {
+        const url = new URL(c.req.url);
+        url.pathname = options.path.replace(/^\.\/dist/, "");
+        return c.env.ASSETS.fetch(new Request(url.toString(), {
+          method: c.req.method,
+          headers: c.req.raw?.headers,
+        }));
+      }
+      const res = await c.env.ASSETS.fetch(c.req.raw);
+      if (res.status === 404 && !c.req.path.startsWith("/api") && !c.req.path.startsWith("/assets")) {
+        const url = new URL(c.req.url);
+        url.pathname = "/index.html";
+        return c.env.ASSETS.fetch(new Request(url.toString(), {
+          method: c.req.method,
+          headers: c.req.raw?.headers,
+        }));
+      }
+      return res;
+    }
 
-// Static assets serving via hono/bun
-app.use("/assets/*", serveStatic({ root: "./dist" }));
-app.use("/favicon.ico", serveStatic({ root: "./dist" }));
+    // 2. Local runtime (Bun serveStatic)
+    if (typeof Bun !== "undefined") {
+      try {
+        const { serveStatic } = await import("hono/bun");
+        return await serveStatic(options)(c, next);
+      } catch {
+        return next();
+      }
+    }
 
-// Admin path SPA entry
-app.get("/admin", serveStatic({ path: "./dist/index.html" }));
+    return next();
+  };
+};
 
-// Fallback to SPA index.html
-app.get("/*", serveStatic({ path: "./dist/index.html" }));
+app.use("/assets/*", serveAsset({ root: "./dist" }));
+app.use("/favicon.ico", serveAsset({ root: "./dist" }));
+app.get("/admin", serveAsset({ path: "./dist/index.html" }));
+app.get("/admin/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/*", async (c, next) => {
+  if (c.req.path.startsWith("/api")) {
+    return next();
+  }
+  return serveAsset({ path: "./dist/index.html" })(c, next);
+});
+
+export { app };
 
 export default {
   port: PORT,
@@ -239,6 +403,6 @@ export default {
 };
 
 // If run directly via `bun src/backend/server.ts`
-if (import.meta.main) {
+if (typeof import.meta !== "undefined" && (import.meta as any).main) {
   printAdminBanner(HOST, PORT);
 }

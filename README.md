@@ -307,6 +307,7 @@ self-test/
 │   │   ├── session_manager.ts     # Session state machine & native bun:sqlite persistence
 │   │   └── server.ts              # Hono REST API server & SPA static asset host
 │   ├── cli/
+│   │   ├── deploy.ts              # Cloudflare Edge zero-config deployment automation
 │   │   ├── eval.ts                # Dual-mode LLM/VLM benchmark runner (Multi-Step & Single-Pass)
 │   │   ├── wizard.ts              # Interactive @clack/prompts provider & model wizard
 │   │   └── lib/                   # Resilient JSON parser, schema builder, LLM client & redacting logger
