@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import confetti from "canvas-confetti";
 import {
   Compass,
@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 
 import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
+import { CognitiveArchetype } from "../backend/models";
+import { getArchetypeDefinition } from "../backend/archetype_matrix";
 import { useLocale } from "./contexts/LocaleContext";
 import { LanguageToggle } from "./components/LanguageToggle";
 import { PosterModal } from "./components/share/PosterModal";
@@ -73,6 +75,7 @@ interface ReportData {
   session_id: string;
   subject_name: string;
   diagnostic_profile: {
+    archetype?: string;
     role_title: string;
     quadrant_code: string;
     praise_tagline: string;
@@ -80,6 +83,8 @@ interface ReportData {
     empowering_feedback: string;
     growth_advice: string;
     skills: SkillItem[];
+    clinical_summary?: string;
+    critical_weakness?: string;
   };
 }
 
@@ -309,6 +314,72 @@ export default function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [loadReportById]);
+
+  // Memoized localized report: dynamically updates presentation layer on locale change
+  const localizedReport = useMemo<ReportData | null>(() => {
+    if (!report) return null;
+    const rawProfile = report.diagnostic_profile;
+    if (!rawProfile) return report;
+
+    // Resolve archetype identifier
+    const archKey = (
+      rawProfile.archetype ||
+      rawProfile.quadrant_code ||
+      rawProfile.role_title ||
+      CognitiveArchetype.SOVEREIGN
+    ) as CognitiveArchetype;
+
+    const def = getArchetypeDefinition(archKey, locale);
+
+    const localizedSkills = (rawProfile.skills || def.skills).map((origSkill, idx) => {
+      const defSkill = def.skills[idx];
+      return {
+        ...origSkill,
+        icon: origSkill.icon || defSkill?.icon || "✨",
+        type: defSkill?.type || origSkill.type,
+        name: defSkill?.name || origSkill.name,
+        desc: defSkill?.desc || origSkill.desc,
+      };
+    });
+
+    return {
+      ...report,
+      diagnostic_profile: {
+        ...rawProfile,
+        archetype: def.archetype || archKey,
+        role_title: def.role_title,
+        quadrant_code: def.quadrant_code || rawProfile.quadrant_code,
+        praise_tagline: def.praise_tagline,
+        strength_tags: def.strength_tags && def.strength_tags.length > 0 ? def.strength_tags : rawProfile.strength_tags,
+        empowering_feedback: def.empowering_feedback || rawProfile.empowering_feedback,
+        growth_advice: def.growth_advice || rawProfile.growth_advice,
+        skills: localizedSkills,
+        clinical_summary: def.clinical_summary || rawProfile.clinical_summary,
+      },
+    };
+  }, [report, locale]);
+
+  // Sync latest report from backend on locale toggle in REPORT phase
+  useEffect(() => {
+    if (stage !== "REPORT" || !sessionId) return;
+    let isCancelled = false;
+    fetch(`/api/sessions/${sessionId}/report?lang=${encodeURIComponent(locale)}`, {
+      headers: { "Accept-Language": locale },
+    })
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (!isCancelled && data && data.diagnostic_profile) {
+          setReport(data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isCancelled = true;
+    };
+  }, [locale, stage, sessionId]);
 
   // Current trial hint cost
   const hintsCost = unlockedHints.length === 0 ? 0 : unlockedHints.length === 1 ? 1 : 3;
@@ -898,168 +969,172 @@ export default function App() {
         )}
 
         {/* 3. 最终结果展示页面：零量化数据、神级名片、放下一切防备 */}
-        {stage === "REPORT" && report && (
-          <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-700 pb-12">
-            {/* 专属本命神级名片卡 */}
-            <div className="glass-panel rounded-3xl p-8 md:p-12 relative overflow-hidden text-center shadow-2xl border border-amber-500/30 glow-gold bg-gradient-to-b from-amber-950/20 via-slate-900/80 to-[#0b0d13]">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        {stage === "REPORT" && (localizedReport || report) && (() => {
+          const displayReport = localizedReport || report!;
+          const profile = displayReport.diagnostic_profile;
+          return (
+            <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-700 pb-12">
+              {/* 专属本命神级名片卡 */}
+              <div className="glass-panel rounded-3xl p-8 md:p-12 relative overflow-hidden text-center shadow-2xl border border-amber-500/30 glow-gold bg-gradient-to-b from-amber-950/20 via-slate-900/80 to-[#0b0d13]">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 mb-4 font-medium shadow-inner">
-                <Crown className="w-4 h-4 text-amber-400" /> {t.app.archetypeCardHeader}
-              </div>
-
-              <div className="text-xs text-slate-400 mb-3 tracking-widest uppercase">
-                {formatMessage(t.app.explorerPrefix, { name: report.subject_name })}
-              </div>
-
-              {/* 5大专属称号 */}
-              <h2 className="text-4xl md:text-6xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-300 to-orange-400 mb-3 drop-shadow-md">
-                {report.diagnostic_profile.role_title}
-              </h2>
-
-              {/* 专属灵魂 Tagline */}
-              <p className="text-lg md:text-xl text-amber-100 font-semibold tracking-wide mb-6">
-                “{report.diagnostic_profile.praise_tagline}”
-              </p>
-
-              {/* 高光标签 */}
-              <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mx-auto mb-8">
-                {report.diagnostic_profile.strength_tags.map((tag, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-200 border border-amber-500/30 shadow-sm"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-
-              {/* 深度赋能评语（极高情绪价值） */}
-              <div className="text-sm md:text-base text-slate-200 leading-relaxed max-w-2xl mx-auto text-left bg-black/40 p-6 rounded-2xl border border-white/10 shadow-inner space-y-2">
-                <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5 mb-2">
-                  <Sparkles className="w-4 h-4" /> {t.app.soulResonance}
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 mb-4 font-medium shadow-inner">
+                  <Crown className="w-4 h-4 text-amber-400" /> {t.app.archetypeCardHeader}
                 </div>
-                <p className="text-slate-300 text-sm md:text-base leading-relaxed">
-                  {report.diagnostic_profile.empowering_feedback}
+
+                <div className="text-xs text-slate-400 mb-3 tracking-widest uppercase">
+                  {formatMessage(t.app.explorerPrefix, { name: displayReport.subject_name })}
+                </div>
+
+                {/* 5大专属称号 */}
+                <h2 className="text-4xl md:text-6xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-300 to-orange-400 mb-3 drop-shadow-md">
+                  {profile.role_title}
+                </h2>
+
+                {/* 专属灵魂 Tagline */}
+                <p className="text-lg md:text-xl text-amber-100 font-semibold tracking-wide mb-6">
+                  “{profile.praise_tagline}”
+                </p>
+
+                {/* 高光标签 */}
+                <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mx-auto mb-8">
+                  {profile.strength_tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-200 border border-amber-500/30 shadow-sm"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+
+                {/* 深度赋能评语（极高情绪价值） */}
+                <div className="text-sm md:text-base text-slate-200 leading-relaxed max-w-2xl mx-auto text-left bg-black/40 p-6 rounded-2xl border border-white/10 shadow-inner space-y-2">
+                  <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5 mb-2">
+                    <Sparkles className="w-4 h-4" /> {t.app.soulResonance}
+                  </div>
+                  <p className="text-slate-300 text-sm md:text-base leading-relaxed">
+                    {profile.empowering_feedback}
+                  </p>
+                </div>
+              </div>
+
+              {/* 专属特技谱系 */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400" /> {t.app.innateSkills}
+                  </h3>
+                  <span className="text-xs text-slate-500">{t.app.arsenalSubtitle}</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {profile.skills.map((skill, idx) => (
+                    <div
+                      key={idx}
+                      className="glass-card rounded-2xl p-5 border border-white/5 space-y-2 hover:border-amber-500/30 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{skill.icon}</span>
+                          <span className="font-bold text-sm text-amber-200">{skill.name}</span>
+                        </div>
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
+                          {skill.type}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed pt-1">{skill.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 战略建议 */}
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/20 text-xs md:text-sm text-amber-100 leading-relaxed space-y-1">
+                <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <Compass className="w-4 h-4" /> {t.app.strategicAdvice}
+                </div>
+                <p className="text-slate-300 text-xs md:text-sm pt-1">
+                  {profile.growth_advice}
                 </p>
               </div>
-            </div>
 
-            {/* 专属特技谱系 */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400" /> {t.app.innateSkills}
-                </h3>
-                <span className="text-xs text-slate-500">{t.app.arsenalSubtitle}</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {report.diagnostic_profile.skills.map((skill, idx) => (
-                  <div
-                    key={idx}
-                    className="glass-card rounded-2xl p-5 border border-white/5 space-y-2 hover:border-amber-500/30 transition-all"
+              {/* 专属永久报告链接卡片 (避免丢失后再也无法找回) */}
+              <div className="p-5 md:p-6 rounded-2xl bg-slate-900/90 border border-amber-500/25 space-y-2.5 text-left shadow-xl shadow-amber-950/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs md:text-sm font-bold text-amber-300 flex items-center gap-1.5 font-serif">
+                    <Link2 className="w-4 h-4 text-amber-400" /> {t.app.permanentLinkTitle}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                    ID: {displayReport.session_id}
+                  </span>
+                </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={buildSessionReportUrl(displayReport.session_id)}
+                    className="flex-1 bg-black/70 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-amber-200 selection:bg-amber-500/30 truncate select-all focus:outline-none focus:border-amber-400/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyReportLink}
+                    className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md shadow-amber-500/20 shrink-0"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{skill.icon}</span>
-                        <span className="font-bold text-sm text-amber-200">{skill.name}</span>
-                      </div>
-                      <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
-                        {skill.type}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed pt-1">{skill.desc}</p>
-                  </div>
-                ))}
+                    {copiedPermalink ? (
+                      <>
+                        <Check className="w-4 h-4 text-emerald-950" />
+                        <span>已复制！</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>{t.app.copyReportLinkBtn}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                  {t.app.permanentLinkDesc}
+                </p>
               </div>
-            </div>
 
-            {/* 战略建议 */}
-            <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/20 text-xs md:text-sm text-amber-100 leading-relaxed space-y-1">
-              <div className="font-bold text-amber-300 flex items-center gap-1.5">
-                <Compass className="w-4 h-4" /> {t.app.strategicAdvice}
-              </div>
-              <p className="text-slate-300 text-xs md:text-sm pt-1">
-                {report.diagnostic_profile.growth_advice}
-              </p>
-            </div>
-
-            {/* 专属永久报告链接卡片 (避免丢失后再也无法找回) */}
-            <div className="p-5 md:p-6 rounded-2xl bg-slate-900/90 border border-amber-500/25 space-y-2.5 text-left shadow-xl shadow-amber-950/20">
-              <div className="flex items-center justify-between">
-                <span className="text-xs md:text-sm font-bold text-amber-300 flex items-center gap-1.5 font-serif">
-                  <Link2 className="w-4 h-4 text-amber-400" /> {t.app.permanentLinkTitle}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono bg-black/40 px-2 py-0.5 rounded border border-white/5">
-                  ID: {report.session_id}
-                </span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={buildSessionReportUrl(report.session_id)}
-                  className="flex-1 bg-black/70 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-amber-200 selection:bg-amber-500/30 truncate select-all focus:outline-none focus:border-amber-400/50"
-                />
+              {/* 按钮区 */}
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
                 <button
                   type="button"
-                  onClick={handleCopyReportLink}
-                  className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md shadow-amber-500/20 shrink-0"
+                  onClick={() => {
+                    setStage("WELCOME");
+                    setReport(null);
+                    setTrialData(null);
+                    setSessionId("");
+                    if (typeof window !== "undefined") {
+                      window.history.pushState(null, "", "/");
+                    }
+                  }}
+                  className="px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors border border-white/10 shadow-lg"
                 >
-                  {copiedPermalink ? (
-                    <>
-                      <Check className="w-4 h-4 text-emerald-950" />
-                      <span>已复制！</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span>{t.app.copyReportLinkBtn}</span>
-                    </>
-                  )}
+                  <RotateCcw className="w-4 h-4" /> {t.app.restartVoyage}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPosterModal(true)}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-amber-500/30 active:scale-[0.98]"
+                >
+                  <Share2 className="w-4 h-4 text-slate-950" /> {t.app.shareBtn}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                {t.app.permanentLinkDesc}
-              </p>
             </div>
-
-            {/* 按钮区 */}
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setStage("WELCOME");
-                  setReport(null);
-                  setTrialData(null);
-                  setSessionId("");
-                  if (typeof window !== "undefined") {
-                    window.history.pushState(null, "", "/");
-                  }
-                }}
-                className="px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors border border-white/10 shadow-lg"
-              >
-                <RotateCcw className="w-4 h-4" /> {t.app.restartVoyage}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowPosterModal(true)}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-amber-500/30 active:scale-[0.98]"
-              >
-                <Share2 className="w-4 h-4 text-slate-950" /> {t.app.shareBtn}
-              </button>
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </main>
 
       {/* 统一分享海报弹窗 (多语言自适应分流) */}
-      {showPosterModal && report && (
+      {showPosterModal && (localizedReport || report) && (
         <PosterModal
           isOpen={showPosterModal}
-          report={report}
+          report={localizedReport || report}
           locale={locale}
           onClose={() => setShowPosterModal(false)}
         />

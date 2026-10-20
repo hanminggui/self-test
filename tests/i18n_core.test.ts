@@ -101,4 +101,31 @@ describe("Seam 1: Isomorphic i18n Core", () => {
     expect(en.archetypes.PRAGMATIC_ARBITRAGEUR.role_title).toBe("The Fate Weaver");
     expect(en.archetypes.STOCHASTIC_DRIFTER.role_title).toBe("The Astral Wanderer");
   });
+
+  it("所有 8 大流派的中文技能名全部完成去英净化，严禁包含任何英文字母或括号", () => {
+    const zh = t("zh-CN");
+    const archetypes = [
+      "SOVEREIGN",
+      "ADAPTIVE_LEARNER",
+      "VIGILANT_SENTINEL",
+      "AUDACIOUS_PIONEER",
+      "ANXIOUS_RETREATER",
+      "BLIND_GAMBLER",
+      "PRAGMATIC_ARBITRAGEUR",
+      "STOCHASTIC_DRIFTER",
+    ] as const;
+
+    for (const key of archetypes) {
+      const arch = zh.archetypes[key];
+      expect(arch.skills.length).toBe(4);
+      for (const skill of arch.skills) {
+        // 技能名严禁含有英文字母
+        expect(skill.name).not.toMatch(/[a-zA-Z]/);
+        // 技能名严禁含有半角或全角括号
+        expect(skill.name).not.toMatch(/[()（）]/);
+        // 技能名长度大于 1 且不为空
+        expect(skill.name.trim().length).toBeGreaterThan(1);
+      }
+    }
+  });
 });
