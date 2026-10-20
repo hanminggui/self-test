@@ -227,4 +227,41 @@ describe("GitHub Issue #3: Cloudflare D1 Adapter & Schema Migrations", () => {
     const afterDeleteRows = await adapter.query("SELECT * FROM completed_sessions WHERE id = ?", ["d1_sess_001"]);
     expect(afterDeleteRows.length).toBe(0);
   });
+
+  test("Executes multiline DDL safely without triggering Cloudflare D1 newline split bugs", async () => {
+    // Simulate Cloudflare D1 environment where db.exec would crash on multiline SQL
+    const strictMultilineD1 = {
+      prepare: simD1.prepare.bind(simD1),
+      dump: simD1.dump.bind(simD1),
+      batch: simD1.batch.bind(simD1),
+      exec: async (sql: string) => {
+        if (sql.includes("\n")) {
+          throw new Error("D1_EXEC_ERROR: Error in line 1: incomplete input: SQLITE_ERROR");
+        }
+        return { count: 1, duration: 0 };
+      },
+    } as unknown as D1Database;
+
+    const safeAdapter = new D1StorageAdapter(strictMultilineD1);
+
+    const multilineSql = `
+      -- Leading comment
+      CREATE TABLE IF NOT EXISTS multiline_test (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        data_json TEXT
+      );
+      -- Second statement
+      CREATE INDEX IF NOT EXISTS idx_multiline_name ON multiline_test(name);
+    `;
+
+    // Should not throw even when raw db.exec rejects multiline queries
+    await expect(safeAdapter.exec(multilineSql)).resolves.toBeUndefined();
+
+    // Verify table exists
+    const tables = await safeAdapter.query<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='multiline_test'"
+    );
+    expect(tables.length).toBe(1);
+  });
 });

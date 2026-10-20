@@ -60,18 +60,30 @@ export class D1StorageAdapter implements StorageAdapter {
   }
 
   /**
-   * Executes raw multi-statement DDL scripts.
+   * Executes raw multi-statement DDL scripts safely.
+   * Note: Cloudflare D1's native `db.exec(query)` splits queries by newline (\n),
+   * which breaks formatted multiline DDL statements like `CREATE TABLE (...)`.
+   * To ensure robust execution across all environments, we strip comments,
+   * parse statements by semicolon, and execute each statement via prepared statements (or batch).
    */
   async exec(sql: string): Promise<void> {
-    if (typeof this.db.exec === "function") {
-      await this.db.exec(sql);
-      return;
-    }
-    // Fallback: split and execute statements sequentially
-    const statements = sql
+    const cleanedSql = sql
+      .replace(/--.*$/gm, "")
+      .trim();
+
+    const statements = cleanedSql
       .split(";")
       .map(s => s.trim())
       .filter(s => s.length > 0);
+
+    if (statements.length === 0) return;
+
+    if (typeof this.db.batch === "function" && statements.length > 1) {
+      const preparedList = statements.map(s => this.db.prepare(s));
+      await this.db.batch(preparedList);
+      return;
+    }
+
     for (const stmt of statements) {
       await this.db.prepare(stmt).run();
     }
