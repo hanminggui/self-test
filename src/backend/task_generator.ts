@@ -49,6 +49,11 @@ export interface GeneratedTask {
 export type CognitiveTheme = "GEOMETRIC" | "CYBERNETIC" | "ARCHAEOLOGICAL" | "STELLAR";
 export type DifficultyTier = 1 | 2 | 3 | 4 | 5;
 
+export interface TaskGeneratorSnapshot {
+  seedState: number;
+  blockSchedule: number[];
+}
+
 export class TaskGenerator {
   static readonly SYMBOLS = ["▲", "◆", "●", "■", "★", "▼", "◇", "○", "✦", "✖", "✚", "⬡"];
 
@@ -68,6 +73,53 @@ export class TaskGenerator {
   constructor(seed?: number) {
     this.seedState = seed !== undefined ? seed : Math.floor(Math.random() * 1000000);
     this.initSchedule(160);
+  }
+
+  getState(): TaskGeneratorSnapshot {
+    return {
+      seedState: this.seedState,
+      blockSchedule: [...this.blockSchedule],
+    };
+  }
+
+  static fromState(snapshot: TaskGeneratorSnapshot): TaskGenerator {
+    const tg = new TaskGenerator();
+    tg.seedState = snapshot.seedState;
+    tg.blockSchedule = [...snapshot.blockSchedule];
+    return tg;
+  }
+
+  static reviveTask(task: any): GeneratedTask {
+    if (!task) return task;
+    return {
+      ...task,
+      hint: task.hint || `${task.hint_tier1}\n\n${task.hint_tier2}`,
+      toSafePayload(unlockedTier: number = 0, locale?: SupportedLocale): TrialPayload {
+        const loc = locale || getLocale();
+        const p = task.bilingual?.prompt ? (task.bilingual.prompt[loc] || task.prompt) : task.prompt;
+        const h1 = task.bilingual?.hint_tier1 ? (task.bilingual.hint_tier1[loc] || task.hint_tier1) : task.hint_tier1;
+        const h2 = task.bilingual?.hint_tier2 ? (task.bilingual.hint_tier2[loc] || task.hint_tier2) : task.hint_tier2;
+
+        const unlocked_hints: { tier1?: string; tier2?: string } = {};
+        if (unlockedTier >= 1) unlocked_hints.tier1 = h1;
+        if (unlockedTier >= 2) unlocked_hints.tier2 = h2;
+
+        return {
+          stimulus_id: task.stimulus_id,
+          difficulty_level: Math.round(task.difficulty_level * 10000) / 10000,
+          prompt: p,
+          options: task.options,
+          has_hint: true,
+          hint_cost: unlockedTier === 0 ? 1 : 2,
+          hint_tier1_cost: 1,
+          hint_tier2_cost: 2,
+          hints_unlocked: unlockedTier,
+          unlocked_hints: unlockedTier > 0 ? unlocked_hints : undefined,
+          task_type: task.stimulus_data?.task_type || "UNKNOWN",
+          stimulus_data: task.stimulus_data,
+        };
+      },
+    };
   }
 
   // LCG pseudo-random generator

@@ -172,4 +172,60 @@ export class StaircaseController {
     const clamped = Math.max(0.0, Math.min(1.0, dStar));
     return Math.round(clamped * 10000) / 10000;
   }
+
+  toJSON(): StaircaseSnapshot {
+    return {
+      minDelta: this.minDelta,
+      maxDelta: this.maxDelta,
+      initialStepSize: this.initialStepSize,
+      currentStepSize: this.currentStepSize,
+      reversalsForStepReduction: this.reversalsForStepReduction,
+      currentDelta: this.currentDelta,
+      consecutiveCorrect: this.consecutiveCorrect,
+      trialCount: this.trialCount,
+      lastDirection: this.lastDirection,
+      reversalCount: this.reversalCount,
+      reversalTrials: [...this.reversalTrials],
+      reversalDeltas: [...this.reversalDeltas],
+      historyDeltas: [...this.historyDeltas],
+      historyResponses: [...this.historyResponses],
+    };
+  }
+
+  static fromJSON(snapshot: StaircaseSnapshot): StaircaseController {
+    const sc = new StaircaseController(
+      snapshot.currentDelta,
+      snapshot.initialStepSize,
+      snapshot.minDelta,
+      snapshot.maxDelta,
+      snapshot.reversalsForStepReduction
+    );
+    sc.currentStepSize = snapshot.currentStepSize;
+    sc.consecutiveCorrect = snapshot.consecutiveCorrect;
+    sc.trialCount = snapshot.trialCount;
+    sc.lastDirection = snapshot.lastDirection;
+    sc.reversalCount = snapshot.reversalCount;
+    sc.reversalTrials = [...snapshot.reversalTrials];
+    sc.reversalDeltas = [...snapshot.reversalDeltas];
+    sc.historyDeltas = [...snapshot.historyDeltas];
+    sc.historyResponses = [...snapshot.historyResponses];
+    return sc;
+  }
+}
+
+export interface StaircaseSnapshot {
+  minDelta: number;
+  maxDelta: number;
+  initialStepSize: number;
+  currentStepSize: number;
+  reversalsForStepReduction: number;
+  currentDelta: number;
+  consecutiveCorrect: number;
+  trialCount: number;
+  lastDirection: number;
+  reversalCount: number;
+  reversalTrials: number[];
+  reversalDeltas: number[];
+  historyDeltas: number[];
+  historyResponses: boolean[];
 }
