@@ -19,6 +19,7 @@ import {
 import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
 import { useLocale } from "./contexts/LocaleContext";
 import { LanguageToggle } from "./components/LanguageToggle";
+import { PosterModal } from "./components/share/PosterModal";
 
 interface TrialPayload {
   stimulus_id: string;
@@ -230,6 +231,7 @@ export default function App() {
 
   // Report state
   const [report, setReport] = useState<ReportData | null>(null);
+  const [showPosterModal, setShowPosterModal] = useState(false);
   const [placeholderCodename, setPlaceholderCodename] = useState(() => generateRandomCodename(locale));
 
   useEffect(() => {
@@ -827,7 +829,7 @@ export default function App() {
             </div>
 
             {/* 按钮区 */}
-            <div className="flex items-center justify-center gap-4 pt-4">
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
               <button
                 type="button"
                 onClick={() => {
@@ -842,6 +844,14 @@ export default function App() {
 
               <button
                 type="button"
+                onClick={() => setShowPosterModal(true)}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-amber-500/30 active:scale-[0.98]"
+              >
+                <Sparkles className="w-4 h-4 text-slate-950" /> {t.app.orientalPosterBtn}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   const shareText = isEn
                     ? `[${report.diagnostic_profile.role_title}]\n"${report.diagnostic_profile.praise_tagline}"\nExplorer: ${report.subject_name}\nTags: ${report.diagnostic_profile.strength_tags.map(t => `#${t}`).join(" ")}\n\n${report.diagnostic_profile.empowering_feedback}`
@@ -849,14 +859,23 @@ export default function App() {
                   navigator.clipboard?.writeText(shareText);
                   alert(t.app.copiedAlert);
                 }}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-amber-500/30"
+                className="px-6 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-amber-200 border border-amber-500/30 font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg"
               >
-                <Share2 className="w-4 h-4" /> {t.app.copyCard}
+                <Share2 className="w-4 h-4 text-amber-400" /> {t.app.copyCard}
               </button>
             </div>
           </div>
         )}
       </main>
+
+      {/* 东方神话分享海报弹窗 */}
+      {showPosterModal && report && (
+        <PosterModal
+          isOpen={showPosterModal}
+          report={report}
+          onClose={() => setShowPosterModal(false)}
+        />
+      )}
 
       {/* 底部极简静谧脚注 */}
       <footer className="py-4 text-center text-xs text-slate-600 border-t border-white/5 mt-8">

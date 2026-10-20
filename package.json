@@ -28,9 +28,11 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@types/qrcode": "^1.5.6",
     "canvas-confetti": "^1.9.4",
     "hono": "^4.13.13",
     "lucide-react": "^1.57.0",
+    "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   }

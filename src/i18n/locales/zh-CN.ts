@@ -402,6 +402,8 @@ export const zhCN: I18nDictionary = {
     arsenalSubtitle: "独一无二的思维武器库",
     strategicAdvice: "进阶赋能战略启示",
     restartVoyage: "重新启程探索",
+    orientalPosterBtn: "东方神话分享卡",
+    posterModalTitle: "东方认知流形 · 易经八卦神话分享卡",
     copyCard: "复制专属名片",
     copiedAlert: "专属本命名片文案已复制至剪贴板，可随心分享！",
     footerText: "思维星图 · 映照真实的直觉与自我掌控",
