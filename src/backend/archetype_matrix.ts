@@ -491,7 +491,6 @@ export function mapLegacyArchetype(val: string): CognitiveArchetype {
   switch (val) {
     case "ACCURATELY_CALIBRATED":
     case "Q1_MASTER":
-    case "人形外挂":
     case "SOVEREIGN":
     case "Q1-CAL":
     case "人形外挂":
