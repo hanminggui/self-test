@@ -693,6 +693,9 @@ app.use("/favicon.svg", serveAsset({ root: "./dist" }));
 app.use("/logo.svg", serveAsset({ root: "./dist" }));
 app.use("/logo.png", serveAsset({ root: "./dist" }));
 app.use("/logo-1024.png", serveAsset({ root: "./dist" }));
+app.use("/linuxdo-logo.svg", serveAsset({ root: "./dist" }));
+app.use("/linuxdo-logo.png", serveAsset({ root: "./dist" }));
+app.use("/linuxdo-logo-1024.png", serveAsset({ root: "./dist" }));
 app.get("/admin", serveAsset({ path: "./dist/index.html" }));
 app.get("/admin/*", serveAsset({ path: "./dist/index.html" }));
 app.get("/*", async (c, next) => {

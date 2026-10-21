@@ -433,7 +433,7 @@ export const zhCN: I18nDictionary = {
     authModalTitle: "探索者身份认证",
     authModalDesc: "连接您的身份账号，云端同步二元认知流形评测记录与画像勋章",
     loginWithGithub: "使用 GitHub 账号登录",
-    loginWithLinuxdo: "使用 LinuxDo Connect 登录",
+    loginWithLinuxdo: "使用 Linux Do 账号登录",
     loginWithGoogle: "使用 Google 账号登录",
     guestExplorer: "匿名探索者",
     loggedInAs: "已登录为",

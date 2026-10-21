@@ -433,7 +433,7 @@ export const enUS: I18nDictionary = {
     authModalTitle: "Explorer Authentication",
     authModalDesc: "Connect your account to sync metacognitive manifold records and archetype badges to the cloud",
     loginWithGithub: "Continue with GitHub",
-    loginWithLinuxdo: "Continue with LinuxDo Connect",
+    loginWithLinuxdo: "Continue with Linux Do",
     loginWithGoogle: "Continue with Google",
     guestExplorer: "Guest Explorer",
     loggedInAs: "Logged in as",

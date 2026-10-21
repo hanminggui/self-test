@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { X, Shield, Compass } from "lucide-react";
+import { X, Compass } from "lucide-react";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useUser } from "../../contexts/UserContext";
 
@@ -89,25 +89,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </button>
           )}
 
-          {/* LinuxDo Connect Option */}
+          {/* Linux Do Option */}
           {enabledProviders.linuxdo && (
             <button
               onClick={() => onSelectProvider("linuxdo")}
               className="w-full group flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-amber-500/30 transition-all duration-150 text-left cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600/30 to-amber-500/20 flex items-center justify-center border border-amber-500/30 text-amber-300 group-hover:scale-105 transition-transform">
-                  <Shield className="w-5 h-5 text-amber-400" />
+                <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center border border-white/10 group-hover:scale-105 transition-transform overflow-hidden">
+                  <svg className="w-5 h-5" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                    <clipPath id="linuxdo-modal-clip">
+                      <circle cx="60" cy="60" r="47" />
+                    </clipPath>
+                    <circle fill="#f0f0f0" cx="60" cy="60" r="50" />
+                    <rect fill="#1c1c1e" clipPath="url(#linuxdo-modal-clip)" x="10" y="10" width="100" height="30" />
+                    <rect fill="#f0f0f0" clipPath="url(#linuxdo-modal-clip)" x="10" y="40" width="100" height="40" />
+                    <rect fill="#ffb003" clipPath="url(#linuxdo-modal-clip)" x="10" y="80" width="100" height="30" />
+                  </svg>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-white flex items-center gap-1.5">
-                    LinuxDo Connect
-                    <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      Community
-                    </span>
+                  <div className="text-sm font-semibold text-white">
+                    Linux Do
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    {t.auth?.loginWithLinuxdo || "使用 LinuxDo Connect 登录"}
+                    {t.auth?.loginWithLinuxdo || "使用 Linux Do 账号登录"}
                   </div>
                 </div>
               </div>
