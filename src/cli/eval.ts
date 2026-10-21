@@ -1254,6 +1254,11 @@ async function main() {
   const report = await reportRes.json();
   const avgTrialMs = completedTrials > 0 ? evalTotalMs / completedTrials : 0;
 
+  const metrics = report.metrics || report.metacognitive_metrics;
+  const firstOrderAcc = metrics?.first_order_accuracy ?? report.summary?.first_order_accuracy ?? 0;
+  const finalScore = report.final_score ?? report.summary?.final_score ?? 0;
+  const calibrationBias = metrics?.calibration_bias ?? 0;
+
   if (isEn) {
     console.log(`\n========================================================================`);
     console.log(`  🏆 【${config.model}】Metacognitive Evaluation Report`);
@@ -1273,19 +1278,19 @@ async function main() {
       console.log(`  ----------------------------------------------------------------------`);
     }
 
-    const biasNote = report.metacognitive_metrics.calibration_bias > 0.15
+    const biasNote = calibrationBias > 0.15
       ? "(Significantly Overconfident)"
-      : report.metacognitive_metrics.calibration_bias < -0.15
+      : calibrationBias < -0.15
         ? "(Significantly Underconfident)"
         : "(Well Calibrated)";
 
-    console.log(`  Type-1 Objective Acc:  ${(report.summary.first_order_accuracy * 100).toFixed(1)}% (Staircase target ~70.7%)`);
-    console.log(`  Type-1 Sensitivity (d'): ${report.metacognitive_metrics.d_prime.toFixed(3)}`);
-    console.log(`  Type-2 Sensitivity (Meta-d'): ${report.metacognitive_metrics.meta_d_prime.toFixed(3)}`);
-    console.log(`  Metacognitive Efficiency (M_ratio): ${report.metacognitive_metrics.m_ratio.toFixed(3)}`);
-    console.log(`  Calibration Bias:      ${report.metacognitive_metrics.calibration_bias.toFixed(3)} ${biasNote}`);
-    console.log(`  Brier Prediction Error: ${report.metacognitive_metrics.brier_score.toFixed(3)}`);
-    console.log(`  Final Game Score:      ${report.summary.final_score}`);
+    console.log(`  Type-1 Objective Acc:  ${(firstOrderAcc * 100).toFixed(1)}% (Staircase target ~70.7%)`);
+    console.log(`  Type-1 Sensitivity (d'): ${(metrics?.d_prime ?? 0).toFixed(3)}`);
+    console.log(`  Type-2 Sensitivity (Meta-d'): ${(metrics?.meta_d_prime ?? 0).toFixed(3)}`);
+    console.log(`  Metacognitive Efficiency (M_ratio): ${(metrics?.m_ratio ?? 0).toFixed(3)}`);
+    console.log(`  Calibration Bias:      ${calibrationBias.toFixed(3)} ${biasNote}`);
+    console.log(`  Brier Prediction Error: ${(metrics?.brier_score ?? 0).toFixed(3)}`);
+    console.log(`  Final Game Score:      ${finalScore}`);
     console.log(`  Diagnostic Profile:    【${report.diagnostic_profile.role_title}】 - ${report.diagnostic_profile.praise_tagline}`);
     console.log(`  Cognitive Archetype:   ${report.diagnostic_profile.archetype}`);
     console.log(`  Strategic Insights:    ${report.diagnostic_profile.growth_advice}`);
@@ -1309,13 +1314,13 @@ async function main() {
       console.log(`  ----------------------------------------------------------------------`);
     }
 
-    console.log(`  一元客观准确率 (Acc):   ${(report.summary.first_order_accuracy * 100).toFixed(1)}% (阶梯锁定基准 ~70.7%)`);
-    console.log(`  一元辨别力 (d'):       ${report.metacognitive_metrics.d_prime.toFixed(3)}`);
-    console.log(`  二元敏感度 (Meta-d'):  ${report.metacognitive_metrics.meta_d_prime.toFixed(3)}`);
-    console.log(`  二元认知效率 (M_ratio): ${report.metacognitive_metrics.m_ratio.toFixed(3)}`);
-    console.log(`  校准偏差 (Bias):       ${report.metacognitive_metrics.calibration_bias.toFixed(3)} ${report.metacognitive_metrics.calibration_bias > 0.15 ? '(显著过度自负)' : report.metacognitive_metrics.calibration_bias < -0.15 ? '(显著过度谨慎)' : '(知行良好对齐)'}`);
-    console.log(`  Brier 预测误差分数:    ${report.metacognitive_metrics.brier_score.toFixed(3)}`);
-    console.log(`  最终博弈总分:          ${report.summary.final_score}`);
+    console.log(`  一元客观准确率 (Acc):   ${(firstOrderAcc * 100).toFixed(1)}% (阶梯锁定基准 ~70.7%)`);
+    console.log(`  一元辨别力 (d'):       ${(metrics?.d_prime ?? 0).toFixed(3)}`);
+    console.log(`  二元敏感度 (Meta-d'):  ${(metrics?.meta_d_prime ?? 0).toFixed(3)}`);
+    console.log(`  二元认知效率 (M_ratio): ${(metrics?.m_ratio ?? 0).toFixed(3)}`);
+    console.log(`  校准偏差 (Bias):       ${calibrationBias.toFixed(3)} ${calibrationBias > 0.15 ? '(显著过度自负)' : calibrationBias < -0.15 ? '(显著过度谨慎)' : '(知行良好对齐)'}`);
+    console.log(`  Brier 预测误差分数:    ${(metrics?.brier_score ?? 0).toFixed(3)}`);
+    console.log(`  最终博弈总分:          ${finalScore}`);
     console.log(`  专属特质分型:          【${report.diagnostic_profile.role_title}】 - ${report.diagnostic_profile.praise_tagline}`);
     console.log(`  认知原型 (Archetype):  ${report.diagnostic_profile.archetype}`);
     console.log(`  战略启示与指导建议:    ${report.diagnostic_profile.growth_advice}`);
@@ -1326,7 +1331,7 @@ async function main() {
 if (import.meta.main) {
   main().catch((err) => {
     const isEn = process.env.LANG?.startsWith("en") || process.env.LOCALE?.startsWith("en") || process.env.EVAL_LANG?.startsWith("en");
-    console.error(isEn ? "Evaluation terminated abnormally:" : "评测异常终止:", err);
+    console.error(isEn ? "Evaluation terminated abnormally:" : "评测异常终止:", err?.stack || err?.message || err);
     process.exit(1);
   });
 }

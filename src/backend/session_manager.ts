@@ -308,6 +308,13 @@ export class SessionManager {
     if (row.agent_metadata_json) {
       try { metadata = JSON.parse(row.agent_metadata_json); } catch {}
     }
+    if (row.locale) {
+      if (!metadata) {
+        metadata = { locale: row.locale };
+      } else if (!metadata.locale) {
+        metadata.locale = row.locale;
+      }
+    }
 
     const restored: SessionState = {
       sessionId: row.id,
@@ -1209,6 +1216,16 @@ export class SessionManager {
             this.storage.run(durSql, [session.metadata.total_duration_ms, sessionId]).catch(() => {});
           }
         }
+        if (metadata.locale) {
+          session.metadata.locale = metadata.locale;
+          session.finalReport.locale = metadata.locale;
+          const locSql = "UPDATE completed_sessions SET locale = ? WHERE id = ?";
+          if (this.storage.runSync) {
+            this.storage.runSync(locSql, [metadata.locale, sessionId]);
+          } else {
+            this.storage.run(locSql, [metadata.locale, sessionId]).catch(() => {});
+          }
+        }
         return session.finalReport;
       } else {
         this.saveActiveSession(session);
@@ -1505,7 +1522,7 @@ export class SessionManager {
         id: r.id,
         name: r.subject_name || r.name || "受测者",
         subject_type: r.subject_type,
-        locale: targetLocale,
+        locale: (r.locale as SupportedLocale) || targetLocale,
         created_at: r.created_at,
         total_trials: r.total_trials ?? 30,
         warmup_trials: r.warmup_trials ?? 10,
@@ -1518,6 +1535,10 @@ export class SessionManager {
         user_id: r.user_id ?? null,
 
         // Legacy fields for backward compatibility
+        metadata: {
+          locale: (r.locale as SupportedLocale) || targetLocale,
+          ...(agentMetadata || {}),
+        },
         first_order_accuracy: r.first_order_accuracy,
         second_order_accuracy: r.second_order_accuracy,
         d_prime: r.d_prime,
