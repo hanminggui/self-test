@@ -16,6 +16,10 @@ const fetchApp = (path: string, options?: RequestInit) => {
 describe("User Core Schema, JWT & Multi-Provider OAuth Matrix", () => {
   beforeEach(() => {
     oauthService.clearMockHandlers();
+    oauthService.setGlobalAuthEnabled(true);
+    oauthService.setProviderEnabled("github", true);
+    oauthService.setProviderEnabled("linuxdo", true);
+    oauthService.setProviderEnabled("google", true);
   });
 
   afterEach(() => {
@@ -418,6 +422,80 @@ describe("User Core Schema, JWT & Multi-Provider OAuth Matrix", () => {
       expect(updatedUser?.metadata?.providers?.github).toBeDefined();
       expect(updatedUser?.metadata?.providers?.google).toBeDefined();
       expect(updatedUser?.metadata?.providers?.google.id).toBe("google_sub_998877");
+    });
+  });
+
+  describe("6. Configurable Channel Toggling (Enable / Disable Providers)", () => {
+    test("GET /api/auth/providers returns all enabled by default", async () => {
+      const res = await fetchApp("/api/auth/providers");
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.providers).toEqual({
+        github: true,
+        linuxdo: true,
+        google: true,
+      });
+    });
+
+    test("Disabling a specific provider blocks redirect and callback with 403", async () => {
+      oauthService.setProviderEnabled("github", false);
+
+      // Check providers endpoint reflects change
+      const pRes = await fetchApp("/api/auth/providers");
+      const pData = await pRes.json();
+      expect(pData.providers.github).toBe(false);
+      expect(pData.providers.linuxdo).toBe(true);
+      expect(pData.providers.google).toBe(true);
+
+      // Attempting redirect returns 403
+      const redirectRes = await fetchApp("/api/auth/github");
+      expect(redirectRes.status).toBe(403);
+      const redirectData = await redirectRes.json();
+      expect(redirectData.error).toContain("disabled");
+
+      // Attempting callback returns 403
+      const callbackRes = await fetchApp("/api/auth/github/callback?code=mock_code");
+      expect(callbackRes.status).toBe(403);
+      const callbackData = await callbackRes.json();
+      expect(callbackData.error).toContain("disabled");
+
+      // LinuxDo and Google should still work normally
+      const linuxRes = await fetchApp("/api/auth/linuxdo");
+      expect(linuxRes.status).toBe(302);
+    });
+
+    test("Disabling LinuxDo blocks LinuxDo endpoints with 403", async () => {
+      oauthService.setProviderEnabled("linuxdo", false);
+
+      const redirectRes = await fetchApp("/api/auth/linuxdo");
+      expect(redirectRes.status).toBe(403);
+      const callbackRes = await fetchApp("/api/auth/linuxdo/callback?code=test");
+      expect(callbackRes.status).toBe(403);
+    });
+
+    test("Disabling Google blocks Google endpoints with 403", async () => {
+      oauthService.setProviderEnabled("google", false);
+
+      const redirectRes = await fetchApp("/api/auth/google");
+      expect(redirectRes.status).toBe(403);
+      const callbackRes = await fetchApp("/api/auth/google/callback?code=test");
+      expect(callbackRes.status).toBe(403);
+    });
+
+    test("Global auth disabled turns off all providers", async () => {
+      oauthService.setGlobalAuthEnabled(false);
+
+      const pRes = await fetchApp("/api/auth/providers");
+      const pData = await pRes.json();
+      expect(pData.providers).toEqual({
+        github: false,
+        linuxdo: false,
+        google: false,
+      });
+
+      expect((await fetchApp("/api/auth/github")).status).toBe(403);
+      expect((await fetchApp("/api/auth/linuxdo")).status).toBe(403);
+      expect((await fetchApp("/api/auth/google")).status).toBe(403);
     });
   });
 });

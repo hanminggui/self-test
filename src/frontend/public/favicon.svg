@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="favGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="favIndigo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a5b4fc"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Ring Dial -->
+  <circle cx="64" cy="64" r="58" fill="#0b0d14" stroke="#f59e0b" stroke-width="4"/>
+  <circle cx="64" cy="64" r="46" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-opacity="0.4" stroke-dasharray="3 3"/>
+
+  <!-- Compass Needle at 45 deg -->
+  <polygon points="64,64 56,56 98,30 64,64" fill="url(#favGold)"/>
+  <polygon points="64,64 72,72 98,30 64,64" fill="#b45309"/>
+  <polygon points="64,64 56,56 30,98 64,64" fill="url(#favIndigo)"/>
+  <polygon points="64,64 72,72 30,98 64,64" fill="#312e81"/>
+
+  <!-- Central Pivot -->
+  <circle cx="64" cy="64" r="9" fill="#0b0d14" stroke="#fbbf24" stroke-width="2"/>
+  <circle cx="64" cy="64" r="4" fill="#fde68a"/>
+</svg>

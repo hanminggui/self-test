@@ -222,11 +222,13 @@ export default function Admin() {
       />
 
       {/* 3.3 调阅完整报告详情 Drawer 弹窗 */}
-      <SubjectDetailDrawer
-        report={selectedSubjectReport}
-        onClose={() => setSelectedSubjectReport(null)}
-        onDelete={handleDeleteSubject}
-      />
+      {selectedSubjectReport && (
+        <SubjectDetailDrawer
+          report={selectedSubjectReport}
+          onClose={() => setSelectedSubjectReport(null)}
+          onDelete={handleDeleteSubject}
+        />
+      )}
     </div>
   );
 }

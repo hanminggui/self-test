@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User as UserIcon, LogOut, ChevronDown, Sparkles, Shield } from "lucide-react";
+import { User as UserIcon, LogOut, ChevronDown, Compass, Shield } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { AuthModal } from "./AuthModal";
 
 export const UserNav: React.FC = () => {
-  const { user, login, logout, openAuthModal, closeAuthModal, isAuthModalOpen } = useUser();
+  const { user, login, logout, openAuthModal, closeAuthModal, isAuthModalOpen, hasAnyProvider } = useUser();
   const { t } = useLocale();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -28,13 +28,15 @@ export const UserNav: React.FC = () => {
       <div className="relative" ref={dropdownRef}>
         {!user ? (
           // Guest State: Sign In Button
-          <button
-            onClick={openAuthModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-amber-500/30 text-xs font-medium text-slate-200 hover:text-white transition-all duration-150 shadow-sm"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>{t.auth?.signIn || "登录"}</span>
-          </button>
+          hasAnyProvider ? (
+            <button
+              onClick={openAuthModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-amber-500/30 text-xs font-medium text-slate-200 hover:text-white transition-all duration-150 shadow-sm cursor-pointer"
+            >
+              <Compass className="w-3.5 h-3.5 text-amber-400" />
+              <span>{t.auth?.signIn || "登录"}</span>
+            </button>
+          ) : null
         ) : (
           // Logged In State: User Avatar & Dropdown
           <div>

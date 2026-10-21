@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Dark Sky Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0d14"/>
+      <stop offset="50%" stop-color="#121626"/>
+      <stop offset="100%" stop-color="#090b12"/>
+    </linearGradient>
+
+    <!-- Outer Glow -->
+    <radialGradient id="ambientGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#6366f1" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Gold Gradients for Compass Needle -->
+    <linearGradient id="goldLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fffbeb"/>
+      <stop offset="50%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="goldDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#92400e"/>
+    </linearGradient>
+
+    <!-- Indigo/Violet Gradients for Opposite Needle -->
+    <linearGradient id="indigoLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0e7ff"/>
+      <stop offset="50%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="indigoDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+
+    <!-- Ring Metallic Gradient -->
+    <linearGradient id="ringGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#f59e0b" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Squircle Canvas Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <rect width="510" height="510" x="1" y="1" rx="111" fill="none" stroke="#ffffff" stroke-opacity="0.1" stroke-width="2"/>
+
+  <!-- Radial Atmosphere Flare -->
+  <circle cx="256" cy="256" r="220" fill="url(#ambientGlow)"/>
+
+  <!-- Outer Astrolabe Dials & Scales -->
+  <circle cx="256" cy="256" r="192" fill="none" stroke="url(#ringGold)" stroke-width="2.5" stroke-dasharray="2 6"/>
+  <circle cx="256" cy="256" r="182" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1"/>
+  <circle cx="256" cy="256" r="148" fill="none" stroke="url(#ringGold)" stroke-width="1.5" stroke-opacity="0.6"/>
+
+  <!-- 4 Cardinal Quadrant Points (N, S, E, W) -->
+  <circle cx="256" cy="64" r="4.5" fill="#fbbf24"/>
+  <circle cx="256" cy="448" r="4.5" fill="#818cf8"/>
+  <circle cx="64" cy="256" r="3.5" fill="#f59e0b" fill-opacity="0.7"/>
+  <circle cx="448" cy="256" r="3.5" fill="#f59e0b" fill-opacity="0.7"/>
+
+  <!-- 4 Intercardinal Minor Dots -->
+  <circle cx="120" cy="120" r="2.5" fill="#ffffff" fill-opacity="0.3"/>
+  <circle cx="392" cy="120" r="2.5" fill="#ffffff" fill-opacity="0.3"/>
+  <circle cx="120" cy="392" r="2.5" fill="#ffffff" fill-opacity="0.3"/>
+  <circle cx="392" cy="392" r="2.5" fill="#ffffff" fill-opacity="0.3"/>
+
+  <!-- Inner Coordinate Crosshairs -->
+  <line x1="256" y1="92" x2="256" y2="420" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1.5"/>
+  <line x1="92" y1="256" x2="420" y2="256" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1.5"/>
+
+  <!-- Secondary Star Facets (Background Compass Rose) -->
+  <!-- Horizontal & Diagonal Secondary Tips -->
+  <polygon points="256,256 226,226 256,150 256,256" fill="#f59e0b" fill-opacity="0.25"/>
+  <polygon points="256,256 286,226 256,150 256,256" fill="#f59e0b" fill-opacity="0.15"/>
+  <polygon points="256,256 226,286 256,362 256,256" fill="#6366f1" fill-opacity="0.2"/>
+  <polygon points="256,256 286,286 256,362 256,256" fill="#6366f1" fill-opacity="0.1"/>
+
+  <polygon points="256,256 226,226 150,256 256,256" fill="#f59e0b" fill-opacity="0.2"/>
+  <polygon points="256,256 226,286 150,256 256,256" fill="#f59e0b" fill-opacity="0.1"/>
+  <polygon points="256,256 286,226 362,256 256,256" fill="#f59e0b" fill-opacity="0.2"/>
+  <polygon points="256,256 286,286 362,256 256,256" fill="#f59e0b" fill-opacity="0.1"/>
+
+  <!-- Primary Dynamic Needle (Oriented at 45° Metacognitive Angle) -->
+  <!-- Top-Right Primary North-Pointer (Gold Amber) -->
+  <polygon points="256,256 232,232 376,136 256,256" fill="url(#goldLight)"/>
+  <polygon points="256,256 280,280 376,136 256,256" fill="url(#goldDark)"/>
+
+  <!-- Bottom-Left Opposite South-Pointer (Indigo Violet) -->
+  <polygon points="256,256 232,232 136,376 256,256" fill="url(#indigoLight)"/>
+  <polygon points="256,256 280,280 136,376 256,256" fill="url(#indigoDark)"/>
+
+  <!-- Central Pivot Center Jewel & Retaining Rings -->
+  <circle cx="256" cy="256" r="28" fill="#0d111e" stroke="url(#ringGold)" stroke-width="3"/>
+  <circle cx="256" cy="256" r="18" fill="url(#goldLight)"/>
+  <circle cx="256" cy="256" r="8" fill="#1e1b4b"/>
+  <circle cx="253" cy="253" r="3" fill="#ffffff" fill-opacity="0.9"/>
+</svg>

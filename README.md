@@ -277,9 +277,16 @@ Navigating to `/admin` unlocks a multi-perspective diagnostic console powered by
 | `POST` | `/api/sessions/step` | Public | Unified atomic endpoint for headless LLM/Agent evaluation (submits Phase 1 + Phase 2 + per-step telemetry in one call). |
 | `GET` | `/api/sessions/:id/report` | Public | Returns the completed session's 4D manifold metrics, MECE archetype, and diagnostic profile. |
 | `GET` | `/api/cohort/scatter` | Public | Returns anonymized cohort scatter coordinates and octant summary statistics. |
+| `GET` | `/api/auth/providers` | Public | Returns dictionary of enabled OAuth login providers (`github`, `linuxdo`, `google`). |
+| `GET` | `/api/auth/me` | Public | Returns authenticated user profile or null. |
+| `GET` | `/api/auth/:provider` | Public | Initiates OAuth redirect for enabled provider. |
+| `POST` | `/api/auth/logout` | Public | Clears authenticated session cookie. |
+| `GET` | `/api/auth/sessions` | `Bearer`/Cookie | Returns completed assessment sessions linked to current authenticated user. |
 | `POST` | `/api/admin/verify` | Public | Validates admin password and returns authentication status. |
 | `GET` | `/api/admin/sessions` | `Bearer` | Returns full clinical telemetry and trial histories for all sessions. |
 | `DELETE` | `/api/admin/sessions/:id` | `Bearer` | Permanently deletes a session from memory and SQLite storage. |
+
+> 📖 **Authentication & Deployment Guide**: Detailed OAuth registration steps and configuration for Local, Docker, Cloudflare Workers, and Linux VPS can be found in [`docs/auth_configuration.md`](./docs/auth_configuration.md). A turnkey configuration template is available in [`.env.example`](./.env.example).
 
 ---
 

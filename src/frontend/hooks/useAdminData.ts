@@ -43,7 +43,7 @@ export function useAdminData() {
     }
   }, [locale]);
 
-  // 令牌校验
+  // 令牌校验（纯鉴权，解耦 loadData）
   const verifyToken = useCallback(async (token: string) => {
     try {
       const res = await fetch("/api/admin/verify", {
@@ -53,9 +53,8 @@ export function useAdminData() {
       });
       const data = await res.json();
       if (data.valid) {
-        setIsAuthenticated(true);
         sessionStorage.setItem("admin_token", token);
-        loadData();
+        setIsAuthenticated(true);
       } else {
         setAuthError("访问密码或免密令牌无效，请重新输入");
       }
@@ -64,14 +63,14 @@ export function useAdminData() {
     } finally {
       setCheckingAuth(false);
     }
-  }, [loadData]);
+  }, []);
 
-  // 当 locale 改变且已验证登录时，自动重新加载本地化数据
+  // 认证成功后或切换语言时，统一由单一副作用触发数据加载
   useEffect(() => {
     if (isAuthenticated) {
       loadData();
     }
-  }, [locale, isAuthenticated, loadData]);
+  }, [isAuthenticated, loadData]);
 
   // 页面初始化时检查凭证
   useEffect(() => {

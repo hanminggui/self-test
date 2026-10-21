@@ -439,6 +439,7 @@ export const zhCN: I18nDictionary = {
     loggedInAs: "已登录为",
     accountLinked: "账号已关联绑定",
     trustLevelLabel: "社区信任等级",
+    noProvidersEnabled: "当前未开启任何第三方登录渠道，您可直接以游客身份继续探索与评测",
   },
   cli: {
     gameRules: `【决策博弈效用规则】

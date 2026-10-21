@@ -4,7 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "bun src/cli/dev.ts",
+    "dev:frontend": "vite",
+    "dev:backend": "bun --watch src/backend/server.ts",
     "build": "vite build",
     "deploy": "bun src/cli/deploy.ts",
     "start": "bun src/backend/server.ts",

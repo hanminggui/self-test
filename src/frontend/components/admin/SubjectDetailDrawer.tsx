@@ -33,16 +33,19 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
   const isEn = locale === "en-US";
   const [showRecords, setShowRecords] = useState(false);
   const [showPosterModal, setShowPosterModal] = useState(false);
-  if (!report) return null;
 
-  const isSubEn = (report.locale || report.metadata?.locale) === "en-US";
-  const quadrantCode = report.quadrant_code || report.diagnostic_profile?.quadrant_code || "Q1-CAL";
-  const archetypeDef = useMemo(() => getArchetypeDefinition(quadrantCode, locale), [quadrantCode, locale]);
+  const isSubEn = (report?.locale || report?.metadata?.locale) === "en-US";
+  const quadrantCode = report?.quadrant_code || report?.diagnostic_profile?.quadrant_code || "Q1-CAL";
+  const archetypeDef = useMemo(() => {
+    if (!report) return null;
+    return getArchetypeDefinition(quadrantCode, locale);
+  }, [quadrantCode, locale, report]);
 
-  const activeMetrics = report.metrics || report.metacognitive_metrics || {};
-  const agentMetadata = report.agent_metadata || (report.subject_type !== "HUMAN" ? report.metadata : undefined);
+  const activeMetrics = report?.metrics || report?.metacognitive_metrics || {};
+  const agentMetadata = report?.agent_metadata || (report?.subject_type !== "HUMAN" ? report?.metadata : undefined);
 
   const activeProfile = useMemo(() => {
+    if (!archetypeDef) return null;
     return {
       role_title: archetypeDef.role_title,
       english_title: archetypeDef.english_title,
@@ -56,6 +59,8 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
       critical_weakness: archetypeDef.growth_advice,
     };
   }, [archetypeDef]);
+
+  if (!report || !activeProfile) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -413,7 +418,7 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
       {showPosterModal && report && (
         <PosterModal
           isOpen={showPosterModal}
-          report={activeReport}
+          report={report}
           locale={locale}
           onClose={() => setShowPosterModal(false)}
         />

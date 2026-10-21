@@ -198,6 +198,7 @@ export interface I18nDictionary {
     loggedInAs: string;
     accountLinked: string;
     trustLevelLabel: string;
+    noProvidersEnabled: string;
   };
   cli: {
     gameRules: string;

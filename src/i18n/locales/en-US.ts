@@ -439,6 +439,7 @@ export const enUS: I18nDictionary = {
     loggedInAs: "Logged in as",
     accountLinked: "Account Linked",
     trustLevelLabel: "Community Trust Level",
+    noProvidersEnabled: "No third-party login providers are currently enabled. You may continue exploring as a guest.",
   },
   cli: {
     gameRules: `【Decision Game Utility Rules】

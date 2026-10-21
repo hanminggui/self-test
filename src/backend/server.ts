@@ -435,18 +435,30 @@ app.get("/api/auth/sessions", async (c) => {
   return c.json({ sessions });
 });
 
+// OAuth: Enabled Providers Discovery Endpoint
+app.get("/api/auth/providers", (c) => {
+  const providers = oauthService.getEnabledProviders(c.env);
+  return c.json({ providers });
+});
+
 // GitHub OAuth: Authorization Redirect
 app.get("/api/auth/github", (c) => {
+  if (!oauthService.isProviderEnabled("github", c.env)) {
+    return c.json({ error: "GitHub authentication is disabled" }, 403);
+  }
   const state = crypto.randomUUID();
   setCookie(c, "oauth_state", state, { httpOnly: true, sameSite: "Lax", path: "/", maxAge: 600 });
   const origin = getOrigin(c);
   const redirectUri = `${origin}/api/auth/github/callback`;
-  const authUrl = oauthService.getGithubAuthUrl(state, redirectUri);
+  const authUrl = oauthService.getGithubAuthUrl(state, redirectUri, c.env);
   return c.redirect(authUrl);
 });
 
 // GitHub OAuth: Callback
 app.get("/api/auth/github/callback", async (c) => {
+  if (!oauthService.isProviderEnabled("github", c.env)) {
+    return c.json({ error: "GitHub authentication is disabled" }, 403);
+  }
   const code = c.req.query("code");
   const state = c.req.query("state");
   const savedState = getCookie(c, "oauth_state");
@@ -462,7 +474,7 @@ app.get("/api/auth/github/callback", async (c) => {
   const origin = getOrigin(c);
   const redirectUri = `${origin}/api/auth/github/callback`;
   try {
-    const profile = await oauthService.handleGithubCallback(code, redirectUri);
+    const profile = await oauthService.handleGithubCallback(code, redirectUri, c.env);
     const user = await userManager.upsertUser({
       primary_provider: "github",
       provider_id: profile.provider_id,
@@ -485,16 +497,22 @@ app.get("/api/auth/github/callback", async (c) => {
 
 // LinuxDo OAuth: Authorization Redirect
 app.get("/api/auth/linuxdo", (c) => {
+  if (!oauthService.isProviderEnabled("linuxdo", c.env)) {
+    return c.json({ error: "LinuxDo authentication is disabled" }, 403);
+  }
   const state = crypto.randomUUID();
   setCookie(c, "oauth_state", state, { httpOnly: true, sameSite: "Lax", path: "/", maxAge: 600 });
   const origin = getOrigin(c);
   const redirectUri = `${origin}/api/auth/linuxdo/callback`;
-  const authUrl = oauthService.getLinuxDoAuthUrl(state, redirectUri);
+  const authUrl = oauthService.getLinuxDoAuthUrl(state, redirectUri, c.env);
   return c.redirect(authUrl);
 });
 
 // LinuxDo OAuth: Callback
 app.get("/api/auth/linuxdo/callback", async (c) => {
+  if (!oauthService.isProviderEnabled("linuxdo", c.env)) {
+    return c.json({ error: "LinuxDo authentication is disabled" }, 403);
+  }
   const code = c.req.query("code");
   const state = c.req.query("state");
   const savedState = getCookie(c, "oauth_state");
@@ -510,7 +528,7 @@ app.get("/api/auth/linuxdo/callback", async (c) => {
   const origin = getOrigin(c);
   const redirectUri = `${origin}/api/auth/linuxdo/callback`;
   try {
-    const profile = await oauthService.handleLinuxDoCallback(code, redirectUri);
+    const profile = await oauthService.handleLinuxDoCallback(code, redirectUri, c.env);
     const user = await userManager.upsertUser({
       primary_provider: "linuxdo",
       provider_id: profile.provider_id,
@@ -533,16 +551,22 @@ app.get("/api/auth/linuxdo/callback", async (c) => {
 
 // Google Identity OAuth: Authorization Redirect
 app.get("/api/auth/google", (c) => {
+  if (!oauthService.isProviderEnabled("google", c.env)) {
+    return c.json({ error: "Google authentication is disabled" }, 403);
+  }
   const state = crypto.randomUUID();
   setCookie(c, "oauth_state", state, { httpOnly: true, sameSite: "Lax", path: "/", maxAge: 600 });
   const origin = getOrigin(c);
   const redirectUri = `${origin}/api/auth/google/callback`;
-  const authUrl = oauthService.getGoogleAuthUrl(state, redirectUri);
+  const authUrl = oauthService.getGoogleAuthUrl(state, redirectUri, c.env);
   return c.redirect(authUrl);
 });
 
 // Google Identity OAuth: Callback (with account deduplication by verified email)
 app.get("/api/auth/google/callback", async (c) => {
+  if (!oauthService.isProviderEnabled("google", c.env)) {
+    return c.json({ error: "Google authentication is disabled" }, 403);
+  }
   const code = c.req.query("code");
   const state = c.req.query("state");
   const savedState = getCookie(c, "oauth_state");
@@ -558,7 +582,7 @@ app.get("/api/auth/google/callback", async (c) => {
   const origin = getOrigin(c);
   const redirectUri = `${origin}/api/auth/google/callback`;
   try {
-    const profile = await oauthService.handleGoogleCallback(code, redirectUri);
+    const profile = await oauthService.handleGoogleCallback(code, redirectUri, c.env);
     const user = await userManager.upsertUser({
       primary_provider: "google",
       provider_id: profile.provider_id,
@@ -665,6 +689,10 @@ const serveAsset = (options: { root?: string; path?: string }) => {
 
 app.use("/assets/*", serveAsset({ root: "./dist" }));
 app.use("/favicon.ico", serveAsset({ root: "./dist" }));
+app.use("/favicon.svg", serveAsset({ root: "./dist" }));
+app.use("/logo.svg", serveAsset({ root: "./dist" }));
+app.use("/logo.png", serveAsset({ root: "./dist" }));
+app.use("/logo-1024.png", serveAsset({ root: "./dist" }));
 app.get("/admin", serveAsset({ path: "./dist/index.html" }));
 app.get("/admin/*", serveAsset({ path: "./dist/index.html" }));
 app.get("/*", async (c, next) => {
