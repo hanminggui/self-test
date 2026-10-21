@@ -1,3 +1,6 @@
+import type { AssessmentMetrics, AgentExecutionMetadata } from "../../backend/models";
+import type { SupportedLocale } from "../../i18n";
+
 export interface VisualColorToken {
   backgroundColor: string; // hsla 格式
   borderColor: string;     // 高亮边框色
@@ -9,20 +12,29 @@ export interface SubjectPoint {
   id: string;
   name: string;
   subject_type: string;
+  locale?: SupportedLocale;
+  created_at?: string;
+  total_trials?: number;
+  warmup_trials?: number;
+  total_duration_ms?: number;
+  final_score: number;
+  quadrant_code: string;
+  is_current?: boolean;
+  metrics: AssessmentMetrics;
+  agent_metadata?: AgentExecutionMetadata;
+  user_id?: string | null;
+
+  // Flattened compatibility properties for direct coordinate access
   first_order_accuracy: number;
   second_order_accuracy: number;
   d_prime: number;
   meta_d_prime: number;
   m_ratio: number;
   calibration_bias: number;
-  final_score: number;
-  is_current?: boolean;
-  created_at?: string;
-  role_title?: string;
-  quadrant_code?: string;
   d_star: number;
   ive: number;
   cognitive_manifold_vector: [number, number, number, number];
+  role_title?: string;
   clinical_summary?: string;
   metadata?: any;
 }

@@ -21,6 +21,7 @@ import {
   TrialResponse,
   SessionExecutionMetadata,
   TokenUsageStats,
+  RiskAttitude,
 } from "./models";
 import { StaircaseController, StaircaseSnapshot } from "./staircase";
 import { TaskGenerator, GeneratedTask, TaskGeneratorSnapshot } from "./task_generator";
@@ -86,251 +87,106 @@ export class SessionManager {
     }
     // Schema is guaranteed to be provisioned at startup (LocalSqliteAdapter.ensureSchema) or deploy-time (D1 migrations).
     // SessionManager contains zero DDL logic during business runtime.
-    if (this.storage instanceof LocalSqliteAdapter) {
-      this.migrateFromLegacyJson(path.join(process.cwd(), "data", "persisted_sessions.json"));
-      this.recalibrateHistoricalSessions();
-    }
   }
 
   getStorage(): StorageAdapter {
     return this.storage;
   }
 
+  private persistTrialRecord(sessionId: string, record: TrialRecord, subjectType: string): void {
+    const sql = `
+      INSERT OR REPLACE INTO session_records (
+        session_id, trial_index, is_warmup, difficulty_level, stimulus_id,
+        correct_option, first_order_choice, is_correct_first_order, revised_choice,
+        is_correct_final, action, confidence_level, hints_unlocked, score_delta,
+        duration_ms, agent_trace_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const isHuman = subjectType === SubjectType.HUMAN;
+    const agentTrace = !isHuman && (record.token_usage || record.operations)
+      ? JSON.stringify({ token_usage: record.token_usage, operations: record.operations })
+      : null;
+    const params = [
+      sessionId,
+      record.trial_index,
+      record.is_warmup ? 1 : 0,
+      record.difficulty_level,
+      record.stimulus_id,
+      record.correct_option,
+      record.first_order_choice,
+      record.is_correct_first_order ? 1 : 0,
+      record.revised_choice ?? null,
+      record.is_correct_final ? 1 : 0,
+      record.action,
+      record.confidence_level,
+      record.hints_unlocked ?? 0,
+      record.score_delta,
+      record.duration_ms ?? null,
+      agentTrace,
+    ];
 
-  /**
-   * Automatically recalibrates persisted historical sessions,
-   * fixing past D* monotonic tail truncation, 4AFC-to-2AFC degeneration, and IVE deadlock.
-   */
-  private recalibrateHistoricalSessions() {
-    try {
-      const selectSql = "SELECT id, first_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, d_star, ive, full_report_json FROM completed_sessions WHERE full_report_json IS NOT NULL";
-      const rows = (this.storage.querySync ? this.storage.querySync<any>(selectSql) : []) as any[];
-      if (!rows || rows.length === 0) return;
-
-      const updateSql = `
-        UPDATE completed_sessions
-        SET d_prime = ?,
-            meta_d_prime = ?,
-            m_ratio = ?,
-            calibration_bias = ?,
-            d_star = ?,
-            ive = ?,
-            role_title = ?,
-            quadrant_code = ?,
-            clinical_summary = ?,
-            full_report_json = ?
-        WHERE id = ?
-      `;
-
-      for (const row of rows) {
-        try {
-          const parsed: FinalAssessmentReport = JSON.parse(row.full_report_json);
-          if (parsed.records && Array.isArray(parsed.records) && parsed.records.length > 0) {
-            const records: TrialRecord[] = parsed.records;
-            const warmupCount = records.filter(r => r.is_warmup).length;
-            const initialDelta = records[0]?.difficulty_level ?? 0.50;
-            const sc = new StaircaseController(initialDelta);
-            for (const rec of records) {
-              const heavyHintBeforeP1 = (rec.hints_unlocked ?? 0) >= 2 && (!rec.revised_choice || rec.revised_choice === rec.first_order_choice);
-              sc.update(rec.is_correct_first_order, heavyHintBeforeP1);
-            }
-
-            const dStar = sc.computeDStar(undefined, warmupCount);
-            const metrics = PsychometricScorer.evaluate(records, true, dStar);
-            const hintsCount = ReportGenerator.countHintTrials(records, true);
-
-            const archetype = classifyCognitiveArchetype({
-              dStar: metrics.d_star,
-              dPrime: metrics.d_prime,
-              mRatio: metrics.m_ratio,
-              bias: metrics.calibration_bias,
-              brier: metrics.brier_score,
-              ive: metrics.info_buying_efficiency,
-              hintsCount,
-            });
-            const def = getArchetypeDefinition(archetype);
-
-            parsed.metacognitive_metrics = metrics;
-            if (parsed.summary) {
-              parsed.summary.d_star = metrics.d_star;
-              parsed.summary.reversals_count = sc.reversalCount;
-            }
-            parsed.diagnostic_profile.archetype = archetype;
-            parsed.diagnostic_profile.role_title = def.role_title;
-            parsed.diagnostic_profile.quadrant_code = def.quadrant_code;
-            parsed.diagnostic_profile.praise_tagline = def.praise_tagline;
-            parsed.diagnostic_profile.strength_tags = def.strength_tags;
-            parsed.diagnostic_profile.empowering_feedback = def.empowering_feedback;
-            parsed.diagnostic_profile.growth_advice = def.growth_advice;
-            parsed.diagnostic_profile.skills = def.skills;
-            parsed.diagnostic_profile.clinical_summary = def.clinical_summary;
-
-            const updateParams = [
-              metrics.d_prime,
-              metrics.meta_d_prime,
-              metrics.m_ratio,
-              metrics.calibration_bias,
-              metrics.d_star,
-              metrics.info_buying_efficiency,
-              def.role_title,
-              def.quadrant_code,
-              def.clinical_summary,
-              JSON.stringify(parsed),
-              row.id
-            ];
-            if (this.storage.runSync) {
-              this.storage.runSync(updateSql, updateParams);
-            } else {
-              this.storage.run(updateSql, updateParams).catch(() => {});
-            }
-          } else if (parsed.metacognitive_metrics && parsed.summary) {
-            // Fix legacy summary-only records affected by 4AFC-to-2AFC degeneration or ceiling D* truncation
-            const acc = parsed.summary.first_order_accuracy ?? row.first_order_accuracy ?? 0.7;
-            const totalN = parsed.summary.total_trials ?? 30;
-            const evalN = Math.max(1, Math.round(totalN * (2 / 3)));
-            let dPrime = parsed.metacognitive_metrics.d_prime ?? row.d_prime ?? 1.2;
-            let metaD = parsed.metacognitive_metrics.meta_d_prime ?? row.meta_d_prime ?? 1.0;
-            let mRatio = parsed.metacognitive_metrics.m_ratio ?? row.m_ratio ?? 0.8;
-            let dStar = parsed.metacognitive_metrics.d_star ?? row.d_star ?? 0.5;
-            let ive = parsed.metacognitive_metrics.info_buying_efficiency ?? row.ive ?? 0.5;
-            const bias = parsed.metacognitive_metrics.calibration_bias ?? row.calibration_bias ?? 0.0;
-            const brier = parsed.metacognitive_metrics.brier_score ?? 0.20;
-
-            let changed = false;
-
-            // 1. Fix 4AFC degeneration bug where acc > 0.30 yielded dPrime == 0.01 or acc >= 0.80 yielded 2AFC dPrime < 1.50
-            if ((acc > 0.30 && dPrime <= 0.02) || (acc >= 0.80 && dPrime < 1.50)) {
-              const nCorr = Math.round(acc * evalN);
-              const pc = Math.max(0.2501, Math.min(0.9994, (nCorr + 0.5) / (evalN + 1.0)));
-              dPrime = compute4AFCdPrime(pc);
-              const signalMod = Math.min(1.0, Math.max(0.05, dPrime / 0.50));
-              mRatio = Math.round(Math.max(0.01, Math.min(2.0, (metaD / Math.max(0.40, dPrime)) * signalMod)) * 10000) / 10000;
-              changed = true;
-            }
-
-            // 2. Fix Monotonic Tail Ceiling truncation where >= 95% accuracy over >= 40 trials had dStar < 0.80
-            if (acc >= 0.95 && totalN >= 40 && dPrime >= 2.5 && dStar < 0.80) {
-              dStar = 1.0;
-              changed = true;
-            }
-
-            // 3. Fix legacy single-pass hint IVE deadlock where high-accuracy subject bought hints pre-P1 and got ive === 0
-            if (ive === 0 && acc >= 0.90) {
-              ive = Math.round(Math.min(1.0, acc * 0.98) * 10000) / 10000;
-              changed = true;
-            }
-
-            if (changed) {
-              parsed.metacognitive_metrics.d_prime = dPrime;
-              parsed.metacognitive_metrics.m_ratio = mRatio;
-              parsed.metacognitive_metrics.d_star = dStar;
-              parsed.metacognitive_metrics.info_buying_efficiency = ive;
-              parsed.metacognitive_metrics.cognitive_manifold_vector = [dStar, mRatio, bias, ive];
-              parsed.summary.d_star = dStar;
-
-              const archetype = classifyCognitiveArchetype({
-                dStar,
-                dPrime,
-                mRatio,
-                bias,
-                brier,
-                ive,
-                hintsCount: ive > 0.5 ? 3 : 0,
-              });
-              const def = getArchetypeDefinition(archetype);
-              parsed.diagnostic_profile.archetype = archetype;
-              parsed.diagnostic_profile.role_title = def.role_title;
-              parsed.diagnostic_profile.quadrant_code = def.quadrant_code;
-              parsed.diagnostic_profile.praise_tagline = def.praise_tagline;
-              parsed.diagnostic_profile.strength_tags = def.strength_tags;
-              parsed.diagnostic_profile.empowering_feedback = def.empowering_feedback;
-              parsed.diagnostic_profile.growth_advice = def.growth_advice;
-              parsed.diagnostic_profile.skills = def.skills;
-              parsed.diagnostic_profile.clinical_summary = def.clinical_summary;
-
-              const updateParams = [
-                dPrime,
-                metaD,
-                mRatio,
-                bias,
-                dStar,
-                ive,
-                def.role_title,
-                def.quadrant_code,
-                def.clinical_summary,
-                JSON.stringify(parsed),
-                row.id
-              ];
-              if (this.storage.runSync) {
-                this.storage.runSync(updateSql, updateParams);
-              } else {
-                this.storage.run(updateSql, updateParams).catch(() => {});
-              }
-            }
-          }
-        } catch {}
-      }
-    } catch (e) {
-      console.warn("Historical sessions recalibration notice:", e);
+    if (this.storage.runSync) {
+      this.storage.runSync(sql, params);
+    } else {
+      this.storage.run(sql, params).catch((e) => console.warn("Error persisting trial record:", e));
     }
   }
 
-  private migrateFromLegacyJson(jsonPath: string) {
-    if (fs.existsSync(jsonPath)) {
-      try {
-        const raw = fs.readFileSync(jsonPath, "utf-8");
-        const list = JSON.parse(raw);
-        if (Array.isArray(list)) {
-          const insertSql = `
-            INSERT OR IGNORE INTO completed_sessions 
-            (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `;
-          for (const item of list) {
-            const params = [
-              item.id,
-              item.name || "受测者",
-              item.subject_type || "HUMAN",
-              item.first_order_accuracy ?? 0.7,
-              item.second_order_accuracy ?? 0.7,
-              item.d_prime ?? 1.2,
-              item.meta_d_prime ?? 1.1,
-              item.m_ratio ?? 0.9,
-              item.calibration_bias ?? 0.0,
-              item.final_score ?? 0,
-              item.created_at || new Date().toISOString(),
-              item.role_title || "人形外挂",
-              item.quadrant_code || "Q1_MASTER"
-            ];
-            if (this.storage.runSync) {
-              this.storage.runSync(insertSql, params);
-            } else {
-              this.storage.run(insertSql, params).catch(() => {});
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Legacy JSON migration notice:", e);
-      }
-    }
+  private async persistTrialRecordAsync(sessionId: string, record: TrialRecord, subjectType: string): Promise<void> {
+    const sql = `
+      INSERT OR REPLACE INTO session_records (
+        session_id, trial_index, is_warmup, difficulty_level, stimulus_id,
+        correct_option, first_order_choice, is_correct_first_order, revised_choice,
+        is_correct_final, action, confidence_level, hints_unlocked, score_delta,
+        duration_ms, agent_trace_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const isHuman = subjectType === SubjectType.HUMAN;
+    const agentTrace = !isHuman && (record.token_usage || record.operations)
+      ? JSON.stringify({ token_usage: record.token_usage, operations: record.operations })
+      : null;
+    const params = [
+      sessionId,
+      record.trial_index,
+      record.is_warmup ? 1 : 0,
+      record.difficulty_level,
+      record.stimulus_id,
+      record.correct_option,
+      record.first_order_choice,
+      record.is_correct_first_order ? 1 : 0,
+      record.revised_choice ?? null,
+      record.is_correct_final ? 1 : 0,
+      record.action,
+      record.confidence_level,
+      record.hints_unlocked ?? 0,
+      record.score_delta,
+      record.duration_ms ?? null,
+      agentTrace,
+    ];
+    await this.storage.run(sql, params);
   }
 
   public saveActiveSession(session: SessionState): void {
     if (session.isCompleted) return;
     const sql = `
       INSERT OR REPLACE INTO active_sessions (
-        id, subject_type, subject_name, total_trials, warmup_trials,
+        id, subject_type, subject_name, locale, total_trials, warmup_trials,
         current_trial_index, current_phase, score, staircase_state_json,
-        task_generator_state_json, current_task_json, records_json,
+        task_generator_state_json, current_task_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        metadata_json, updated_at, user_id
+        agent_metadata_json, updated_at, user_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
+    const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
+    const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
+    const locale = session.metadata?.locale || getLocale();
+
     const params = [
       session.sessionId,
       session.subjectType,
       session.subjectName,
+      locale,
       session.totalTrials,
       session.warmupTrials,
       session.currentTrialIndex,
@@ -339,7 +195,6 @@ export class SessionManager {
       JSON.stringify(session.staircase.toJSON()),
       JSON.stringify(session.taskGenerator.getState()),
       session.currentTask ? JSON.stringify(session.currentTask) : null,
-      JSON.stringify(session.records),
       session.isCompleted ? 1 : 0,
       session.stagedP1Choice,
       session.hintRevealedForCurrentTrial ? 1 : 0,
@@ -348,7 +203,7 @@ export class SessionManager {
       session.hintsCostForCurrentTrial,
       session.createdAt,
       session.startTimeMs,
-      session.metadata ? JSON.stringify(session.metadata) : null,
+      agentMetadata,
       new Date().toISOString(),
       session.userId ?? null,
     ];
@@ -364,18 +219,23 @@ export class SessionManager {
     if (session.isCompleted) return;
     const sql = `
       INSERT OR REPLACE INTO active_sessions (
-        id, subject_type, subject_name, total_trials, warmup_trials,
+        id, subject_type, subject_name, locale, total_trials, warmup_trials,
         current_trial_index, current_phase, score, staircase_state_json,
-        task_generator_state_json, current_task_json, records_json,
+        task_generator_state_json, current_task_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        metadata_json, updated_at, user_id
+        agent_metadata_json, updated_at, user_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
+    const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
+    const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
+    const locale = session.metadata?.locale || getLocale();
+
     const params = [
       session.sessionId,
       session.subjectType,
       session.subjectName,
+      locale,
       session.totalTrials,
       session.warmupTrials,
       session.currentTrialIndex,
@@ -384,7 +244,6 @@ export class SessionManager {
       JSON.stringify(session.staircase.toJSON()),
       JSON.stringify(session.taskGenerator.getState()),
       session.currentTask ? JSON.stringify(session.currentTask) : null,
-      JSON.stringify(session.records),
       session.isCompleted ? 1 : 0,
       session.stagedP1Choice,
       session.hintRevealedForCurrentTrial ? 1 : 0,
@@ -393,7 +252,7 @@ export class SessionManager {
       session.hintsCostForCurrentTrial,
       session.createdAt,
       session.startTimeMs,
-      session.metadata ? JSON.stringify(session.metadata) : null,
+      agentMetadata,
       new Date().toISOString(),
       session.userId ?? null,
     ];
@@ -412,12 +271,51 @@ export class SessionManager {
     await this.storage.run("DELETE FROM active_sessions WHERE id = ?", [sessionId]);
   }
 
-  private restoreSessionFromRow(row: any): SessionState {
+  private mapRecordRow(r: any): TrialRecord {
+    let tokenUsage = undefined;
+    let operations = undefined;
+    if (r.agent_trace_json) {
+      try {
+        const parsed = JSON.parse(r.agent_trace_json);
+        tokenUsage = parsed.token_usage;
+        operations = parsed.operations;
+      } catch {}
+    }
+    return {
+      trial_index: r.trial_index,
+      is_warmup: Boolean(r.is_warmup),
+      difficulty_level: r.difficulty_level,
+      stimulus_id: r.stimulus_id,
+      correct_option: r.correct_option,
+      first_order_choice: r.first_order_choice,
+      is_correct_first_order: Boolean(r.is_correct_first_order),
+      revised_choice: r.revised_choice ?? null,
+      is_correct_final: Boolean(r.is_correct_final),
+      action: r.action as MetacognitiveAction,
+      confidence_level: r.confidence_level,
+      hints_unlocked: r.hints_unlocked ?? 0,
+      score_delta: r.score_delta,
+      duration_ms: r.duration_ms ?? undefined,
+      token_usage: tokenUsage,
+      operations: operations,
+    };
+  }
+
+  private restoreSessionFromRow(row: any, records: TrialRecord[] = []): SessionState {
     const sc = StaircaseController.fromJSON(JSON.parse(row.staircase_state_json));
     const tg = TaskGenerator.fromState(JSON.parse(row.task_generator_state_json));
     const currentTask = row.current_task_json ? TaskGenerator.reviveTask(JSON.parse(row.current_task_json)) : null;
-    const records = row.records_json ? JSON.parse(row.records_json) : [];
-    const metadata = row.metadata_json ? JSON.parse(row.metadata_json) : undefined;
+    let metadata: SessionExecutionMetadata | undefined = undefined;
+    if (row.agent_metadata_json) {
+      try { metadata = JSON.parse(row.agent_metadata_json); } catch {}
+    }
+    if (row.locale) {
+      if (!metadata) {
+        metadata = { locale: row.locale };
+      } else if (!metadata.locale) {
+        metadata.locale = row.locale;
+      }
+    }
 
     const restored: SessionState = {
       sessionId: row.id,
@@ -453,7 +351,12 @@ export class SessionManager {
     if (this.storage.querySync) {
       const rows = this.storage.querySync<any>("SELECT * FROM active_sessions WHERE id = ?", [sessionId]);
       if (rows && rows.length > 0) {
-        return this.restoreSessionFromRow(rows[0]);
+        const recRows = this.storage.querySync<any>(
+          "SELECT * FROM session_records WHERE session_id = ? ORDER BY trial_index ASC",
+          [sessionId]
+        );
+        const records = (recRows || []).map(r => this.mapRecordRow(r));
+        return this.restoreSessionFromRow(rows[0], records);
       }
     }
     return undefined;
@@ -462,7 +365,12 @@ export class SessionManager {
   public async loadActiveSessionAsync(sessionId: string): Promise<SessionState | undefined> {
     const rows = await this.storage.query<any>("SELECT * FROM active_sessions WHERE id = ?", [sessionId]);
     if (rows && rows.length > 0) {
-      return this.restoreSessionFromRow(rows[0]);
+      const recRows = await this.storage.query<any>(
+        "SELECT * FROM session_records WHERE session_id = ? ORDER BY trial_index ASC",
+        [sessionId]
+      );
+      const records = (recRows || []).map(r => this.mapRecordRow(r));
+      return this.restoreSessionFromRow(rows[0], records);
     }
     return undefined;
   }
@@ -499,22 +407,27 @@ export class SessionManager {
     const createdAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
     const startTimeMs = Date.now();
 
-    const sessionMetadata: SessionExecutionMetadata = {
-      model_name: params.metadata?.model_name || sName,
-      persona: params.persona || params.metadata?.persona || "标准中性 (零人设)",
-      thinking_effort: params.thinkingEffort || params.metadata?.thinking_effort || "none",
-      total_trials: totalTrials,
-      completed_trials: 0,
-      warmup_trials: warmupTrials,
-      token_usage: {
-        prompt_tokens: 0,
-        completion_tokens: 0,
-        cached_tokens: 0,
-        reasoning_tokens: 0,
-        total_tokens: 0,
-      },
-      ...(params.metadata || {}),
-    };
+    let sessionMetadata: SessionExecutionMetadata | undefined = undefined;
+    if (subjectType !== SubjectType.HUMAN || params.persona || params.thinkingEffort || params.metadata) {
+      sessionMetadata = {
+        model_name: params.metadata?.model_name || (subjectType !== SubjectType.HUMAN ? sName : undefined),
+        persona: params.persona || params.metadata?.persona,
+        thinking_effort: params.thinkingEffort || params.metadata?.thinking_effort,
+        evaluation_mode: params.metadata?.evaluation_mode,
+        total_trials: totalTrials,
+        completed_trials: 0,
+        warmup_trials: warmupTrials,
+        token_usage: params.metadata?.token_usage || {
+          prompt_tokens: 0,
+          completion_tokens: 0,
+          cached_tokens: 0,
+          reasoning_tokens: 0,
+          total_tokens: 0,
+        },
+        locale: params.metadata?.locale || getLocale(),
+        ...(params.metadata || {}),
+      };
+    }
 
     const session: SessionState = {
       sessionId: sid,
@@ -841,15 +754,12 @@ export class SessionManager {
       trial_index: session.currentTrialIndex,
       difficulty_level: task.difficulty_level,
       stimulus_id: task.stimulus_id,
-      signal_type: task.signal_type,
       correct_option: task.correct_option,
       first_order_choice: p1Choice,
       is_correct_first_order: isP1Correct,
       action,
       confidence_level: conf,
-      hint_purchased: hintBought,
       hints_unlocked: session.hintsUnlockedForCurrentTrial,
-      hints_cost_total: hintCost,
       revised_choice: hintBought ? finalChoice : null,
       is_correct_final: isFinalCorrect,
       score_delta: scoreDelta,
@@ -859,6 +769,7 @@ export class SessionManager {
       operations: metricsPayload?.operations,
     };
     session.records.push(record);
+    this.persistTrialRecord(session.sessionId, record, session.subjectType);
 
     if (session.metadata) {
       session.metadata.completed_trials = session.records.length;
@@ -933,6 +844,10 @@ export class SessionManager {
     const res = this.submitPhase2(sessionId, action, confidenceLevel, revisedChoice, metricsPayload, locale);
     const session = this.getSession(sessionId);
     if (session) {
+      const latestRec = session.records[session.records.length - 1];
+      if (latestRec) {
+        await this.persistTrialRecordAsync(session.sessionId, latestRec, session.subjectType);
+      }
       if (session.isCompleted) {
         await this.persistCompletedSessionAsync(session);
         await this.removeActiveSessionAsync(session.sessionId);
@@ -998,21 +913,42 @@ export class SessionManager {
     if (session.finalReport) return this.localizeReport(session.finalReport, locale);
 
     const dStar = session.staircase.computeDStar(undefined, session.warmupTrials);
-    const metrics = PsychometricScorer.evaluate(session.records, true, dStar);
+    const rawMetrics = PsychometricScorer.evaluate(session.records, true, dStar);
     const targetLocale = locale || session.metadata?.locale || getLocale();
     const report = ReportGenerator.generateReport(
       session.sessionId,
       session.subjectType,
       session.records,
-      metrics,
+      rawMetrics,
       session.score,
       session.staircase.reversalCount,
       session.subjectName,
       targetLocale
     );
 
-    // 完整附加试次记录与执行元数据
+    report.total_duration_ms = session.startTimeMs ? Date.now() - session.startTimeMs : (session.metadata?.total_duration_ms ?? 0);
+    report.user_id = session.userId ?? null;
     report.records = session.records;
+
+    // Agent metadata: populated ONLY when subjectType !== SubjectType.HUMAN
+    if (session.subjectType !== SubjectType.HUMAN && session.metadata) {
+      report.agent_metadata = {
+        model_name: session.metadata.model_name || session.subjectName,
+        persona: session.metadata.persona,
+        thinking_effort: session.metadata.thinking_effort,
+        evaluation_mode: session.metadata.evaluation_mode,
+        token_usage: session.metadata.token_usage || {
+          prompt_tokens: 0,
+          completion_tokens: 0,
+          cached_tokens: 0,
+          reasoning_tokens: 0,
+          total_tokens: 0,
+        },
+      };
+    } else {
+      report.agent_metadata = undefined;
+    }
+
     if (session.metadata) {
       session.metadata.completed_trials = session.records.length;
       if (!session.metadata.total_duration_ms && session.startTimeMs) {
@@ -1022,95 +958,173 @@ export class SessionManager {
     }
 
     session.finalReport = report;
-
-    // Persist to completed_sessions
-    try {
-      const evalRecords = session.records.filter(r => !r.is_warmup);
-      const target = evalRecords.length > 0 ? evalRecords : session.records;
-      const firstAcc = target.filter(r => r.is_correct_first_order).length / target.length;
-      const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
-
-      const insertSql = `
-        INSERT OR REPLACE INTO completed_sessions
-        (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary, total_duration_ms, persona, thinking_effort, token_usage_json, user_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-      const params = [
-        report.session_id,
-        report.subject_name,
-        report.subject_type,
-        firstAcc,
-        secondAcc,
-        metrics.d_prime,
-        metrics.meta_d_prime,
-        metrics.m_ratio,
-        metrics.calibration_bias,
-        report.summary.final_score,
-        session.createdAt,
-        report.diagnostic_profile.role_title,
-        report.diagnostic_profile.quadrant_code,
-        JSON.stringify(report),
-        metrics.d_star,
-        metrics.info_buying_efficiency,
-        report.diagnostic_profile.clinical_summary,
-        report.metadata?.total_duration_ms ?? null,
-        report.metadata?.persona ?? null,
-        report.metadata?.thinking_effort ?? null,
-        report.metadata?.token_usage ? JSON.stringify(report.metadata.token_usage) : null,
-        session.userId ?? null
-      ];
-
-      if (this.storage.runSync) {
-        this.storage.runSync(insertSql, params);
-      } else {
-        this.storage.run(insertSql, params).catch((e) => console.warn("Error persisting session to DB:", e));
-      }
-      this.removeActiveSession(session.sessionId);
-    } catch (e) {
-      console.warn("Error persisting session to DB:", e);
-    }
-
+    this.persistCompletedSession(session);
+    this.removeActiveSession(session.sessionId);
     return report;
   }
 
-  public async persistCompletedSessionAsync(session: SessionState): Promise<void> {
+  public persistCompletedSession(session: SessionState): void {
     const report = session.finalReport || this.finalizeReport(session);
-    const evalRecords = session.records.filter(r => !r.is_warmup);
-    const target = evalRecords.length > 0 ? evalRecords : session.records;
-    const firstAcc = target.length > 0 ? target.filter(r => r.is_correct_first_order).length / target.length : 0;
-    const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
-    const metrics = report.metacognitive_metrics;
+    const metrics = report.metrics;
 
     const insertSql = `
-      INSERT OR REPLACE INTO completed_sessions
-      (id, name, subject_type, first_order_accuracy, second_order_accuracy, d_prime, meta_d_prime, m_ratio, calibration_bias, final_score, created_at, role_title, quadrant_code, full_report_json, d_star, ive, clinical_summary, total_duration_ms, persona, thinking_effort, token_usage_json, user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO completed_sessions (
+        id, subject_name, subject_type, locale, total_trials, warmup_trials,
+        completed_trials, total_duration_ms, final_score, quadrant_code,
+        first_order_accuracy, second_order_accuracy, reversals_count,
+        d_star, d_prime, meta_d_prime, m_ratio, calibration_bias,
+        brier_score, ive, coachability_index, risk_attitude, created_at, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       report.session_id,
       report.subject_name,
       report.subject_type,
-      firstAcc,
-      secondAcc,
+      report.locale,
+      report.total_trials,
+      report.warmup_trials,
+      report.completed_trials,
+      report.total_duration_ms,
+      report.final_score,
+      report.quadrant_code,
+      metrics.first_order_accuracy,
+      metrics.second_order_accuracy,
+      metrics.reversals_count,
+      metrics.d_star,
       metrics.d_prime,
       metrics.meta_d_prime,
       metrics.m_ratio,
       metrics.calibration_bias,
-      report.summary.final_score,
+      metrics.brier_score,
+      metrics.ive,
+      metrics.coachability_index,
+      metrics.risk_attitude,
       session.createdAt,
-      report.diagnostic_profile.role_title,
-      report.diagnostic_profile.quadrant_code,
-      JSON.stringify(report),
+      session.userId ?? null,
+    ];
+
+    if (this.storage.runSync) {
+      this.storage.runSync(insertSql, params);
+      for (const rec of session.records) {
+        this.persistTrialRecord(session.sessionId, rec, session.subjectType);
+      }
+      if (session.subjectType !== SubjectType.HUMAN && report.agent_metadata) {
+        const ag = report.agent_metadata;
+        const agSql = `
+          INSERT OR REPLACE INTO session_agent_metadata (
+            session_id, model_name, persona, thinking_effort, evaluation_mode,
+            prompt_tokens, completion_tokens, cached_tokens, reasoning_tokens, total_tokens
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        this.storage.runSync(agSql, [
+          report.session_id,
+          ag.model_name,
+          ag.persona ?? null,
+          ag.thinking_effort ?? null,
+          ag.evaluation_mode ?? null,
+          ag.token_usage.prompt_tokens,
+          ag.token_usage.completion_tokens,
+          ag.token_usage.cached_tokens,
+          ag.token_usage.reasoning_tokens,
+          ag.token_usage.total_tokens,
+        ]);
+      }
+    } else {
+      this.storage.run(insertSql, params).catch((e) => console.warn("Error persisting completed session:", e));
+      for (const rec of session.records) {
+        this.persistTrialRecord(session.sessionId, rec, session.subjectType);
+      }
+      if (session.subjectType !== SubjectType.HUMAN && report.agent_metadata) {
+        const ag = report.agent_metadata;
+        const agSql = `
+          INSERT OR REPLACE INTO session_agent_metadata (
+            session_id, model_name, persona, thinking_effort, evaluation_mode,
+            prompt_tokens, completion_tokens, cached_tokens, reasoning_tokens, total_tokens
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        this.storage.run(agSql, [
+          report.session_id,
+          ag.model_name,
+          ag.persona ?? null,
+          ag.thinking_effort ?? null,
+          ag.evaluation_mode ?? null,
+          ag.token_usage.prompt_tokens,
+          ag.token_usage.completion_tokens,
+          ag.token_usage.cached_tokens,
+          ag.token_usage.reasoning_tokens,
+          ag.token_usage.total_tokens,
+        ]).catch(() => {});
+      }
+    }
+    this.removeActiveSession(session.sessionId);
+  }
+
+  public async persistCompletedSessionAsync(session: SessionState): Promise<void> {
+    const report = session.finalReport || this.finalizeReport(session);
+    const metrics = report.metrics;
+
+    const insertSql = `
+      INSERT OR REPLACE INTO completed_sessions (
+        id, subject_name, subject_type, locale, total_trials, warmup_trials,
+        completed_trials, total_duration_ms, final_score, quadrant_code,
+        first_order_accuracy, second_order_accuracy, reversals_count,
+        d_star, d_prime, meta_d_prime, m_ratio, calibration_bias,
+        brier_score, ive, coachability_index, risk_attitude, created_at, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      report.session_id,
+      report.subject_name,
+      report.subject_type,
+      report.locale,
+      report.total_trials,
+      report.warmup_trials,
+      report.completed_trials,
+      report.total_duration_ms,
+      report.final_score,
+      report.quadrant_code,
+      metrics.first_order_accuracy,
+      metrics.second_order_accuracy,
+      metrics.reversals_count,
       metrics.d_star,
-      metrics.info_buying_efficiency,
-      report.diagnostic_profile.clinical_summary,
-      report.metadata?.total_duration_ms ?? null,
-      report.metadata?.persona ?? null,
-      report.metadata?.thinking_effort ?? null,
-      report.metadata?.token_usage ? JSON.stringify(report.metadata.token_usage) : null,
-      session.userId ?? null
+      metrics.d_prime,
+      metrics.meta_d_prime,
+      metrics.m_ratio,
+      metrics.calibration_bias,
+      metrics.brier_score,
+      metrics.ive,
+      metrics.coachability_index,
+      metrics.risk_attitude,
+      session.createdAt,
+      session.userId ?? null,
     ];
     await this.storage.run(insertSql, params);
+
+    for (const rec of session.records) {
+      await this.persistTrialRecordAsync(session.sessionId, rec, session.subjectType);
+    }
+
+    if (session.subjectType !== SubjectType.HUMAN && report.agent_metadata) {
+      const ag = report.agent_metadata;
+      const agSql = `
+        INSERT OR REPLACE INTO session_agent_metadata (
+          session_id, model_name, persona, thinking_effort, evaluation_mode,
+          prompt_tokens, completion_tokens, cached_tokens, reasoning_tokens, total_tokens
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      await this.storage.run(agSql, [
+        report.session_id,
+        ag.model_name,
+        ag.persona ?? null,
+        ag.thinking_effort ?? null,
+        ag.evaluation_mode ?? null,
+        ag.token_usage.prompt_tokens,
+        ag.token_usage.completion_tokens,
+        ag.token_usage.cached_tokens,
+        ag.token_usage.reasoning_tokens,
+        ag.token_usage.total_tokens,
+      ]);
+    }
   }
 
   async finalizeReportAsync(session: SessionState, locale?: SupportedLocale): Promise<FinalAssessmentReport> {
@@ -1145,197 +1159,85 @@ export class SessionManager {
         };
       }
       if (session.finalReport) {
-        session.finalReport.metadata = session.metadata;
-        try {
-          const updateSql = `
-            UPDATE completed_sessions
-            SET full_report_json = ?,
-                total_duration_ms = COALESCE(?, total_duration_ms),
-                persona = COALESCE(?, persona),
-                thinking_effort = COALESCE(?, thinking_effort),
-                token_usage_json = COALESCE(?, token_usage_json)
-            WHERE id = ?
+        if (session.subjectType !== SubjectType.HUMAN) {
+          session.finalReport.agent_metadata = {
+            model_name: session.metadata.model_name || session.subjectName,
+            persona: session.metadata.persona,
+            thinking_effort: session.metadata.thinking_effort,
+            evaluation_mode: session.metadata.evaluation_mode,
+            token_usage: session.metadata.token_usage || {
+              prompt_tokens: 0,
+              completion_tokens: 0,
+              cached_tokens: 0,
+              reasoning_tokens: 0,
+              total_tokens: 0,
+            },
+          };
+          const ag = session.finalReport.agent_metadata;
+          const agSql = `
+            INSERT OR REPLACE INTO session_agent_metadata (
+              session_id, model_name, persona, thinking_effort, evaluation_mode,
+              prompt_tokens, completion_tokens, cached_tokens, reasoning_tokens, total_tokens
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
-          const params = [
-            JSON.stringify(session.finalReport),
-            session.metadata.total_duration_ms ?? null,
-            session.metadata.persona ?? null,
-            session.metadata.thinking_effort ?? null,
-            session.metadata.token_usage ? JSON.stringify(session.metadata.token_usage) : null,
-            sessionId
-          ];
           if (this.storage.runSync) {
-            this.storage.runSync(updateSql, params);
+            this.storage.runSync(agSql, [
+              sessionId,
+              ag.model_name,
+              ag.persona ?? null,
+              ag.thinking_effort ?? null,
+              ag.evaluation_mode ?? null,
+              ag.token_usage.prompt_tokens,
+              ag.token_usage.completion_tokens,
+              ag.token_usage.cached_tokens,
+              ag.token_usage.reasoning_tokens,
+              ag.token_usage.total_tokens,
+            ]);
           } else {
-            this.storage.run(updateSql, params).catch((e) => console.warn(e));
+            this.storage.run(agSql, [
+              sessionId,
+              ag.model_name,
+              ag.persona ?? null,
+              ag.thinking_effort ?? null,
+              ag.evaluation_mode ?? null,
+              ag.token_usage.prompt_tokens,
+              ag.token_usage.completion_tokens,
+              ag.token_usage.cached_tokens,
+              ag.token_usage.reasoning_tokens,
+              ag.token_usage.total_tokens,
+            ]).catch(() => {});
           }
-        } catch (e) {
-          console.warn("Error updating session metadata in DB:", e);
+        }
+        if (session.metadata.total_duration_ms) {
+          session.finalReport.total_duration_ms = session.metadata.total_duration_ms;
+          const durSql = "UPDATE completed_sessions SET total_duration_ms = ? WHERE id = ?";
+          if (this.storage.runSync) {
+            this.storage.runSync(durSql, [session.metadata.total_duration_ms, sessionId]);
+          } else {
+            this.storage.run(durSql, [session.metadata.total_duration_ms, sessionId]).catch(() => {});
+          }
+        }
+        if (metadata.locale) {
+          session.metadata.locale = metadata.locale;
+          session.finalReport.locale = metadata.locale;
+          const locSql = "UPDATE completed_sessions SET locale = ? WHERE id = ?";
+          if (this.storage.runSync) {
+            this.storage.runSync(locSql, [metadata.locale, sessionId]);
+          } else {
+            this.storage.run(locSql, [metadata.locale, sessionId]).catch(() => {});
+          }
         }
         return session.finalReport;
       } else {
         this.saveActiveSession(session);
         return undefined;
       }
-    } else {
-      const rows = this.storage.querySync
-        ? this.storage.querySync<any>("SELECT * FROM completed_sessions WHERE id = ?", [sessionId])
-        : [];
-      const row = rows[0];
-      if (row && row.full_report_json) {
-        try {
-          const rep: FinalAssessmentReport = JSON.parse(row.full_report_json);
-          rep.metadata = {
-            ...(rep.metadata || {}),
-            ...metadata,
-            model_name: metadata.model_name || rep.metadata?.model_name || rep.subject_name,
-            total_trials: metadata.total_trials || rep.metadata?.total_trials || rep.summary.total_trials,
-            completed_trials: metadata.completed_trials || rep.metadata?.completed_trials || rep.summary.total_trials,
-            warmup_trials: metadata.warmup_trials || rep.metadata?.warmup_trials || 10,
-          };
-          if (metadata.token_usage) {
-            rep.metadata.token_usage = {
-              ...(rep.metadata.token_usage || {
-                prompt_tokens: 0,
-                completion_tokens: 0,
-                cached_tokens: 0,
-                reasoning_tokens: 0,
-                total_tokens: 0,
-              }),
-              ...metadata.token_usage,
-            };
-          }
-          const updateSql = `
-            UPDATE completed_sessions
-            SET full_report_json = ?,
-                total_duration_ms = COALESCE(?, total_duration_ms),
-                persona = COALESCE(?, persona),
-                thinking_effort = COALESCE(?, thinking_effort),
-                token_usage_json = COALESCE(?, token_usage_json)
-            WHERE id = ?
-          `;
-          const params = [
-            JSON.stringify(rep),
-            rep.metadata?.total_duration_ms ?? null,
-            rep.metadata?.persona ?? null,
-            rep.metadata?.thinking_effort ?? null,
-            rep.metadata?.token_usage ? JSON.stringify(rep.metadata.token_usage) : null,
-            sessionId
-          ];
-          if (this.storage.runSync) {
-            this.storage.runSync(updateSql, params);
-          } else {
-            this.storage.run(updateSql, params).catch((e) => console.warn(e));
-          }
-          return rep;
-        } catch (e) {
-          console.warn("Error updating DB session metadata:", e);
-        }
-      }
     }
     return undefined;
   }
 
   async updateSessionMetadataAsync(sessionId: string, metadata: Partial<SessionExecutionMetadata>): Promise<FinalAssessmentReport | undefined> {
-    const session = await this.getSessionAsync(sessionId);
-    if (session) {
-      if (!session.metadata) {
-        session.metadata = {
-          model_name: session.subjectName,
-          total_trials: session.totalTrials,
-          completed_trials: session.records.length,
-          warmup_trials: session.warmupTrials,
-        };
-      }
-      Object.assign(session.metadata, metadata);
-      if (metadata.token_usage) {
-        session.metadata.token_usage = {
-          ...(session.metadata.token_usage || {
-            prompt_tokens: 0,
-            completion_tokens: 0,
-            cached_tokens: 0,
-            reasoning_tokens: 0,
-            total_tokens: 0,
-          }),
-          ...metadata.token_usage,
-        };
-      }
-      if (session.finalReport) {
-        session.finalReport.metadata = session.metadata;
-        const updateSql = `
-          UPDATE completed_sessions
-          SET full_report_json = ?,
-              total_duration_ms = COALESCE(?, total_duration_ms),
-              persona = COALESCE(?, persona),
-              thinking_effort = COALESCE(?, thinking_effort),
-              token_usage_json = COALESCE(?, token_usage_json)
-          WHERE id = ?
-        `;
-        const params = [
-          JSON.stringify(session.finalReport),
-          session.metadata.total_duration_ms ?? null,
-          session.metadata.persona ?? null,
-          session.metadata.thinking_effort ?? null,
-          session.metadata.token_usage ? JSON.stringify(session.metadata.token_usage) : null,
-          sessionId
-        ];
-        await this.storage.run(updateSql, params);
-        return session.finalReport;
-      } else {
-        await this.saveActiveSessionAsync(session);
-        return undefined;
-      }
-    } else {
-      const rows = await this.storage.query<any>("SELECT * FROM completed_sessions WHERE id = ?", [sessionId]);
-      const row = rows[0];
-      if (row && row.full_report_json) {
-        try {
-          const rep: FinalAssessmentReport = JSON.parse(row.full_report_json);
-          rep.metadata = {
-            ...(rep.metadata || {}),
-            ...metadata,
-            model_name: metadata.model_name || rep.metadata?.model_name || rep.subject_name,
-            total_trials: metadata.total_trials || rep.metadata?.total_trials || rep.summary.total_trials,
-            completed_trials: metadata.completed_trials || rep.metadata?.completed_trials || rep.summary.total_trials,
-            warmup_trials: metadata.warmup_trials || rep.metadata?.warmup_trials || 10,
-          };
-          if (metadata.token_usage) {
-            rep.metadata.token_usage = {
-              ...(rep.metadata.token_usage || {
-                prompt_tokens: 0,
-                completion_tokens: 0,
-                cached_tokens: 0,
-                reasoning_tokens: 0,
-                total_tokens: 0,
-              }),
-              ...metadata.token_usage,
-            };
-          }
-          const updateSql = `
-            UPDATE completed_sessions
-            SET full_report_json = ?,
-                total_duration_ms = COALESCE(?, total_duration_ms),
-                persona = COALESCE(?, persona),
-                thinking_effort = COALESCE(?, thinking_effort),
-                token_usage_json = COALESCE(?, token_usage_json)
-            WHERE id = ?
-          `;
-          const params = [
-            JSON.stringify(rep),
-            rep.metadata?.total_duration_ms ?? null,
-            rep.metadata?.persona ?? null,
-            rep.metadata?.thinking_effort ?? null,
-            rep.metadata?.token_usage ? JSON.stringify(rep.metadata.token_usage) : null,
-            sessionId
-          ];
-          await this.storage.run(updateSql, params);
-          return rep;
-        } catch (e) {
-          console.warn("Error updating DB session metadata:", e);
-        }
-      }
-    }
-    return undefined;
+    return this.updateSessionMetadata(sessionId, metadata);
   }
 
   deleteSession(sessionId: string): boolean {
@@ -1343,9 +1245,15 @@ export class SessionManager {
     this.removeActiveSession(sessionId);
     let changes = 0;
     if (this.storage.runSync) {
+      this.storage.runSync("DELETE FROM session_records WHERE session_id = ?", [sessionId]);
+      this.storage.runSync("DELETE FROM session_agent_metadata WHERE session_id = ?", [sessionId]);
+      this.storage.runSync("DELETE FROM active_sessions WHERE id = ?", [sessionId]);
       const res = this.storage.runSync("DELETE FROM completed_sessions WHERE id = ?", [sessionId]);
       changes = res?.changes ?? 0;
     } else {
+      this.storage.run("DELETE FROM session_records WHERE session_id = ?", [sessionId]).catch(() => {});
+      this.storage.run("DELETE FROM session_agent_metadata WHERE session_id = ?", [sessionId]).catch(() => {});
+      this.storage.run("DELETE FROM active_sessions WHERE id = ?", [sessionId]).catch(() => {});
       this.storage.run("DELETE FROM completed_sessions WHERE id = ?", [sessionId])
         .then((r) => { changes = r?.changes ?? 0; })
         .catch((e) => console.warn(e));
@@ -1356,6 +1264,9 @@ export class SessionManager {
   async deleteSessionAsync(sessionId: string): Promise<boolean> {
     this.sessions.delete(sessionId);
     await this.removeActiveSessionAsync(sessionId);
+    await this.storage.run("DELETE FROM session_records WHERE session_id = ?", [sessionId]);
+    await this.storage.run("DELETE FROM session_agent_metadata WHERE session_id = ?", [sessionId]);
+    await this.storage.run("DELETE FROM active_sessions WHERE id = ?", [sessionId]);
     const res = await this.storage.run("DELETE FROM completed_sessions WHERE id = ?", [sessionId]);
     return (res?.changes ?? 0) > 0;
   }
@@ -1369,13 +1280,21 @@ export class SessionManager {
       return this.finalizeReport(session, locale);
     }
 
-    // Try reading from DB
-    const rows = this.storage.querySync
-      ? this.storage.querySync<any>("SELECT * FROM completed_sessions WHERE id = ?", [sessionId])
-      : [];
-    const row = rows[0];
-    if (row) {
-      return this.formatStoredReport(row, locale);
+    if (this.storage.querySync) {
+      const rows = this.storage.querySync<any>("SELECT * FROM completed_sessions WHERE id = ?", [sessionId]);
+      const row = rows[0];
+      if (row) {
+        const recRows = this.storage.querySync<any>(
+          "SELECT * FROM session_records WHERE session_id = ? ORDER BY trial_index ASC",
+          [sessionId]
+        );
+        const records = (recRows || []).map((r) => this.mapRecordRow(r));
+        const agentRows = this.storage.querySync<any>(
+          "SELECT * FROM session_agent_metadata WHERE session_id = ?",
+          [sessionId]
+        );
+        return this.formatStoredReportFromDb(row, records, agentRows[0], locale);
+      }
     }
 
     throw new Error(`Report for session '${sessionId}' is not available.`);
@@ -1393,191 +1312,249 @@ export class SessionManager {
     const rows = await this.storage.query<any>("SELECT * FROM completed_sessions WHERE id = ?", [sessionId]);
     const row = rows[0];
     if (row) {
-      return this.formatStoredReport(row, locale);
+      const recRows = await this.storage.query<any>(
+        "SELECT * FROM session_records WHERE session_id = ? ORDER BY trial_index ASC",
+        [sessionId]
+      );
+      const records = (recRows || []).map((r) => this.mapRecordRow(r));
+      const agentRows = await this.storage.query<any>(
+        "SELECT * FROM session_agent_metadata WHERE session_id = ?",
+        [sessionId]
+      );
+      return this.formatStoredReportFromDb(row, records, agentRows[0], locale);
     }
 
     throw new Error(`Report for session '${sessionId}' is not available.`);
   }
 
-  private formatStoredReport(row: any, locale?: SupportedLocale): FinalAssessmentReport {
-    if (row.full_report_json) {
-      const parsed = JSON.parse(row.full_report_json);
-      const dStarVal = row.d_star ?? (parsed.metacognitive_metrics.d_star ?? Math.round(Math.max(0, Math.min(1, ((parsed.summary.first_order_accuracy ?? 0.7) - 0.20) / 0.80)) * 1000) / 1000);
-      const mRatioVal = parsed.metacognitive_metrics.m_ratio;
-      const biasVal = parsed.metacognitive_metrics.calibration_bias;
-      const iveVal = parsed.metacognitive_metrics.info_buying_efficiency ?? 0.50;
-      const dPrimeVal = parsed.metacognitive_metrics.d_prime ?? 1.2;
-      const brierVal = parsed.metacognitive_metrics.brier_score ?? 0.20;
+  private formatStoredReportFromDb(row: any, records: TrialRecord[], agentRow: any, locale?: SupportedLocale): FinalAssessmentReport {
+    const targetLocale = locale || row.locale || getLocale();
+    const quadrantCode = row.quadrant_code || "Q1-CAL";
+    const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
+    const archetype = archetypeDef.archetype;
 
-      parsed.metacognitive_metrics.d_star = dStarVal;
-      parsed.metacognitive_metrics.cognitive_manifold_vector = [dStarVal, mRatioVal, biasVal, iveVal];
+    const metrics: AssessmentMetrics = {
+      first_order_accuracy: row.first_order_accuracy ?? 0.7,
+      second_order_accuracy: row.second_order_accuracy ?? 0.7,
+      reversals_count: row.reversals_count ?? 0,
+      d_star: row.d_star ?? 0.5,
+      d_prime: row.d_prime ?? 1.2,
+      meta_d_prime: row.meta_d_prime ?? 1.1,
+      m_ratio: row.m_ratio ?? 0.9,
+      calibration_bias: row.calibration_bias ?? 0.0,
+      brier_score: row.brier_score ?? 0.20,
+      ive: row.ive ?? 0.50,
+      coachability_index: row.coachability_index ?? 50,
+      risk_attitude: (row.risk_attitude as RiskAttitude) || RiskAttitude.MODERATE_RATIONAL,
+    };
 
-      const hintsCount = ReportGenerator.countHintTrials(parsed.records, true);
-
-      // 动态根据 v2 超平面重新归纳画像，彻底消除历史遗留旧画像漂移
-      const archetype = classifyCognitiveArchetype({
-        dStar: dStarVal,
-        dPrime: dPrimeVal,
-        mRatio: mRatioVal,
-        bias: biasVal,
-        brier: brierVal,
-        ive: iveVal,
-        hintsCount,
-      });
-      parsed.diagnostic_profile.archetype = archetype;
-
-      if (!parsed.metadata) {
-        let tokenUsage = undefined;
-        if (row.token_usage_json) {
-          try { tokenUsage = JSON.parse(row.token_usage_json); } catch {}
-        }
-        if (row.total_duration_ms || row.persona || row.thinking_effort || tokenUsage) {
-          parsed.metadata = {
-            model_name: row.name,
-            persona: row.persona,
-            thinking_effort: row.thinking_effort,
-            total_duration_ms: row.total_duration_ms,
-            total_trials: parsed.summary?.total_trials ?? 0,
-            completed_trials: parsed.summary?.total_trials ?? 0,
-            warmup_trials: 10,
-            token_usage: tokenUsage,
-          };
-        }
-      }
-      return this.localizeReport(parsed, locale);
+    let agentMetadata: AgentExecutionMetadata | undefined = undefined;
+    if (row.subject_type !== SubjectType.HUMAN && agentRow) {
+      agentMetadata = {
+        model_name: agentRow.model_name || row.subject_name,
+        persona: agentRow.persona,
+        thinking_effort: agentRow.thinking_effort,
+        evaluation_mode: agentRow.evaluation_mode,
+        token_usage: {
+          prompt_tokens: agentRow.prompt_tokens ?? 0,
+          completion_tokens: agentRow.completion_tokens ?? 0,
+          cached_tokens: agentRow.cached_tokens ?? 0,
+          reasoning_tokens: agentRow.reasoning_tokens ?? 0,
+          total_tokens: agentRow.total_tokens ?? 0,
+        },
+      };
     }
 
-    // Synthesize fallback report for legacy migrated record
-    const dStarVal = row.d_star ?? Math.round(Math.max(0, Math.min(1, ((row.first_order_accuracy ?? 0.7) - 0.20) / 0.80)) * 1000) / 1000;
-    const mRatioVal = row.m_ratio ?? 0.9;
-    const biasVal = row.calibration_bias ?? 0.0;
-    const iveVal = row.ive ?? 0.50;
-    const dPrimeVal = row.d_prime ?? 1.2;
+    let legacyMetadata: SessionExecutionMetadata | undefined = undefined;
+    if (agentMetadata) {
+      legacyMetadata = {
+        model_name: agentMetadata.model_name,
+        persona: agentMetadata.persona,
+        thinking_effort: agentMetadata.thinking_effort,
+        evaluation_mode: agentMetadata.evaluation_mode,
+        token_usage: agentMetadata.token_usage,
+        total_trials: row.total_trials ?? records.length,
+        completed_trials: row.completed_trials ?? records.length,
+        warmup_trials: row.warmup_trials ?? 10,
+        total_duration_ms: row.total_duration_ms ?? 0,
+        locale: targetLocale,
+      };
+    }
 
-    const archetype = classifyCognitiveArchetype({
-      dStar: dStarVal,
-      dPrime: dPrimeVal,
-      mRatio: mRatioVal,
-      bias: biasVal,
-      brier: 0.20,
-      ive: iveVal,
-      hintsCount: 0,
-    });
-
-    const metrics: any = {
-      d_prime: dPrimeVal,
-      meta_d_prime: row.meta_d_prime ?? 1.1,
-      m_ratio: mRatioVal,
-      calibration_bias: biasVal,
-      brier_score: 0.15,
-      info_buying_efficiency: iveVal,
-      d_star: dStarVal,
-      cognitive_manifold_vector: [dStarVal, mRatioVal, biasVal, iveVal],
-    };
-    return ReportGenerator.generateReport(
-      row.id,
-      row.subject_type || "HUMAN",
-      [],
+    const report: FinalAssessmentReport = {
+      session_id: row.id,
+      subject_name: row.subject_name || row.name || "受测者",
+      subject_type: row.subject_type,
+      locale: targetLocale,
+      created_at: row.created_at,
+      total_trials: row.total_trials ?? records.length,
+      warmup_trials: row.warmup_trials ?? 10,
+      completed_trials: row.completed_trials ?? records.length,
+      total_duration_ms: row.total_duration_ms ?? 0,
+      final_score: row.final_score ?? 0,
+      quadrant_code: quadrantCode,
+      archetype,
       metrics,
-      row.final_score ?? 0,
-      4,
-      row.name || "受测者",
-      locale
-    );
+      agent_metadata: agentMetadata,
+      metadata: legacyMetadata,
+      records,
+      user_id: row.user_id ?? null,
+
+      // Transitional wrappers
+      summary: {
+        total_trials: row.total_trials ?? records.length,
+        first_order_accuracy: row.first_order_accuracy ?? 0.7,
+        final_score: row.final_score ?? 0,
+        reversals_count: row.reversals_count ?? 0,
+        d_star: row.d_star ?? 0.5,
+      },
+      metacognitive_metrics: {
+        d_prime: row.d_prime ?? 1.2,
+        meta_d_prime: row.meta_d_prime ?? 1.1,
+        m_ratio: row.m_ratio ?? 0.9,
+        calibration_bias: row.calibration_bias ?? 0.0,
+        brier_score: row.brier_score ?? 0.20,
+        ive: row.ive ?? 0.50,
+        info_buying_efficiency: row.ive ?? 0.50,
+        d_star: row.d_star ?? 0.5,
+      },
+      diagnostic_profile: {
+        archetype,
+        risk_attitude: (row.risk_attitude as RiskAttitude) || RiskAttitude.MODERATE_RATIONAL,
+        critical_weakness: ReportGenerator.diagnoseWeakness(metrics as any, archetype, row.risk_attitude, targetLocale),
+        coachability_index: row.coachability_index ?? 50,
+        clinical_summary: archetypeDef.clinical_summary,
+        detailed_feedback: archetypeDef.empowering_feedback,
+        role_title: archetypeDef.role_title,
+        english_title: archetypeDef.english_title,
+        quadrant_code: archetypeDef.quadrant_code,
+        praise_tagline: archetypeDef.praise_tagline,
+        strength_tags: archetypeDef.strength_tags,
+        empowering_feedback: archetypeDef.empowering_feedback,
+        growth_advice: archetypeDef.growth_advice,
+        skills: archetypeDef.skills,
+      },
+    };
+
+    return report;
   }
 
   getCohortScatterData(currentSessionId?: string, locale?: SupportedLocale): CohortScatterResponse {
     const targetLocale = locale || getLocale();
-    const rows = (this.storage.querySync
-      ? this.storage.querySync("SELECT * FROM completed_sessions ORDER BY created_at DESC")
-      : []) as any[];
-    return this.assembleCohortScatter(rows, currentSessionId, targetLocale);
+    const sql = `
+      SELECT 
+        c.*,
+        a.model_name as agent_model,
+        a.persona as agent_persona,
+        a.thinking_effort as agent_effort,
+        a.evaluation_mode as agent_eval_mode,
+        a.prompt_tokens,
+        a.completion_tokens,
+        a.cached_tokens,
+        a.reasoning_tokens,
+        a.total_tokens
+      FROM completed_sessions c
+      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+      ORDER BY c.created_at DESC
+    `;
+    const rows = (this.storage.querySync ? this.storage.querySync(sql) : []) as any[];
+    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale);
   }
 
   async getCohortScatterDataAsync(currentSessionId?: string, locale?: SupportedLocale): Promise<CohortScatterResponse> {
     const targetLocale = locale || getLocale();
-    const rows = (await this.storage.query("SELECT * FROM completed_sessions ORDER BY created_at DESC")) as any[];
-    return this.assembleCohortScatter(rows, currentSessionId, targetLocale);
+    const sql = `
+      SELECT 
+        c.*,
+        a.model_name as agent_model,
+        a.persona as agent_persona,
+        a.thinking_effort as agent_effort,
+        a.evaluation_mode as agent_eval_mode,
+        a.prompt_tokens,
+        a.completion_tokens,
+        a.cached_tokens,
+        a.reasoning_tokens,
+        a.total_tokens
+      FROM completed_sessions c
+      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+      ORDER BY c.created_at DESC
+    `;
+    const rows = (await this.storage.query(sql)) as any[];
+    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale);
   }
 
-  private assembleCohortScatter(rows: any[], currentSessionId: string | undefined, targetLocale: SupportedLocale): CohortScatterResponse {
+  private assembleCohortScatterFromRows(rows: any[], currentSessionId: string | undefined, targetLocale: SupportedLocale): CohortScatterResponse {
     const subjects: SubjectDataPoint[] = rows.map(r => {
-      const dStar = r.d_star ?? Math.round(Math.max(0, Math.min(1, ((r.first_order_accuracy ?? 0.7) - 0.20) / 0.80)) * 1000) / 1000;
-      const ive = r.ive ?? 0.50;
-      const mRatio = Math.round((r.m_ratio ?? 0.9) * 1000) / 1000;
-      const bias = Math.round((r.calibration_bias ?? 0.0) * 1000) / 1000;
-      const dPrime = Math.round((r.d_prime ?? 1.2) * 1000) / 1000;
+      const quadrantCode = r.quadrant_code || "Q1-CAL";
+      const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
+      const metrics: AssessmentMetrics = {
+        first_order_accuracy: r.first_order_accuracy ?? 0.7,
+        second_order_accuracy: r.second_order_accuracy ?? 0.7,
+        reversals_count: r.reversals_count ?? 0,
+        d_star: r.d_star ?? 0.5,
+        d_prime: r.d_prime ?? 1.2,
+        meta_d_prime: r.meta_d_prime ?? 1.1,
+        m_ratio: r.m_ratio ?? 0.9,
+        calibration_bias: r.calibration_bias ?? 0.0,
+        brier_score: r.brier_score ?? 0.20,
+        ive: r.ive ?? 0.50,
+        coachability_index: r.coachability_index ?? 50,
+        risk_attitude: (r.risk_attitude as RiskAttitude) || RiskAttitude.MODERATE_RATIONAL,
+      };
 
-      let brier = 0.20;
-      let hintsCount = 0;
-      let sessionMetadata: SessionExecutionMetadata | undefined = undefined;
-      if (r.full_report_json) {
-        try {
-          const parsed = JSON.parse(r.full_report_json);
-          if (parsed.metacognitive_metrics?.brier_score !== undefined) {
-            brier = parsed.metacognitive_metrics.brier_score;
-          }
-          if (parsed.records && Array.isArray(parsed.records)) {
-            hintsCount = ReportGenerator.countHintTrials(parsed.records, true);
-          }
-          if (parsed.metadata) {
-            sessionMetadata = parsed.metadata;
-          }
-        } catch {}
-      }
-      if (!sessionMetadata && (r.total_duration_ms || r.persona || r.thinking_effort || r.token_usage_json)) {
-        let tokenUsage = undefined;
-        if (r.token_usage_json) {
-          try { tokenUsage = JSON.parse(r.token_usage_json); } catch {}
-        }
-        sessionMetadata = {
-          model_name: r.name,
-          persona: r.persona,
-          thinking_effort: r.thinking_effort,
-          total_duration_ms: r.total_duration_ms,
-          total_trials: 0,
-          completed_trials: 0,
-          warmup_trials: 0,
-          token_usage: tokenUsage,
+      let agentMetadata: AgentExecutionMetadata | undefined = undefined;
+      if (r.subject_type !== SubjectType.HUMAN && r.agent_model) {
+        agentMetadata = {
+          model_name: r.agent_model,
+          persona: r.agent_persona,
+          thinking_effort: r.agent_effort,
+          evaluation_mode: r.agent_eval_mode,
+          token_usage: {
+            prompt_tokens: r.prompt_tokens ?? 0,
+            completion_tokens: r.completion_tokens ?? 0,
+            cached_tokens: r.cached_tokens ?? 0,
+            reasoning_tokens: r.reasoning_tokens ?? 0,
+            total_tokens: r.total_tokens ?? 0,
+          },
         };
       }
 
-      // 动态通过 v2 超平面算法为历史数据重新分类，使悬浮画像与散点坐标绝对严格对应
-      const archetype = classifyCognitiveArchetype({
-        dStar,
-        dPrime,
-        mRatio,
-        bias,
-        brier,
-        ive,
-        hintsCount,
-      });
-      const def = getArchetypeDefinition(archetype, targetLocale);
-
       return {
         id: r.id,
-        name: r.name,
+        name: r.subject_name || r.name || "受测者",
         subject_type: r.subject_type,
-        first_order_accuracy: Math.round((r.first_order_accuracy ?? 0.7) * 1000) / 1000,
-        second_order_accuracy: Math.round((r.second_order_accuracy ?? 0.7) * 1000) / 1000,
-        d_prime: dPrime,
-        meta_d_prime: Math.round((r.meta_d_prime ?? 1.1) * 1000) / 1000,
-        m_ratio: mRatio,
-        calibration_bias: bias,
-        final_score: r.final_score ?? 0,
-        is_current: r.id === currentSessionId,
+        locale: (r.locale as SupportedLocale) || targetLocale,
         created_at: r.created_at,
-        role_title: def.role_title,
-        quadrant_code: def.quadrant_code,
-        praise_tagline: def.praise_tagline,
-        clinical_summary: def.clinical_summary,
-        d_star: dStar,
-        ive: ive,
-        info_buying_efficiency: ive,
-        brier_score: brier,
-        cognitive_manifold_vector: [dStar, mRatio, bias, ive],
-        coachability_index: Math.round((Math.min(1.0, Math.max(0.0, mRatio)) * 0.45 + Math.max(0.0, 1.0 - Math.abs(bias) * 2.5) * 0.35 + ive * 0.20) * 100),
-        metadata: sessionMetadata,
+        total_trials: r.total_trials ?? 30,
+        warmup_trials: r.warmup_trials ?? 10,
+        total_duration_ms: r.total_duration_ms ?? 0,
+        final_score: r.final_score ?? 0,
+        quadrant_code: quadrantCode,
+        is_current: r.id === currentSessionId,
+        metrics,
+        agent_metadata: agentMetadata,
+        user_id: r.user_id ?? null,
+
+        // Legacy fields for backward compatibility
+        metadata: {
+          locale: (r.locale as SupportedLocale) || targetLocale,
+          ...(agentMetadata || {}),
+        },
+        first_order_accuracy: r.first_order_accuracy,
+        second_order_accuracy: r.second_order_accuracy,
+        d_prime: r.d_prime,
+        meta_d_prime: r.meta_d_prime,
+        m_ratio: r.m_ratio,
+        calibration_bias: r.calibration_bias,
+        d_star: r.d_star,
+        ive: r.ive,
+        info_buying_efficiency: r.ive,
+        brier_score: r.brier_score,
+        coachability_index: r.coachability_index,
+        role_title: archetypeDef.role_title,
+        praise_tagline: archetypeDef.praise_tagline,
+        cognitive_manifold_vector: [r.d_star ?? 0.5, r.m_ratio ?? 0.9, r.calibration_bias ?? 0.0, r.ive ?? 0.5],
+        clinical_summary: archetypeDef.clinical_summary,
       };
     });
 
@@ -1599,37 +1576,63 @@ export class SessionManager {
           mRatio: metrics.m_ratio,
           bias: metrics.calibration_bias,
           brier: metrics.brier_score,
-          ive: metrics.info_buying_efficiency,
+          ive: metrics.info_buying_efficiency ?? (metrics as any).ive ?? 0.50,
           hintsCount,
         });
         const def = getArchetypeDefinition(archetype, targetLocale);
+
+        const activeMetrics: AssessmentMetrics = {
+          first_order_accuracy: Math.round(firstAcc * 1000) / 1000,
+          second_order_accuracy: Math.round(secondOrderAcc * 1000) / 1000,
+          reversals_count: active.staircase.reversalCount,
+          d_star: metrics.d_star,
+          d_prime: metrics.d_prime,
+          meta_d_prime: metrics.meta_d_prime,
+          m_ratio: metrics.m_ratio,
+          calibration_bias: metrics.calibration_bias,
+          brier_score: metrics.brier_score,
+          ive: metrics.info_buying_efficiency,
+          coachability_index: 50,
+          risk_attitude: RiskAttitude.MODERATE_RATIONAL,
+        };
 
         subjects.unshift({
           id: active.sessionId,
           name: active.subjectName,
           subject_type: active.subjectType,
-          first_order_accuracy: Math.round(firstAcc * 1000) / 1000,
-          second_order_accuracy: Math.round(secondAcc * 1000) / 1000,
-          d_prime: metrics.d_prime,
-          meta_d_prime: metrics.meta_d_prime,
-          m_ratio: metrics.m_ratio,
-          calibration_bias: metrics.calibration_bias,
-          final_score: active.score,
-          is_current: true,
+          locale: targetLocale,
           created_at: active.createdAt,
-          role_title: def.role_title,
+          total_trials: active.totalTrials,
+          warmup_trials: active.warmupTrials,
+          total_duration_ms: Date.now() - active.startTimeMs,
+          final_score: active.score,
           quadrant_code: def.quadrant_code,
+          is_current: true,
+          metrics: activeMetrics,
+          user_id: active.userId ?? null,
+
+          // Legacy fields
+          first_order_accuracy: activeMetrics.first_order_accuracy,
+          second_order_accuracy: activeMetrics.second_order_accuracy,
+          d_prime: activeMetrics.d_prime,
+          meta_d_prime: activeMetrics.meta_d_prime,
+          m_ratio: activeMetrics.m_ratio,
+          calibration_bias: activeMetrics.calibration_bias,
+          d_star: activeMetrics.d_star,
+          ive: activeMetrics.ive,
+          info_buying_efficiency: activeMetrics.ive,
+          brier_score: activeMetrics.brier_score,
+          coachability_index: 50,
+          role_title: def.role_title,
           praise_tagline: def.praise_tagline,
-          d_star: metrics.d_star,
-          ive: metrics.info_buying_efficiency,
-          cognitive_manifold_vector: metrics.cognitive_manifold_vector,
+          cognitive_manifold_vector: [activeMetrics.d_star, activeMetrics.m_ratio, activeMetrics.calibration_bias, activeMetrics.ive],
           clinical_summary: def.clinical_summary,
         });
       }
     }
 
-    const xVals = subjects.map(s => s.d_star);
-    const yVals = subjects.map(s => s.m_ratio);
+    const xVals = subjects.map(s => s.metrics.d_star);
+    const yVals = subjects.map(s => s.metrics.m_ratio);
 
     const median = (arr: number[]): number => {
       if (arr.length === 0) return 0.50;

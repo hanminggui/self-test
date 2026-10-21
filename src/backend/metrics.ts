@@ -28,8 +28,8 @@ export class PsychometricScorer {
         r.first_order_choice === "D" ||
         r.revised_choice === "C" ||
         r.revised_choice === "D" ||
-        (r.correct_option === "B" && r.signal_type === "S1") ||
-        Boolean(r.stimulus_id && /_t\d+$/.test(r.stimulus_id))
+        Boolean(r.stimulus_id && /_t\d+$/.test(r.stimulus_id)) ||
+        (r as any).signal_type === undefined
     );
   }
 
@@ -54,8 +54,8 @@ export class PsychometricScorer {
       return [Math.max(0.01, Math.round(dPrime * 10000) / 10000), 0.0];
     } else {
       // Classical 2AFC: S1 ('A') vs S2 ('B')
-      const s2Records = records.filter(r => r.signal_type === "S2");
-      const s1Records = records.filter(r => r.signal_type === "S1");
+      const s2Records = records.filter(r => (r as any).signal_type === "S2");
+      const s1Records = records.filter(r => (r as any).signal_type === "S1");
 
       const hits = s2Records.filter(r => r.is_correct_first_order).length;
       const fas = s1Records.filter(r => !r.is_correct_first_order).length;
@@ -116,7 +116,7 @@ export class PsychometricScorer {
     for (const r of records) {
       const isHigh = r.action === MetacognitiveAction.HIGH_BET;
       const resp = r.first_order_choice;
-      const sig = r.signal_type;
+      const sig = (r as any).signal_type;
 
       let cat: number;
       if (resp === "A") {
@@ -245,14 +245,14 @@ export class PsychometricScorer {
     let rescued = 0;
 
     for (const r of records) {
-      const hasHint = (r.hints_unlocked !== undefined && r.hints_unlocked > 0) || Boolean(r.hint_purchased);
+      const hasHint = (r.hints_unlocked !== undefined && r.hints_unlocked > 0) || Boolean((r as any).hint_purchased);
       if (!hasHint) continue;
 
       nHintTrials += 1;
       if (r.hints_unlocked !== undefined && r.hints_unlocked > 0) {
-        costTotal += r.hints_cost_total ?? (r.hints_unlocked === 1 ? 1 : 3);
+        costTotal += (r as any).hints_cost_total ?? (r.hints_unlocked === 1 ? 1 : 3);
       } else {
-        costTotal += r.hints_cost_total ?? 2;
+        costTotal += (r as any).hints_cost_total ?? 2;
       }
 
       // 1. Two-phase revision mode: initial blind choice was wrong, revised to correct after hint
@@ -350,8 +350,9 @@ export class PsychometricScorer {
       calibration_bias: bias,
       brier_score: brier,
       info_buying_efficiency: ive,
+      ive,
       d_star: dStarValue,
       cognitive_manifold_vector: [dStarValue, mRatio, bias, ive],
-    };
+    } as any;
   }
 }

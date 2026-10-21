@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { TaskGenerator } from "../src/backend/task_generator";
 import { StaircaseController } from "../src/backend/staircase";
 import { SessionManager } from "../src/backend/session_manager";
-import { MetacognitiveAction } from "../src/backend/models";
+import { MetacognitiveAction, SubjectType } from "../src/backend/models";
 
 describe("TaskGenerator", () => {
   test("generates 8 distinct task types with strictly 4 unique options", () => {
@@ -106,6 +106,7 @@ describe("SessionManager", () => {
   test("SessionManager tracks and persists execution metadata and per-trial step metrics", () => {
     const sm = new SessionManager(":memory:");
     const session = sm.createSession({
+      subjectType: SubjectType.LLM_AGENT,
       subjectName: "Model_Qwen-2.5-72B",
       totalTrials: 3,
       warmupTrials: 1,

@@ -1,6 +1,7 @@
 import React from "react";
 import { SubjectPoint } from "../../types/admin";
 import { useLocale } from "../../contexts/LocaleContext";
+import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 
 interface SubjectHoverCardProps {
   subject: SubjectPoint;
@@ -21,7 +22,9 @@ export default function SubjectHoverCard({
 }: SubjectHoverCardProps) {
   const { locale } = useLocale();
   const isEn = locale === "en-US";
-  const isSubEn = subject.metadata?.locale === "en-US";
+  const isSubEn = subject.metadata?.locale === "en-US" || subject.locale === "en-US";
+  const def = subject.quadrant_code ? getArchetypeDefinition(subject.quadrant_code, locale) : null;
+  const roleTitle = def?.role_title || subject.role_title || (isEn ? "Subject" : "受测者");
 
   // 视口边缘碰撞保护
   const padX = 110;
@@ -102,7 +105,7 @@ export default function SubjectHoverCard({
         fontWeight="semibold"
         fontFamily="system-ui, sans-serif"
       >
-        {subject.role_title || "受测者"}
+        {roleTitle}
         <tspan fill="#94a3b8" fontSize="8.5" fontFamily="monospace" dx="4">
           ({subject.quadrant_code})
         </tspan>

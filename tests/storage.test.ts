@@ -200,14 +200,27 @@ describe("Pluggable Storage Layer & LocalSqliteAdapter", () => {
     active = await adapter.query("SELECT id FROM active_sessions WHERE id = ?", [sid]);
     expect(active.length).toBe(0);
 
-    completed = await adapter.query("SELECT id, name, full_report_json FROM completed_sessions WHERE id = ?", [sid]);
+    completed = await adapter.query("SELECT id, subject_name, quadrant_code FROM completed_sessions WHERE id = ?", [sid]);
     expect(completed.length).toBe(1);
-    expect(completed[0].name).toBe("Quick Completion Agent");
-    expect(completed[0].full_report_json).toContain(sid);
+    expect(completed[0].subject_name).toBe("Quick Completion Agent");
+    expect(completed[0].quadrant_code).toBeDefined();
+
+    // Verify session_records has 2 trial records with agent_trace_json NULL for human
+    const stepRecords = await adapter.query("SELECT * FROM session_records WHERE session_id = ? ORDER BY trial_index ASC", [sid]);
+    expect(stepRecords.length).toBe(2);
+    expect(stepRecords[0].agent_trace_json).toBeNull();
+
+    // Verify session_agent_metadata has 0 rows for human session
+    const agentRows = await adapter.query("SELECT * FROM session_agent_metadata WHERE session_id = ?", [sid]);
+    expect(agentRows.length).toBe(0);
 
     // getReport succeeds
     const rep = sm.getReport(sid);
     expect(rep.session_id).toBe(sid);
+    expect(rep.metrics).toBeDefined();
+    expect(rep.metrics.d_star).toBeDefined();
+    expect(rep.quadrant_code).toBeDefined();
+    expect(rep.agent_metadata).toBeUndefined();
   });
 
   it("deleteSession removes record from active_sessions and completed_sessions", async () => {
@@ -262,5 +275,79 @@ describe("Pluggable Storage Layer & LocalSqliteAdapter", () => {
     // Delete Async
     const deleted = await sm.deleteSessionAsync(sid);
     expect(deleted).toBe(true);
+  });
+
+  it("LLM_AGENT session writes 1 row to completed_sessions, N to session_records with agent_trace, and 1 to session_agent_metadata", async () => {
+    const adapter = new LocalSqliteAdapter(":memory:");
+    const sm = new SessionManager(adapter);
+
+    const session = await sm.createSessionAsync({
+      subjectName: "Claude-3-Opus-Eval",
+      subjectType: "LLM_AGENT",
+      persona: "Rational Bayesian",
+      thinkingEffort: "high",
+      totalTrials: 2,
+      warmupTrials: 1,
+      metadata: {
+        model_name: "claude-3-opus",
+        evaluation_mode: "thinking_tool",
+      },
+    });
+    const sid = session.sessionId;
+
+    // Trial 1 with token metrics
+    await sm.submitPhase1Async(sid, "A");
+    await sm.submitPhase2Async(sid, MetacognitiveAction.SAFE_BET, 0.50, undefined, {
+      duration_ms: 120,
+      token_usage: { prompt_tokens: 100, completion_tokens: 50, cached_tokens: 0, reasoning_tokens: 20, total_tokens: 150 },
+      operations: [{ step: "p1", action: "select" }],
+    });
+
+    // Trial 2 (Final) with token metrics
+    await sm.submitPhase1Async(sid, "B");
+    const p2Final = await sm.submitPhase2Async(sid, MetacognitiveAction.HIGH_BET, 0.95, undefined, {
+      duration_ms: 150,
+      token_usage: { prompt_tokens: 120, completion_tokens: 60, cached_tokens: 0, reasoning_tokens: 30, total_tokens: 180 },
+      operations: [{ step: "p2", action: "wager" }],
+    });
+
+    expect(p2Final.is_completed).toBe(true);
+
+    // 1. completed_sessions has 1 row
+    const completed = await adapter.query("SELECT * FROM completed_sessions WHERE id = ?", [sid]);
+    expect(completed.length).toBe(1);
+    expect(completed[0].subject_name).toBe("Claude-3-Opus-Eval");
+    expect(completed[0].subject_type).toBe("LLM_AGENT");
+
+    // 2. session_records has 2 rows with populated agent_trace_json
+    const records = await adapter.query("SELECT * FROM session_records WHERE session_id = ? ORDER BY trial_index ASC", [sid]);
+    expect(records.length).toBe(2);
+    expect(records[0].agent_trace_json).not.toBeNull();
+    const trace1 = JSON.parse(records[0].agent_trace_json);
+    expect(trace1.token_usage.total_tokens).toBe(150);
+
+    // 3. session_agent_metadata has 1 row with aggregated tokens
+    const agentMeta = await adapter.query("SELECT * FROM session_agent_metadata WHERE session_id = ?", [sid]);
+    expect(agentMeta.length).toBe(1);
+    expect(agentMeta[0].model_name).toBe("claude-3-opus");
+    expect(agentMeta[0].persona).toBe("Rational Bayesian");
+    expect(agentMeta[0].total_tokens).toBe(330);
+
+    // 4. getReport returns agent_metadata
+    const rep = await sm.getReportAsync(sid);
+    expect(rep.agent_metadata).toBeDefined();
+    expect(rep.agent_metadata?.model_name).toBe("claude-3-opus");
+    expect(rep.agent_metadata?.token_usage.total_tokens).toBe(330);
+    expect(rep.metrics.d_star).toBeDefined();
+
+    // 5. deleteSession removes across all tables
+    const delRes = await sm.deleteSessionAsync(sid);
+    expect(delRes).toBe(true);
+    const recAfter = await adapter.query("SELECT * FROM session_records WHERE session_id = ?", [sid]);
+    expect(recAfter.length).toBe(0);
+    const metaAfter = await adapter.query("SELECT * FROM session_agent_metadata WHERE session_id = ?", [sid]);
+    expect(metaAfter.length).toBe(0);
+    const compAfter = await adapter.query("SELECT * FROM completed_sessions WHERE id = ?", [sid]);
+    expect(compAfter.length).toBe(0);
   });
 });

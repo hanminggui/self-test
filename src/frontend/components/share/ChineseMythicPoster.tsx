@@ -41,6 +41,8 @@ export interface ChineseMythicPosterProps {
   report: {
     subject_name?: string;
     session_id?: string;
+    quadrant_code?: string;
+    metrics?: any;
     metacognitive_metrics?: {
       d_prime?: number;
       meta_d_prime?: number;
@@ -72,27 +74,23 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   className = "",
 }) => {
   const profile = report.diagnostic_profile || {};
+  const quadrantCode = report.quadrant_code || profile.quadrant_code || profile.archetype || "Q1-CAL";
+  const def = useMemo(() => getArchetypeDefinition(quadrantCode, "zh-CN"), [quadrantCode]);
   const subjectName = report.subject_name || "探索者";
 
   // 解析对应的画像配置
   const archetypeConfig: MythicArchetypeConfig = useMemo(() => {
-    return getMythicArchetype(profile.archetype || profile.quadrant_code || profile.role_title || "");
-  }, [profile.archetype, profile.quadrant_code, profile.role_title]);
+    return getMythicArchetype(def.archetype || quadrantCode);
+  }, [def.archetype, quadrantCode]);
 
   // 解析 4 项专属认知特技 (确保全中文无杂质)
   const skills: SkillDisplayItem[] = useMemo(() => {
-    if (profile.skills && profile.skills.length >= 4) {
-      return profile.skills.map((s) => ({
-        ...s,
-        name: s.name.replace(/\s*\([^)]*\)/g, ""), // 去除任何英文括号后缀
-      }));
-    }
-    const def = getArchetypeDefinition(archetypeConfig.archetype, "zh-CN");
-    return (def.skills || []).map((s) => ({
+    const sourceSkills = (profile.skills && profile.skills.length >= 4) ? profile.skills : def.skills;
+    return (sourceSkills || []).map((s) => ({
       ...s,
-      name: s.name.replace(/\s*\([^)]*\)/g, ""),
+      name: s.name.replace(/\s*\([^)]*\)/g, ""), // 去除任何英文括号后缀
     }));
-  }, [profile.skills, archetypeConfig.archetype]);
+  }, [profile.skills, def.skills]);
 
   const [qrSvg, setQrSvg] = useState<string>("");
   const [downloading, setDownloading] = useState(false);
@@ -113,19 +111,19 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   }, [entryUrl, report?.session_id]);
 
   const empoweringFeedback = useMemo(() => {
-    return profile.empowering_feedback || archetypeConfig.totemAphorism || "自强不息，知行自洽。";
-  }, [profile.empowering_feedback, archetypeConfig.totemAphorism]);
+    return profile.empowering_feedback || def.empowering_feedback || archetypeConfig.totemAphorism || "自强不息，知行自洽。";
+  }, [profile.empowering_feedback, def.empowering_feedback, archetypeConfig.totemAphorism]);
 
   // 组装 PosterShareData
   const shareData: PosterShareData = useMemo(() => {
     return {
       subjectName,
       archetype: archetypeConfig.archetype,
-      roleTitle: profile.role_title || archetypeConfig.roleTitle,
-      praiseTagline: profile.praise_tagline || archetypeConfig.praiseTagline,
-      strengthTags: profile.strength_tags && profile.strength_tags.length > 0
+      roleTitle: profile.role_title || def.role_title || archetypeConfig.roleTitle,
+      praiseTagline: profile.praise_tagline || def.praise_tagline || archetypeConfig.praiseTagline,
+      strengthTags: (profile.strength_tags && profile.strength_tags.length > 0)
         ? profile.strength_tags
-        : ["高维逻辑底蕴", "算力降维压制", "知行绝对自洽", "手术刀级决断"],
+        : def.strength_tags,
       skills,
       empoweringFeedback,
       locale: "zh-CN",

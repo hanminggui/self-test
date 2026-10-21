@@ -35,11 +35,14 @@ import {
   SkillDisplayItem,
 } from "./posterGenerator";
 import { buildSessionReportUrl } from "../../utils/sessionRoute";
+import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 
 export interface WesternArcanePosterProps {
   report: {
     subject_name?: string;
     session_id?: string;
+    quadrant_code?: string;
+    metrics?: any;
     metacognitive_metrics?: {
       d_prime?: number;
       meta_d_prime?: number;
@@ -71,20 +74,22 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
   className = "",
 }) => {
   const profile = report.diagnostic_profile || {};
+  const quadrantCode = report.quadrant_code || profile.quadrant_code || profile.archetype || "Q1-CAL";
+  const def = useMemo(() => getArchetypeDefinition(quadrantCode, "en-US"), [quadrantCode]);
   const subjectName = report.subject_name || "Explorer";
 
   // 解析西方秘法秩序画像配置
   const arcaneConfig: ArcaneArchetypeConfig = useMemo(() => {
-    return getArcaneArchetype(profile.archetype || profile.quadrant_code || profile.role_title || "");
-  }, [profile.archetype, profile.quadrant_code, profile.role_title]);
+    return getArcaneArchetype(def.archetype || quadrantCode);
+  }, [def.archetype, quadrantCode]);
 
   // 解析 4 项专属技能
   const skills: SkillDisplayItem[] = useMemo(() => {
     if (profile.skills && profile.skills.length >= 4) {
       return profile.skills;
     }
-    return arcaneConfig.skills;
-  }, [profile.skills, arcaneConfig]);
+    return def.skills || arcaneConfig.skills;
+  }, [profile.skills, def.skills, arcaneConfig]);
 
   const [qrSvg, setQrSvg] = useState<string>("");
   const [downloading, setDownloading] = useState(false);

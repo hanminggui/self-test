@@ -35,43 +35,27 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
   const [showPosterModal, setShowPosterModal] = useState(false);
   if (!report) return null;
 
-  const isSubEn = report.metadata?.locale === "en-US";
+  const isSubEn = (report.locale || report.metadata?.locale) === "en-US";
+  const quadrantCode = report.quadrant_code || report.diagnostic_profile?.quadrant_code || "Q1-CAL";
+  const archetypeDef = useMemo(() => getArchetypeDefinition(quadrantCode, locale), [quadrantCode, locale]);
 
-  const localizedReport = useMemo(() => {
-    if (!report?.diagnostic_profile) return report;
-    const rawProfile = report.diagnostic_profile;
-    const archKey = (
-      rawProfile.archetype ||
-      rawProfile.quadrant_code ||
-      rawProfile.role_title ||
-      CognitiveArchetype.SOVEREIGN
-    ) as CognitiveArchetype;
-    const def = getArchetypeDefinition(archKey, locale);
+  const activeMetrics = report.metrics || report.metacognitive_metrics || {};
+  const agentMetadata = report.agent_metadata || (report.subject_type !== "HUMAN" ? report.metadata : undefined);
+
+  const activeProfile = useMemo(() => {
     return {
-      ...report,
-      diagnostic_profile: {
-        ...rawProfile,
-        role_title: def.role_title,
-        praise_tagline: def.praise_tagline,
-        strength_tags: def.strength_tags && def.strength_tags.length > 0 ? def.strength_tags : rawProfile.strength_tags,
-        empowering_feedback: def.empowering_feedback || rawProfile.empowering_feedback,
-        growth_advice: def.growth_advice || rawProfile.growth_advice,
-        skills: (rawProfile.skills || def.skills).map((origSkill: any, idx: number) => {
-          const defSkill = def.skills[idx];
-          return {
-            ...origSkill,
-            icon: origSkill.icon || defSkill?.icon || "✨",
-            type: defSkill?.type || origSkill.type,
-            name: defSkill?.name || origSkill.name,
-            desc: defSkill?.desc || origSkill.desc,
-          };
-        }),
-        clinical_summary: def.clinical_summary || rawProfile.clinical_summary,
-      },
+      role_title: archetypeDef.role_title,
+      english_title: archetypeDef.english_title,
+      quadrant_code: archetypeDef.quadrant_code,
+      praise_tagline: archetypeDef.praise_tagline,
+      strength_tags: archetypeDef.strength_tags,
+      empowering_feedback: archetypeDef.empowering_feedback,
+      growth_advice: archetypeDef.growth_advice,
+      skills: archetypeDef.skills,
+      clinical_summary: archetypeDef.clinical_summary,
+      critical_weakness: archetypeDef.growth_advice,
     };
-  }, [report, locale]);
-
-  const activeReport = localizedReport || report;
+  }, [archetypeDef]);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -81,7 +65,7 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               {isEn ? "Two-Tier Metacognitive Diagnostic Report" : "受测者双层诊断报告"}
               <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono">
-                {activeReport.diagnostic_profile.quadrant_code}
+                {activeProfile.quadrant_code}
               </span>
               <span
                 className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold border ${
@@ -129,10 +113,10 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
         {/* 顶栏展示：用户展示层专属称号 */}
         <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">
           <div className="text-2xl font-black text-amber-300">
-            {activeReport.diagnostic_profile.role_title}
+            {activeProfile.role_title}
           </div>
           <div className="text-xs text-amber-200/80 mt-1">
-            “{activeReport.diagnostic_profile.praise_tagline}”
+            “{activeProfile.praise_tagline}”
           </div>
         </div>
 
@@ -147,27 +131,27 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
             <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5">
               <div className="text-[10px] text-slate-400">{isEn ? "Discrim D*" : "突破度 D*"}</div>
               <div className="text-sm font-bold font-mono text-cyan-300">
-                {report.metacognitive_metrics.d_star?.toFixed(3) ?? "--"}
+                {activeMetrics.d_star !== undefined ? activeMetrics.d_star.toFixed(3) : "--"}
               </div>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5">
               <div className="text-[10px] text-slate-400">{isEn ? "Metacognitive M_ratio" : "元认知 M_ratio"}</div>
               <div className="text-sm font-bold font-mono text-purple-300">
-                {report.metacognitive_metrics.m_ratio}
+                {activeMetrics.m_ratio ?? "--"}
               </div>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5">
               <div className="text-[10px] text-slate-400">{isEn ? "Decision Bias" : "决策倾角 Bias"}</div>
               <div className="text-sm font-bold font-mono text-slate-200">
-                {report.metacognitive_metrics.calibration_bias > 0
-                  ? `+${report.metacognitive_metrics.calibration_bias}`
-                  : report.metacognitive_metrics.calibration_bias}
+                {activeMetrics.calibration_bias !== undefined
+                  ? (activeMetrics.calibration_bias > 0 ? `+${activeMetrics.calibration_bias}` : `${activeMetrics.calibration_bias}`)
+                  : "--"}
               </div>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-900 border border-white/5">
               <div className="text-[10px] text-slate-400">{isEn ? "Foraging IVE" : "觅食杠杆 IVE"}</div>
               <div className="text-sm font-bold font-mono text-amber-300">
-                {report.metacognitive_metrics.info_buying_efficiency?.toFixed(3) ?? "--"}
+                {(activeMetrics.ive ?? activeMetrics.info_buying_efficiency)?.toFixed?.(3) ?? "--"}
               </div>
             </div>
           </div>
@@ -176,23 +160,22 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
           <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-400 font-mono">
             <div>
               {isEn ? "Type-1 d': " : "一元辨别力 d': "}
-              <span className="text-slate-200">{report.metacognitive_metrics.d_prime}</span>
+              <span className="text-slate-200">{activeMetrics.d_prime ?? "--"}</span>
             </div>
             <div>
               {isEn ? "Type-2 Meta-d': " : "二元 Meta-d': "}
-              <span className="text-slate-200">{report.metacognitive_metrics.meta_d_prime}</span>
+              <span className="text-slate-200">{activeMetrics.meta_d_prime ?? "--"}</span>
             </div>
             <div>
               Brier Score:{" "}
-              <span className="text-slate-200">{report.metacognitive_metrics.brier_score}</span>
+              <span className="text-slate-200">{activeMetrics.brier_score ?? "--"}</span>
             </div>
           </div>
 
           {/* 客观临床诊断摘要 */}
           <div className="p-3 rounded-xl bg-black/40 border border-indigo-500/10 text-xs text-indigo-100 leading-relaxed">
             <span className="font-semibold text-indigo-300">{isEn ? "Clinical Truth Attribution: " : "临床真值归因："}</span>
-            {activeReport.diagnostic_profile.clinical_summary ||
-              activeReport.diagnostic_profile.critical_weakness}
+            {activeProfile.clinical_summary || activeProfile.critical_weakness}
           </div>
         </div>
 
@@ -203,13 +186,13 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
           </div>
 
           <div className="text-xs text-slate-300 leading-relaxed bg-black/30 p-4 rounded-xl border border-white/5">
-            {activeReport.diagnostic_profile.empowering_feedback}
+            {activeProfile.empowering_feedback}
           </div>
 
           <div className="space-y-2">
             <div className="text-xs font-bold text-white">{isEn ? "Unique Skill Hierarchy Matrix:" : "专属技能卡片矩阵："}</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              {activeReport.diagnostic_profile.skills.map((s: any, idx: number) => (
+              {activeProfile.skills.map((s: any, idx: number) => (
                 <div
                   key={idx}
                   className="p-2.5 rounded-lg bg-slate-900/60 border border-white/5 space-y-1"
@@ -227,85 +210,95 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
           </div>
         </div>
 
-        {/* 执行元数据与资源统计面板 */}
-        {report.metadata && (
+        {/* 通用评测规格卡片 (全受测者通用) */}
+        <div className="space-y-3 p-4 rounded-2xl bg-slate-900/80 border border-white/10">
+          <div className="text-xs font-bold text-slate-300 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-cyan-400" /> {isEn ? "Session Execution Specifications" : "评测运行规格与用时"}
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-slate-300 font-mono">
+              {report.subject_type}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+              <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-emerald-400" /> {isEn ? "Total Duration" : "评测总用时"}
+              </div>
+              <div className="font-semibold text-emerald-300 font-mono">
+                {formatDurationMs(report.total_duration_ms || report.metadata?.total_duration_ms)}
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+              <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                <Layers className="w-3 h-3 text-indigo-400" /> {isEn ? "Trial Specification" : "轮次规格"}
+              </div>
+              <div className="font-semibold text-slate-200 font-mono">
+                {isEn
+                  ? `Total ${report.total_trials ?? report.summary?.total_trials ?? 30} (Warmup ${report.warmup_trials ?? 10})`
+                  : `共 ${report.total_trials ?? report.summary?.total_trials ?? 30} 轮 (预热 ${report.warmup_trials ?? 10})`}
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+              <div className="text-[10px] text-slate-400">{isEn ? "Final Score" : "最终得分"}</div>
+              <div className="font-semibold text-amber-300 font-mono">
+                {report.final_score ?? report.summary?.final_score ?? 0}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Agent 专属元数据与 Token 资源消耗账单 (仅非人类时渲染) */}
+        {agentMetadata && report.subject_type !== "HUMAN" && (
           <div className="space-y-3 p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/20">
             <div className="text-xs font-bold text-cyan-300 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Cpu className="w-4 h-4" /> {isEn ? "Execution Metadata & Resource Accounting" : "评测执行元数据与资源统计"}
+                <Cpu className="w-4 h-4" /> {isEn ? "LLM Agent Metadata & Token Accounting" : "Agent 执行元数据与 Token 账单"}
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-200 font-mono">
-                {report.metadata.thinking_effort
-                  ? `${isEn ? "Thinking Effort: " : "思考强度: "}${report.metadata.thinking_effort}`
+                {agentMetadata.thinking_effort
+                  ? `${isEn ? "Thinking Effort: " : "思考强度: "}${agentMetadata.thinking_effort}`
                   : isEn ? "Standard Mode" : "常规模式"}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
-                <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                  <Activity className="w-3 h-3 text-cyan-400" /> {isEn ? "Target Model / Name" : "受测模型 / 名称"}
-                </div>
-                <div className="font-semibold text-white truncate" title={report.metadata.model_name || report.subject_name}>
-                  {report.metadata.model_name || report.subject_name}
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
-                <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-emerald-400" /> {isEn ? "Total Duration" : "评测总用时"}
-                </div>
-                <div className="font-semibold text-emerald-300 font-mono">
-                  {report.metadata.formatted_duration || formatDurationMs(report.metadata.total_duration_ms)}
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
-                <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                  <Layers className="w-3 h-3 text-indigo-400" /> {isEn ? "Trial Specification" : "轮次规格"}
-                </div>
-                <div className="font-semibold text-slate-200 font-mono">
-                  {isEn
-                    ? `Total ${report.summary?.total_trials ?? report.metadata.total_trials} (Warmup ${report.metadata.warmup_trials ?? 10})`
-                    : `共 ${report.summary?.total_trials ?? report.metadata.total_trials} 轮 (预热 ${report.metadata.warmup_trials ?? 10})`}
-                </div>
-              </div>
-            </div>
-
-            {report.metadata.persona && (
+            {agentMetadata.persona && (
               <div className="p-2.5 rounded-xl bg-slate-950/60 border border-white/5 text-xs">
                 <span className="text-[10px] text-slate-400 font-semibold">{isEn ? "Agent Persona: " : "Agent 人设设定："}</span>
-                <span className="text-slate-300 ml-1">{report.metadata.persona}</span>
+                <span className="text-slate-300 ml-1">{agentMetadata.persona}</span>
               </div>
             )}
 
-            {report.metadata.token_usage && (
+            {agentMetadata.token_usage && (
               <div className="p-3 rounded-xl bg-black/40 border border-cyan-500/10 space-y-2">
                 <div className="text-[11px] font-semibold text-cyan-200 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Coins className="w-3.5 h-3.5" /> {isEn ? "Token Resource Billing" : "Token 资源消耗账单"}
                   </span>
                   <span className="font-mono text-cyan-300">
-                    {isEn ? "Total " : "总计 "} {formatTokens(report.metadata.token_usage.total_tokens)}
+                    {isEn ? "Total " : "总计 "} {formatTokens(agentMetadata.token_usage.total_tokens)}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
                   <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
                     <div className="text-[10px] text-slate-400">{isEn ? "Prompt" : "输入 (Prompt)"}</div>
-                    <div className="text-slate-200 font-bold">{formatTokens(report.metadata.token_usage.prompt_tokens)}</div>
+                    <div className="text-slate-200 font-bold">{formatTokens(agentMetadata.token_usage.prompt_tokens)}</div>
                   </div>
                   <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
                     <div className="text-[10px] text-slate-400">{isEn ? "Cache Hit" : "缓存命中 (Cache)"}</div>
-                    <div className="text-emerald-300 font-bold">{formatTokens(report.metadata.token_usage.cached_tokens)}</div>
+                    <div className="text-emerald-300 font-bold">{formatTokens(agentMetadata.token_usage.cached_tokens)}</div>
                   </div>
                   <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
                     <div className="text-[10px] text-slate-400">{isEn ? "Completion" : "输出 (Completion)"}</div>
-                    <div className="text-purple-300 font-bold">{formatTokens(report.metadata.token_usage.completion_tokens)}</div>
+                    <div className="text-purple-300 font-bold">{formatTokens(agentMetadata.token_usage.completion_tokens)}</div>
                   </div>
                   <div className="p-2 rounded-lg bg-slate-900 border border-white/5">
                     <div className="text-[10px] text-slate-400">{isEn ? "Reasoning" : "思维链推理"}</div>
-                    <div className="text-amber-300 font-bold">{formatTokens(report.metadata.token_usage.reasoning_tokens)}</div>
+                    <div className="text-amber-300 font-bold">{formatTokens(agentMetadata.token_usage.reasoning_tokens)}</div>
                   </div>
                 </div>
               </div>

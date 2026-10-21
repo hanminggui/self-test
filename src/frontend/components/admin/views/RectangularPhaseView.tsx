@@ -4,6 +4,7 @@ import { SubjectPoint, ScatterData, SplitLineType } from "../../../types/admin";
 import { computeMultivariateColor } from "../../../utils/manifoldUtils";
 import { getOctantSectorConfigs } from "../../../constants/adminConstants";
 import { useLocale } from "../../../contexts/LocaleContext";
+import { getArchetypeDefinition } from "../../../../backend/archetype_matrix";
 
 interface RectangularPhaseViewProps {
   subjects: SubjectPoint[];
@@ -311,7 +312,7 @@ export default function RectangularPhaseView({
                 </span>
               </div>
               <div className="text-[11px] text-amber-300 font-semibold pt-1">
-                {hoveredSubject.role_title || "未知特质"}
+                {(hoveredSubject.quadrant_code ? getArchetypeDefinition(hoveredSubject.quadrant_code, locale).role_title : hoveredSubject.role_title) || (isEn ? "Unknown" : "未知特质")}
                 <span className="text-[9px] text-slate-400 font-mono ml-1">
                   ({hoveredSubject.quadrant_code})
                 </span>

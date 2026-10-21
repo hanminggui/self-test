@@ -321,45 +321,37 @@ export default function App() {
   // Memoized localized report: dynamically updates presentation layer on locale change
   const localizedReport = useMemo<ReportData | null>(() => {
     if (!report) return null;
-    const rawProfile = report.diagnostic_profile;
-    if (!rawProfile) return report;
+    const rawProfile = (report as any).diagnostic_profile;
+    const quadrantCode = (report as any).quadrant_code || rawProfile?.quadrant_code || rawProfile?.archetype || "Q1-CAL";
+    const def = getArchetypeDefinition(quadrantCode, locale);
 
-    // Resolve archetype identifier
-    const archKey = (
-      rawProfile.archetype ||
-      rawProfile.quadrant_code ||
-      rawProfile.role_title ||
-      CognitiveArchetype.SOVEREIGN
-    ) as CognitiveArchetype;
-
-    const def = getArchetypeDefinition(archKey, locale);
-
-    const localizedSkills = (rawProfile.skills || def.skills).map((origSkill, idx) => {
-      const defSkill = def.skills[idx];
+    const skills = def.skills.map((defSkill: any, idx: number) => {
+      const origSkill = rawProfile?.skills?.[idx];
       return {
-        ...origSkill,
-        icon: origSkill.icon || defSkill?.icon || "✨",
-        type: defSkill?.type || origSkill.type,
-        name: defSkill?.name || origSkill.name,
-        desc: defSkill?.desc || origSkill.desc,
+        icon: origSkill?.icon || defSkill.icon || "✨",
+        type: defSkill.type || origSkill?.type,
+        name: defSkill.name || origSkill?.name,
+        desc: defSkill.desc || origSkill?.desc,
       };
     });
 
     return {
       ...report,
+      quadrant_code: def.quadrant_code,
       diagnostic_profile: {
-        ...rawProfile,
-        archetype: def.archetype || archKey,
+        ...(rawProfile || {}),
+        archetype: def.archetype,
         role_title: def.role_title,
-        quadrant_code: def.quadrant_code || rawProfile.quadrant_code,
+        english_title: def.english_title,
+        quadrant_code: def.quadrant_code,
         praise_tagline: def.praise_tagline,
-        strength_tags: def.strength_tags && def.strength_tags.length > 0 ? def.strength_tags : rawProfile.strength_tags,
-        empowering_feedback: def.empowering_feedback || rawProfile.empowering_feedback,
-        growth_advice: def.growth_advice || rawProfile.growth_advice,
-        skills: localizedSkills,
-        clinical_summary: def.clinical_summary || rawProfile.clinical_summary,
+        strength_tags: def.strength_tags,
+        empowering_feedback: def.empowering_feedback,
+        growth_advice: def.growth_advice,
+        skills,
+        clinical_summary: def.clinical_summary,
       },
-    };
+    } as any;
   }, [report, locale]);
 
   // Sync latest report from backend on locale toggle in REPORT phase
@@ -374,7 +366,7 @@ export default function App() {
         return res.json();
       })
       .then((data) => {
-        if (!isCancelled && data && data.diagnostic_profile) {
+        if (!isCancelled && data && (data.quadrant_code || data.diagnostic_profile)) {
           setReport(data);
         }
       })
