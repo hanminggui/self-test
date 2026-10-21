@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { SubjectPoint } from "../../../types/admin";
 import { computeMultivariateColor } from "../../../utils/manifoldUtils";
 import { useLocale } from "../../../contexts/LocaleContext";
+import { getArchetypeDefinition } from "../../../../backend/archetype_matrix";
 
 interface SubjectDataTableViewProps {
   tagCounts: Record<string, number>;
@@ -99,7 +100,10 @@ export default function SubjectDataTableView({
           <tbody className="divide-y divide-white/5">
             {paginatedSubjects.map((sub) => {
               const colorToken = computeMultivariateColor(sub.calibration_bias, sub.ive ?? 0.5);
-              const isSubEn = sub.metadata?.locale === "en-US";
+              const isSubEn = sub.locale === "en-US" || sub.metadata?.locale === "en-US";
+              const def = sub.quadrant_code ? getArchetypeDefinition(sub.quadrant_code, locale) : null;
+              const roleTitle = def?.role_title || sub.role_title || (isEn ? "The Grand Archmage" : "人形外挂");
+              const clinicalSummary = def?.clinical_truth_summary || sub.clinical_summary || "--";
               return (
                 <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors group">
                   <td className="py-2 px-3 font-medium text-white flex items-center gap-2">
@@ -125,7 +129,7 @@ export default function SubjectDataTableView({
                   </td>
                   <td className="py-2 px-3">
                     <span className="text-amber-300 font-semibold">
-                      {sub.role_title || (isEn ? "The Grand Archmage" : "人形外挂")}
+                      {roleTitle}
                     </span>
                     <span className="text-[10px] text-slate-500 font-mono ml-1.5">
                       {sub.quadrant_code || "Q1-CAL"}
@@ -148,9 +152,9 @@ export default function SubjectDataTableView({
                   </td>
                   <td
                     className="py-2 px-3 text-slate-400 text-[11px] max-w-xs truncate"
-                    title={sub.clinical_summary}
+                    title={clinicalSummary}
                   >
-                    {sub.clinical_summary || "--"}
+                    {clinicalSummary}
                   </td>
                   <td className="py-2 px-3 text-right">
                     <div className="flex items-center justify-end gap-1.5">

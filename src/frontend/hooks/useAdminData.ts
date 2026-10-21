@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { SubjectPoint, ScatterData, OctantStatsMap } from "../types/admin";
 import { OCTANT_SECTOR_CONFIGS, getQuadrantPresets } from "../constants/adminConstants";
 import { useLocale } from "../contexts/LocaleContext";
+import { getArchetypeDefinition } from "../../backend/archetype_matrix";
 
 export function useAdminData() {
   const { locale } = useLocale();
@@ -195,8 +196,9 @@ export function useAdminData() {
       titles[p.code] = p.defaultTitle;
     });
     subjects.forEach((s) => {
-      if (s.quadrant_code && s.role_title) {
-        titles[s.quadrant_code] = s.role_title;
+      if (s.quadrant_code) {
+        const def = getArchetypeDefinition(s.quadrant_code, locale);
+        titles[s.quadrant_code] = def.role_title;
       }
     });
     return titles;
@@ -205,22 +207,24 @@ export function useAdminData() {
   // 搜索和标签过滤
   const filteredSubjects = useMemo(() => {
     return subjects.filter((s) => {
+      const def = s.quadrant_code ? getArchetypeDefinition(s.quadrant_code, locale) : null;
+      const roleTitle = def?.role_title || s.role_title || "";
       const query = searchQuery.trim().toLowerCase();
       const matchesSearch =
         !query ||
         s.name.toLowerCase().includes(query) ||
         s.id.toLowerCase().includes(query) ||
-        (s.role_title && s.role_title.toLowerCase().includes(query)) ||
+        roleTitle.toLowerCase().includes(query) ||
         (s.quadrant_code && s.quadrant_code.toLowerCase().includes(query));
 
       const matchesTag =
         selectedTag === "ALL" ||
         s.quadrant_code === selectedTag ||
-        s.role_title === selectedTag;
+        roleTitle === selectedTag;
 
       return matchesSearch && matchesTag;
     });
-  }, [subjects, searchQuery, selectedTag]);
+  }, [subjects, searchQuery, selectedTag, locale]);
 
   // 分页数据
   const totalItems = filteredSubjects.length;
