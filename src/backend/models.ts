@@ -1,7 +1,10 @@
 /**
  * Core domain types and schemas for the Metacognitive Testing System.
  * Fully decoupled first-order task evaluation and Type-2 metacognitive wagering.
+ * Metacognitive v2.3: Normalized Relational Storage & Unified Metrics Specification.
  */
+
+import type { SupportedLocale } from "../i18n";
 
 export enum PhaseType {
   PHASE_1_FIRST_ORDER = "PHASE_1_FIRST_ORDER",
@@ -12,7 +15,7 @@ export enum PhaseType {
 export enum MetacognitiveAction {
   HIGH_BET = "HIGH_BET",   // 选对 +10，选错 -10
   SAFE_BET = "SAFE_BET",   // 保底 +3
-  BUY_HINT = "BUY_HINT",   // 消耗 2 分购买线索
+  BUY_HINT = "BUY_HINT",   // 解锁线索
 }
 
 export enum SubjectType {
@@ -104,8 +107,6 @@ export interface TrialMetrics {
 
 export type EvaluationMode = "thinking_tool" | "multi_step";
 
-import type { SupportedLocale } from "../i18n";
-
 export interface SessionExecutionMetadata {
   model_name?: string;
   persona?: string;
@@ -120,6 +121,19 @@ export interface SessionExecutionMetadata {
   locale?: SupportedLocale;
 }
 
+export interface AgentExecutionMetadata {
+  model_name: string;
+  persona?: string;
+  thinking_effort?: string;
+  evaluation_mode?: EvaluationMode;
+  token_usage: TokenUsageStats;
+}
+
+export interface AgentTrialTrace {
+  token_usage?: TokenUsageStats;
+  operations?: TrialOperation[];
+}
+
 export interface TrialResponse {
   session_id: string;
   trial_index: number;
@@ -130,45 +144,37 @@ export interface TrialResponse {
 
 export interface TrialRecord {
   trial_index: number;
+  is_warmup: boolean;
   difficulty_level: number;
   stimulus_id: string;
-  signal_type: "S1" | "S2";
   correct_option: string;
   first_order_choice: string;
   is_correct_first_order: boolean;
+  revised_choice: string | null;
+  is_correct_final: boolean;
   action: MetacognitiveAction;
   confidence_level: number;
-  hint_purchased: boolean;
-  hints_unlocked?: number; // 0, 1, 2
-  hints_cost_total?: number; // 0, 1, 3
-  revised_choice?: string | null;
-  is_correct_final: boolean;
+  hints_unlocked: number; // 0, 1, 2 (cost derived as 0, 1, 3; purchased derived as > 0)
   score_delta: number;
-  is_warmup: boolean;
-  // 单步耗时、Token 统计与操作过程记录
   duration_ms?: number;
+  // Populated only for LLM_AGENT / MOCK_AGENT trials
   token_usage?: TokenUsageStats;
   operations?: TrialOperation[];
 }
 
-export interface SessionSummary {
-  total_trials: number;
+export interface AssessmentMetrics {
   first_order_accuracy: number;
-  target_staircase_convergence: number;
-  final_score: number;
+  second_order_accuracy: number;
   reversals_count: number;
-  d_star?: number;
-}
-
-export interface MetacognitiveMetrics {
+  d_star: number;
   d_prime: number;
   meta_d_prime: number;
   m_ratio: number;
   calibration_bias: number;
   brier_score: number;
-  info_buying_efficiency: number;
-  d_star: number;
-  cognitive_manifold_vector: [number, number, number, number]; // [D*, M_ratio, Bias, IVE]
+  ive: number;
+  coachability_index: number;
+  risk_attitude: RiskAttitude;
 }
 
 export interface SkillItem {
@@ -183,9 +189,8 @@ export interface DiagnosticProfile {
   risk_attitude: RiskAttitude;
   critical_weakness: string;
   coachability_index: number;
-  clinical_summary: string; // 后台统计层：客观特征与临床真值描述 (零情感修饰)
+  clinical_summary: string;
   detailed_feedback?: string;
-  // 展示层：纯正面赋能契约
   role_title: string;
   english_title?: string;
   quadrant_code: string;
@@ -200,35 +205,73 @@ export interface FinalAssessmentReport {
   session_id: string;
   subject_name: string;
   subject_type: string;
-  summary: SessionSummary;
-  metacognitive_metrics: MetacognitiveMetrics;
-  diagnostic_profile: DiagnosticProfile;
-  metadata?: SessionExecutionMetadata;
+  locale: SupportedLocale;
+  created_at: string;
+  total_trials: number;
+  warmup_trials: number;
+  completed_trials: number;
+  total_duration_ms: number;
+  final_score: number;
+  quadrant_code: string;
+  archetype: CognitiveArchetype;
+  metrics: AssessmentMetrics;
+  agent_metadata?: AgentExecutionMetadata;
   records?: TrialRecord[];
+  user_id?: string | null;
+
+  // Transitional optional getters/properties for backwards compatibility until Issue #35
+  summary?: {
+    total_trials: number;
+    first_order_accuracy: number;
+    final_score: number;
+    reversals_count: number;
+    d_star: number;
+  };
+  metacognitive_metrics?: {
+    d_prime: number;
+    meta_d_prime: number;
+    m_ratio: number;
+    calibration_bias: number;
+    brier_score: number;
+    ive: number;
+    info_buying_efficiency: number;
+    d_star: number;
+  };
+  metadata?: SessionExecutionMetadata;
+  diagnostic_profile?: DiagnosticProfile;
 }
 
 export interface SubjectDataPoint {
   id: string;
   name: string;
   subject_type: string;
-  first_order_accuracy: number;  // x: [0.0, 1.0]
-  second_order_accuracy: number; // y: [0.0, 1.0]
-  d_prime: number;
-  meta_d_prime: number;
-  m_ratio: number;
-  calibration_bias: number;
+  locale: SupportedLocale;
+  created_at: string;
+  total_trials: number;
+  warmup_trials: number;
+  total_duration_ms: number;
   final_score: number;
+  quadrant_code: string;
   is_current?: boolean;
-  created_at?: string;
-  role_title?: string;
-  quadrant_code?: string;
-  praise_tagline?: string;
-  d_star: number;
-  ive: number;
+  metrics: AssessmentMetrics;
+  agent_metadata?: AgentExecutionMetadata;
+  user_id?: string | null;
+
+  // Legacy flat fields for backwards compatibility until views adapt
+  first_order_accuracy?: number;
+  second_order_accuracy?: number;
+  d_prime?: number;
+  meta_d_prime?: number;
+  m_ratio?: number;
+  calibration_bias?: number;
+  d_star?: number;
+  ive?: number;
   info_buying_efficiency?: number;
   brier_score?: number;
   coachability_index?: number;
-  cognitive_manifold_vector: [number, number, number, number];
+  role_title?: string;
+  praise_tagline?: string;
+  cognitive_manifold_vector?: [number, number, number, number];
   clinical_summary?: string;
   metadata?: SessionExecutionMetadata;
 }

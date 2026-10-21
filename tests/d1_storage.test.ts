@@ -199,18 +199,19 @@ describe("GitHub Issue #3: Cloudflare D1 Adapter & Schema Migrations", () => {
     const completedRows = await adapter.query("SELECT * FROM completed_sessions WHERE id = ?", ["d1_sess_001"]);
     expect(completedRows.length).toBe(1);
     expect(completedRows[0].id).toBe("d1_sess_001");
-    expect(completedRows[0].name).toBe("Cloudflare D1 Tester");
-    expect(completedRows[0].role_title).toBeDefined();
+    expect(completedRows[0].subject_name).toBe("Cloudflare D1 Tester");
     expect(completedRows[0].quadrant_code).toBeDefined();
-    expect(completedRows[0].full_report_json).toBeDefined();
+
+    const d1StepRecords = await adapter.query("SELECT * FROM session_records WHERE session_id = ? ORDER BY trial_index ASC", ["d1_sess_001"]);
+    expect(d1StepRecords.length).toBe(3);
 
     // 8. Fetch Report via getReportAsync
     const report = await sm.getReportAsync("d1_sess_001");
     expect(report.session_id).toBe("d1_sess_001");
     expect(report.subject_name).toBe("Cloudflare D1 Tester");
-    expect(report.summary.total_trials).toBe(3);
-    expect(report.diagnostic_profile.role_title).toBeDefined();
-    expect(report.metacognitive_metrics.cognitive_manifold_vector).toBeDefined();
+    expect(report.metrics.first_order_accuracy).toBeDefined();
+    expect(report.metrics.d_star).toBeDefined();
+    expect(report.quadrant_code).toBeDefined();
 
     // 9. Fetch Cohort Scatter via getCohortScatterDataAsync
     const cohort = await sm.getCohortScatterDataAsync("d1_sess_001");
@@ -218,7 +219,8 @@ describe("GitHub Issue #3: Cloudflare D1 Adapter & Schema Migrations", () => {
     const foundSubject = cohort.subjects.find(s => s.id === "d1_sess_001");
     expect(foundSubject).toBeDefined();
     expect(foundSubject?.is_current).toBe(true);
-    expect(foundSubject?.role_title).toBeDefined();
+    expect(foundSubject?.quadrant_code).toBeDefined();
+    expect(foundSubject?.metrics.d_star).toBeDefined();
 
     // 10. Delete session via deleteSessionAsync
     const deleteSuccess = await sm.deleteSessionAsync("d1_sess_001");
@@ -226,6 +228,8 @@ describe("GitHub Issue #3: Cloudflare D1 Adapter & Schema Migrations", () => {
 
     const afterDeleteRows = await adapter.query("SELECT * FROM completed_sessions WHERE id = ?", ["d1_sess_001"]);
     expect(afterDeleteRows.length).toBe(0);
+    const afterDeleteRecords = await adapter.query("SELECT * FROM session_records WHERE session_id = ?", ["d1_sess_001"]);
+    expect(afterDeleteRecords.length).toBe(0);
   });
 
   test("Executes multiline DDL safely without triggering Cloudflare D1 newline split bugs", async () => {

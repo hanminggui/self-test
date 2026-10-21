@@ -8,8 +8,7 @@
 
 import {
   FinalAssessmentReport,
-  SessionSummary,
-  MetacognitiveMetrics,
+  AssessmentMetrics,
   DiagnosticProfile,
   CognitiveArchetype,
   RiskAttitude,
@@ -30,7 +29,7 @@ export class ReportGenerator {
     const targetRecords = evalRecords.length > 0 ? evalRecords : records;
     let hintsCount = 0;
     for (const r of targetRecords) {
-      if ((r.hints_unlocked !== undefined && r.hints_unlocked > 0) || r.hint_purchased) {
+      if ((r.hints_unlocked !== undefined && r.hints_unlocked > 0) || (r as any).hint_purchased) {
         hintsCount += 1;
       }
     }
@@ -41,13 +40,14 @@ export class ReportGenerator {
     sessionId: string,
     subjectType: string,
     records: TrialRecord[],
-    metrics: MetacognitiveMetrics,
+    metrics: any,
     finalScore: number,
     reversalsCount: number,
     subjectName: string = "匿名受测者",
     locale?: SupportedLocale
   ): FinalAssessmentReport {
     const totalTrials = records.length;
+    const warmupTrials = records.filter(r => r.is_warmup).length;
     const evalRecords = records.filter(r => !r.is_warmup);
     const targetRecords = evalRecords.length > 0 ? evalRecords : records;
 
@@ -75,7 +75,7 @@ export class ReportGenerator {
       mRatio: metrics.m_ratio,
       bias: metrics.calibration_bias,
       brier: metrics.brier_score,
-      ive: metrics.info_buying_efficiency,
+      ive: metrics.info_buying_efficiency ?? metrics.ive ?? 0.50,
       hintsCount,
     });
 
@@ -85,15 +85,29 @@ export class ReportGenerator {
     // Calculate Coachability Index [0, 100]
     const calibScore = Math.max(0.0, 1.0 - Math.abs(metrics.calibration_bias) * 2.5);
     const mScore = Math.min(1.0, Math.max(0.0, metrics.m_ratio));
-    const iveScore = metrics.info_buying_efficiency;
+    const iveScore = metrics.info_buying_efficiency ?? metrics.ive ?? 0.50;
 
     const rawCoachability = (mScore * 0.45 + calibScore * 0.35 + iveScore * 0.20) * 100;
     const coachabilityIndex = Math.round(Math.max(10, Math.min(99, rawCoachability)));
 
-    const summary: SessionSummary = {
+    const assessmentMetrics: AssessmentMetrics = {
+      first_order_accuracy: Math.round(firstOrderAcc * 1000) / 1000,
+      second_order_accuracy: Math.round(secondOrderAcc * 1000) / 1000,
+      reversals_count: reversalsCount,
+      d_star: metrics.d_star,
+      d_prime: metrics.d_prime,
+      meta_d_prime: metrics.meta_d_prime,
+      m_ratio: metrics.m_ratio,
+      calibration_bias: metrics.calibration_bias,
+      brier_score: metrics.brier_score,
+      ive: iveScore,
+      coachability_index: coachabilityIndex,
+      risk_attitude: riskAttitude,
+    };
+
+    const summary = {
       total_trials: totalTrials,
       first_order_accuracy: Math.round(firstOrderAcc * 1000) / 1000,
-      target_staircase_convergence: 0.7071,
       final_score: finalScore,
       reversals_count: reversalsCount,
       d_star: metrics.d_star,
@@ -119,8 +133,22 @@ export class ReportGenerator {
       session_id: sessionId,
       subject_name: subjectName,
       subject_type: subjectType,
+      locale: targetLocale,
+      created_at: new Date().toISOString(),
+      total_trials: totalTrials,
+      warmup_trials: warmupTrials,
+      completed_trials: totalTrials,
+      total_duration_ms: 0,
+      final_score: finalScore,
+      quadrant_code: archetypeDef.quadrant_code,
+      archetype,
+      metrics: assessmentMetrics,
       summary,
-      metacognitive_metrics: metrics,
+      metacognitive_metrics: {
+        ...metrics,
+        ive: iveScore,
+        info_buying_efficiency: iveScore,
+      },
       diagnostic_profile: diagnosticProfile,
     };
   }
