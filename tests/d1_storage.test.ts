@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, it, test, expect, beforeEach } from "bun:test";
 import { Database } from "bun:sqlite";
 import * as fs from "fs";
 import * as path from "path";
@@ -263,5 +263,29 @@ describe("GitHub Issue #3: Cloudflare D1 Adapter & Schema Migrations", () => {
       "SELECT name FROM sqlite_master WHERE type='table' AND name='multiline_test'"
     );
     expect(tables.length).toBe(1);
+  });
+
+  it("D1 Storage Adapter supports User Core Schema and UserManager operations (#9 on Cloudflare D1)", async () => {
+    const { UserManager } = await import("../src/backend/user_manager");
+    const userManager = new UserManager(adapter);
+
+    const user = await userManager.upsertUser({
+      primary_provider: "github",
+      provider_id: "gh_d1_12345",
+      email: "d1_user@example.com",
+      display_name: "D1 Explorer",
+      avatar_url: "https://example.com/avatar.png",
+      metadata: { role: "tester" },
+    });
+
+    expect(user.id).toBeDefined();
+    expect(user.display_name).toBe("D1 Explorer");
+
+    const fetched = await userManager.getUserById(user.id);
+    expect(fetched).not.toBeNull();
+    expect(fetched?.email).toBe("d1_user@example.com");
+
+    const fetchedByEmail = await userManager.getUserByEmail("d1_user@example.com");
+    expect(fetchedByEmail?.id).toBe(user.id);
   });
 });

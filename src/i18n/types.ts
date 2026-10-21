@@ -186,6 +186,19 @@ export interface I18nDictionary {
     viewInAdmin: string;
   };
   app: AppDictionary;
+  auth: {
+    signIn: string;
+    signOut: string;
+    authModalTitle: string;
+    authModalDesc: string;
+    loginWithGithub: string;
+    loginWithLinuxdo: string;
+    loginWithGoogle: string;
+    guestExplorer: string;
+    loggedInAs: string;
+    accountLinked: string;
+    trustLevelLabel: string;
+  };
   cli: {
     gameRules: string;
     step1Prompt: string;
