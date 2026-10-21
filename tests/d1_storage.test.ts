@@ -126,9 +126,13 @@ describe("GitHub Issue #3: Cloudflare D1 Adapter & Schema Migrations", () => {
   });
 
   test("Full Session Lifecycle on D1: start -> hints -> phase1 -> phase2 -> completion -> report -> cohort scatter -> delete", async () => {
-    // 1. Run migration
-    const migrationSql = fs.readFileSync(path.join(process.cwd(), "migrations", "0001_init.sql"), "utf-8");
-    await adapter.exec(migrationSql);
+    // 1. Run migrations in sequence (0001_init.sql, 0002_normalize_v2_3.sql, etc.)
+    const migrationDir = path.join(process.cwd(), "migrations");
+    const migrationFiles = fs.readdirSync(migrationDir).filter((f) => f.endsWith(".sql")).sort();
+    for (const file of migrationFiles) {
+      const sql = fs.readFileSync(path.join(migrationDir, file), "utf-8");
+      await adapter.exec(sql);
+    }
 
     const sm = new SessionManager(adapter);
 

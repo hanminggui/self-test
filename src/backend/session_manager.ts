@@ -21,6 +21,7 @@ import {
   TrialResponse,
   SessionExecutionMetadata,
   TokenUsageStats,
+  RiskAttitude,
 } from "./models";
 import { StaircaseController, StaircaseSnapshot } from "./staircase";
 import { TaskGenerator, GeneratedTask, TaskGeneratorSnapshot } from "./task_generator";

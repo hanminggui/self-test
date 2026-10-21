@@ -225,16 +225,133 @@ export class LocalSqliteAdapter implements StorageAdapter {
       this.db.exec("ALTER TABLE completed_sessions ADD COLUMN subject_name TEXT;");
     } catch {}
     try {
+      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN total_trials INTEGER NOT NULL DEFAULT 30;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN warmup_trials INTEGER NOT NULL DEFAULT 10;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN completed_trials INTEGER NOT NULL DEFAULT 30;");
+    } catch {}
+    try {
       this.db.exec("ALTER TABLE completed_sessions ADD COLUMN reversals_count INTEGER DEFAULT 0;");
     } catch {}
     try {
-      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN brier_score REAL;");
+      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN brier_score REAL DEFAULT 0.20;");
     } catch {}
     try {
-      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN coachability_index INTEGER;");
+      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN coachability_index INTEGER DEFAULT 50;");
     } catch {}
     try {
-      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN risk_attitude TEXT;");
+      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN risk_attitude TEXT DEFAULT 'MODERATE_RATIONAL';");
+    } catch {}
+    try {
+      this.db.exec("UPDATE completed_sessions SET subject_name = name WHERE subject_name IS NULL AND name IS NOT NULL;");
+    } catch {}
+
+    // Auto-migrate historical records and metadata from legacy full_report_json
+    this.migrateLegacyJsonReports();
+  }
+
+  private migrateLegacyJsonReports(): void {
+    try {
+      const cols = this.db.query("PRAGMA table_info(completed_sessions)").all() as any[];
+      const hasFullReport = cols.some((c) => c.name === "full_report_json");
+      if (!hasFullReport) return;
+
+      const rows = this.db.query(
+        "SELECT id, subject_name, name, subject_type, persona, thinking_effort, token_usage_json, full_report_json FROM completed_sessions WHERE full_report_json IS NOT NULL"
+      ).all() as any[];
+
+      if (!rows || rows.length === 0) return;
+
+      const insertRecordStmt = this.db.prepare(`
+        INSERT OR IGNORE INTO session_records (
+          session_id, trial_index, is_warmup, difficulty_level, stimulus_id,
+          correct_option, first_order_choice, is_correct_first_order, revised_choice,
+          is_correct_final, action, confidence_level, hints_unlocked, score_delta,
+          duration_ms, agent_trace_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const insertAgentStmt = this.db.prepare(`
+        INSERT OR IGNORE INTO session_agent_metadata (
+          session_id, model_name, persona, thinking_effort, evaluation_mode,
+          prompt_tokens, completion_tokens, cached_tokens, reasoning_tokens, total_tokens
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const row of rows) {
+        try {
+          const report = JSON.parse(row.full_report_json);
+          const records = report.records || [];
+          const isHuman = (row.subject_type || report.subject_type) === "HUMAN";
+
+          for (const rec of records) {
+            const agentTrace = !isHuman && (rec.token_usage || rec.operations)
+              ? JSON.stringify({ token_usage: rec.token_usage, operations: rec.operations })
+              : null;
+            insertRecordStmt.run(
+              row.id,
+              rec.trial_index,
+              rec.is_warmup ? 1 : 0,
+              rec.difficulty_level ?? 0.5,
+              rec.stimulus_id || `q_${rec.trial_index}`,
+              rec.correct_option || "A",
+              rec.first_order_choice || "A",
+              rec.is_correct_first_order ? 1 : 0,
+              rec.revised_choice ?? null,
+              rec.is_correct_final ? 1 : 0,
+              rec.action || "SAFE_BET",
+              rec.confidence_level ?? 0.5,
+              rec.hints_unlocked ?? 0,
+              rec.score_delta ?? 0,
+              rec.duration_ms ?? null,
+              agentTrace
+            );
+          }
+
+          if (!isHuman) {
+            let tokens = { prompt_tokens: 0, completion_tokens: 0, cached_tokens: 0, reasoning_tokens: 0, total_tokens: 0 };
+            if (row.token_usage_json) {
+              try {
+                const tu = JSON.parse(row.token_usage_json);
+                tokens = {
+                  prompt_tokens: tu.prompt_tokens ?? tu.promptTokens ?? 0,
+                  completion_tokens: tu.completion_tokens ?? tu.completionTokens ?? 0,
+                  cached_tokens: tu.cached_tokens ?? tu.cachedTokens ?? 0,
+                  reasoning_tokens: tu.reasoning_tokens ?? tu.reasoningTokens ?? 0,
+                  total_tokens: tu.total_tokens ?? tu.totalTokens ?? 0,
+                };
+              } catch {}
+            } else if (report.agent_metadata?.token_usage) {
+              const tu = report.agent_metadata.token_usage;
+              tokens = {
+                prompt_tokens: tu.prompt_tokens ?? tu.promptTokens ?? 0,
+                completion_tokens: tu.completion_tokens ?? tu.completionTokens ?? 0,
+                cached_tokens: tu.cached_tokens ?? tu.cachedTokens ?? 0,
+                reasoning_tokens: tu.reasoning_tokens ?? tu.reasoningTokens ?? 0,
+                total_tokens: tu.total_tokens ?? tu.totalTokens ?? 0,
+              };
+            }
+
+            insertAgentStmt.run(
+              row.id,
+              row.subject_name || row.name || report.agent_metadata?.model_name || "Agent",
+              row.persona || report.agent_metadata?.persona || null,
+              row.thinking_effort || report.agent_metadata?.thinking_effort || null,
+              report.agent_metadata?.evaluation_mode || null,
+              tokens.prompt_tokens,
+              tokens.completion_tokens,
+              tokens.cached_tokens,
+              tokens.reasoning_tokens,
+              tokens.total_tokens
+            );
+          }
+        } catch (e) {
+          console.warn(`[LocalSqliteAdapter] Failed to migrate historical session ${row.id}:`, e);
+        }
+      }
     } catch {}
   }
 
