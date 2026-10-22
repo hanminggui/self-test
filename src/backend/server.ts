@@ -21,8 +21,11 @@ import {
 import { oauthService, OAuthService } from "./auth/oauth";
 import { D1StorageAdapter } from "../storage/d1";
 import type { D1Database } from "@cloudflare/workers-types";
-import { MetacognitiveAction, SubjectType, TrialResponse } from "./models";
+import { MetacognitiveAction, SubjectType, TrialResponse, FinalAssessmentReport } from "./models";
 import { runWithLocale, normalizeLocale, DEFAULT_LOCALE, type SupportedLocale } from "../i18n";
+import { getMythicArchetype } from "../frontend/components/share/mythicArchetypes";
+import { getArcaneArchetype } from "../frontend/components/share/arcaneArchetypes";
+import { getArchetypeDefinition } from "./archetype_matrix";
 
 export type CloudflareBindings = {
   DB?: D1Database;
@@ -170,6 +173,9 @@ const d1UserManagers = new WeakMap<object, UserManager>();
 export function getSessionManagerForContext(c: any): SessionManager {
   if (c.get?.("sessionManager")) {
     return c.get("sessionManager");
+  }
+  if (c.env?.sessionManager) {
+    return c.env.sessionManager;
   }
   const db = c.env?.DB;
   if (db) {
@@ -375,6 +381,29 @@ app.get("/api/sessions/:id/report", async (c) => {
     return c.json(await sm.getReportAsync(id, locale));
   } catch (e: any) {
     return c.json({ error: e.message }, 404);
+  }
+});
+
+// 7b. Public Read-Only Share Endpoints (GitHub Issue #8)
+app.get("/api/share/:id", async (c) => {
+  const id = c.req.param("id");
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  try {
+    return c.json(await sm.getReportAsync(id, locale));
+  } catch (e: any) {
+    return c.json({ error: e.message || "Report not found" }, 404);
+  }
+});
+
+app.get("/api/sessions/:id", async (c) => {
+  const id = c.req.param("id");
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  try {
+    return c.json(await sm.getReportAsync(id, locale));
+  } catch (e: any) {
+    return c.json({ error: e.message || "Report not found" }, 404);
   }
 });
 
@@ -696,6 +725,301 @@ app.use("/logo-1024.png", serveAsset({ root: "./dist" }));
 app.use("/linuxdo-logo.svg", serveAsset({ root: "./dist" }));
 app.use("/linuxdo-logo.png", serveAsset({ root: "./dist" }));
 app.use("/linuxdo-logo-1024.png", serveAsset({ root: "./dist" }));
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+async function getIndexHtmlTemplate(c: any): Promise<string> {
+  // 1. Cloudflare Workers environment with ASSETS binding
+  if (c.env?.ASSETS) {
+    try {
+      const url = new URL(c.req.url);
+      url.pathname = "/index.html";
+      const res = await c.env.ASSETS.fetch(new Request(url.toString(), {
+        method: "GET",
+        headers: c.req.raw?.headers,
+      }));
+      if (res && res.status === 200) {
+        return await res.text();
+      }
+    } catch {}
+  }
+
+  // 2. Local filesystem (dist/index.html or src/frontend/index.html)
+  try {
+    const distPath = path.resolve("./dist/index.html");
+    if (fs.existsSync(distPath)) {
+      return fs.readFileSync(distPath, "utf-8");
+    }
+    const srcPath = path.resolve("./src/frontend/index.html");
+    if (fs.existsSync(srcPath)) {
+      return fs.readFileSync(srcPath, "utf-8");
+    }
+  } catch {}
+
+  // 3. Fallback inline HTML skeleton
+  return `<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Self-Test · 思维星图</title>
+  </head>
+  <body class="bg-[#0b0d13] text-[#e2e8f0] font-sans antialiased min-h-screen">
+    <div id="root"></div>
+  </body>
+</html>`;
+}
+
+export function generateOgSvg(
+  report: FinalAssessmentReport | null,
+  locale: SupportedLocale,
+  shareUrl: string
+): string {
+  const isEn = String(locale).toLowerCase().startsWith("en");
+
+  if (!report) {
+    const title = isEn ? "Self-Test · Cognitive Manifold" : "Self-Test · 科学严谨的决策元认知评测";
+    const subtitle = isEn ? "Test My Metacognition · Assessment Not Found" : "测测我的认知 · 探索你的思维流形与认知图腾";
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#0b0d13"/>
+  <radialGradient id="bg" cx="50%" cy="40%" r="60%">
+    <stop offset="0%" stop-color="#1e1b4b" stop-opacity="0.8"/>
+    <stop offset="100%" stop-color="#0b0d13" stop-opacity="1"/>
+  </radialGradient>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="20" y="20" width="1160" height="590" rx="24" stroke="rgba(245, 158, 11, 0.3)" stroke-width="2"/>
+  <text x="600" y="250" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="800" fill="#f8fafc" text-anchor="middle">${escapeHtml(title)}</text>
+  <text x="600" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#94a3b8" text-anchor="middle">${escapeHtml(subtitle)}</text>
+  <rect x="460" y="400" width="280" height="60" rx="30" fill="#f59e0b"/>
+  <text x="600" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="700" fill="#0f172a" text-anchor="middle">${isEn ? "Test My Metacognition" : "测测我的认知"}</text>
+</svg>`;
+  }
+
+  const dPrime = report.metrics?.d_prime ?? report.metacognitive_metrics?.d_prime ?? 0;
+  const mRatio = report.metrics?.m_ratio ?? report.metacognitive_metrics?.m_ratio ?? 0;
+  const bias = report.metrics?.calibration_bias ?? report.metacognitive_metrics?.calibration_bias ?? 0;
+  const accuracy = report.metrics?.first_order_accuracy ?? report.summary?.first_order_accuracy ?? 0.75;
+  const biasSign = bias >= 0 ? "+" : "";
+
+  const subjectName = report.subject_name || (isEn ? "Explorer" : "探索者");
+
+  let roleTitle = "";
+  let totemOrOrder = "";
+  let tagline = "";
+  let primaryColor = "#f59e0b";
+  let secondaryColor = "#fef08a";
+
+  if (isEn) {
+    const arcane = getArcaneArchetype(report.archetype || report.quadrant_code);
+    roleTitle = report.diagnostic_profile?.role_title || arcane.roleTitle;
+    totemOrOrder = arcane.orderTitle || arcane.roleTitle;
+    tagline = report.diagnostic_profile?.praise_tagline || arcane.praiseTagline;
+    primaryColor = arcane.colorScheme.primaryGold;
+    secondaryColor = arcane.colorScheme.secondaryGold;
+  } else {
+    const mythic = getMythicArchetype(report.archetype || report.quadrant_code);
+    roleTitle = report.diagnostic_profile?.role_title || mythic.roleTitle;
+    totemOrOrder = `${mythic.mythicTotem} · ${mythic.totemTitle}`;
+    tagline = report.diagnostic_profile?.praise_tagline || mythic.praiseTagline;
+    primaryColor = mythic.colorScheme.primaryGold;
+    secondaryColor = mythic.colorScheme.secondaryGold;
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="gradText" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="${secondaryColor}"/>
+      <stop offset="50%" stop-color="${primaryColor}"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="50%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#311042" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#0b0d13" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#050608" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255, 255, 255, 0.08)"/>
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0.02)"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0b0d13"/>
+  <rect width="1200" height="630" fill="url(#bgGlow)"/>
+  <rect x="24" y="24" width="1152" height="582" rx="24" stroke="${primaryColor}" stroke-opacity="0.35" stroke-width="2"/>
+
+  <text x="64" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" fill="#e2e8f0" letter-spacing="2">SELF-TEST · 思维星图</text>
+  <text x="1136" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="500" fill="#94a3b8" text-anchor="end">${escapeHtml(totemOrOrder)}</text>
+  <line x1="64" y1="96" x2="1136" y2="96" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+
+  <text x="64" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#cbd5e1" letter-spacing="1">${isEn ? "EXPLORER" : "探索者"} · ${escapeHtml(subjectName)}</text>
+  <text x="64" y="230" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="900" fill="url(#gradText)" letter-spacing="-1">${escapeHtml(roleTitle)}</text>
+  <text x="64" y="290" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="600" fill="#fef08a">“${escapeHtml(tagline)}”</text>
+
+  <!-- 4 Metrics Chips -->
+  <rect x="64" y="340" width="245" height="110" rx="16" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <text x="88" y="375" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">${isEn ? "Sensitivity d'" : "一阶敏感度 d'"}</text>
+  <text x="88" y="425" font-family="monospace, sans-serif" font-size="34" font-weight="800" fill="#38bdf8">${dPrime.toFixed(2)}</text>
+
+  <rect x="333" y="340" width="245" height="110" rx="16" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <text x="357" y="375" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">${isEn ? "Metacog M-Ratio" : "元认知效率 M-Ratio"}</text>
+  <text x="357" y="425" font-family="monospace, sans-serif" font-size="34" font-weight="800" fill="#a855f7">${mRatio.toFixed(2)}</text>
+
+  <rect x="602" y="340" width="245" height="110" rx="16" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <text x="626" y="375" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">${isEn ? "Calibration Bias" : "决策校准偏差 Bias"}</text>
+  <text x="626" y="425" font-family="monospace, sans-serif" font-size="34" font-weight="800" fill="#fbbf24">${biasSign}${bias.toFixed(2)}</text>
+
+  <rect x="871" y="340" width="265" height="110" rx="16" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <text x="895" y="375" font-family="system-ui, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">${isEn ? "Task Accuracy" : "任务准确率 Accuracy"}</text>
+  <text x="895" y="425" font-family="monospace, sans-serif" font-size="34" font-weight="800" fill="#34d399">${Math.round(accuracy * 100)}%</text>
+
+  <!-- Bottom CTA Footer -->
+  <rect x="64" y="485" width="1072" height="85" rx="20" fill="rgba(245, 158, 11, 0.12)" stroke="${primaryColor}" stroke-opacity="0.3" stroke-width="1"/>
+  <text x="96" y="535" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" fill="#f8fafc">${isEn ? "Test My Metacognition · Unveil Your Cognitive Manifold" : "测测我的认知 · 探索你的二元认知流形与决策神兽"}</text>
+  <rect x="910" y="505" width="206" height="45" rx="22.5" fill="${primaryColor}"/>
+  <text x="1013" y="534" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="800" fill="#0f172a" text-anchor="middle">${isEn ? "Start Assessment →" : "立即测测我的认知 →"}</text>
+</svg>`;
+}
+
+// Dynamic OG Image endpoint for social link cards (1200x630 SVG)
+const handleOgImage = async (c: any) => {
+  const sessionId = c.req.param("sessionId");
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  const origin = getOrigin(c);
+  const shareUrl = `${origin}/share/${sessionId}`;
+
+  let report: FinalAssessmentReport | null = null;
+  try {
+    report = await sm.getReportAsync(sessionId, locale);
+  } catch {}
+
+  const svg = generateOgSvg(report, locale, shareUrl);
+  return new Response(svg, {
+    status: 200,
+    headers: {
+      "Content-Type": "image/svg+xml; charset=utf-8",
+      "Cache-Control": "public, max-age=3600, s-maxage=3600",
+    },
+  });
+};
+
+app.get("/api/share/:sessionId/og-image", handleOgImage);
+app.get("/api/share/:sessionId/og.svg", handleOgImage);
+
+// Public Share Landing Page with Dynamic OG & Twitter Card Meta Tags (GitHub Issue #8)
+const handleSharePage = async (c: any) => {
+  const sessionId = c.req.param("sessionId");
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  const origin = getOrigin(c);
+  const shareUrl = `${origin}/share/${sessionId}`;
+
+  let report: FinalAssessmentReport | null = null;
+  try {
+    report = await sm.getReportAsync(sessionId, locale);
+  } catch {}
+
+  const isEn = String(locale).toLowerCase().startsWith("en");
+
+  let ogTitle = isEn
+    ? "Self-Test · Cognitive Manifold Assessment"
+    : "Self-Test · 思维星图 | 专属思维特质探索";
+  let ogDescription = isEn
+    ? "Self-Test: Rigorous 4AFC psychophysics and Type-2 metacognitive wagering assessment system."
+    : "Self-Test (思维星图) - 科学严谨的二元认知流形与决策元认知评测系统";
+  let ogImage = `${origin}/logo-1024.png`;
+
+  if (report) {
+    const dPrime = report.metrics?.d_prime ?? report.metacognitive_metrics?.d_prime ?? 0;
+    const mRatio = report.metrics?.m_ratio ?? report.metacognitive_metrics?.m_ratio ?? 0;
+    const bias = report.metrics?.calibration_bias ?? report.metacognitive_metrics?.calibration_bias ?? 0;
+    const biasSign = bias >= 0 ? "+" : "";
+
+    const subjectName = report.subject_name || (isEn ? "Explorer" : "受测者");
+
+    if (isEn) {
+      const arcane = getArcaneArchetype(report.archetype || report.quadrant_code);
+      const roleTitle = report.diagnostic_profile?.role_title || arcane.roleTitle;
+      const praiseTagline = report.diagnostic_profile?.praise_tagline || arcane.praiseTagline;
+      ogTitle = `${subjectName}'s Cognitive Archetype · ${roleTitle}`;
+      ogDescription = `"${praiseTagline}" | Order: ${arcane.orderTitle || roleTitle} | Sensitivity d'=${dPrime.toFixed(2)}, M-ratio=${mRatio.toFixed(2)}, Bias=${biasSign}${bias.toFixed(2)}. Uncover your cognitive manifold.`;
+    } else {
+      const mythic = getMythicArchetype(report.archetype || report.quadrant_code);
+      const roleTitle = report.diagnostic_profile?.role_title || mythic.roleTitle;
+      const praiseTagline = report.diagnostic_profile?.praise_tagline || mythic.praiseTagline;
+      ogTitle = `${subjectName} 的元认知评测画像 · ${roleTitle} (${mythic.mythicTotem})`;
+      ogDescription = `“${praiseTagline}” | 认知图腾：${mythic.mythicTotem} · ${mythic.totemAphorism} | 敏感度 d'=${dPrime.toFixed(2)}, 元认知效率 M-ratio=${mRatio.toFixed(2)}, 偏差=${biasSign}${bias.toFixed(2)}。测测你的二元认知流形。`;
+    }
+    ogImage = `${origin}/api/share/${sessionId}/og-image`;
+  } else {
+    if (isEn) {
+      ogTitle = "Assessment Report Not Found · Self-Test";
+      ogDescription = "The requested assessment report could not be found or has expired. Test your metacognition on Self-Test.";
+    } else {
+      ogTitle = "评测报告未找到 · Self-Test 思维星图";
+      ogDescription = "该评测记录不存在或尚未完成。立即测测你的元认知流形与神兽图腾。";
+    }
+  }
+
+  const rawHtml = await getIndexHtmlTemplate(c);
+
+  const metaTags = [
+    `<title>${escapeHtml(ogTitle)}</title>`,
+    `<meta name="description" content="${escapeHtml(ogDescription)}" />`,
+    `<link rel="canonical" href="${escapeHtml(shareUrl)}" />`,
+    `<meta property="og:type" content="article" />`,
+    `<meta property="og:site_name" content="Self-Test · 思维星图" />`,
+    `<meta property="og:url" content="${escapeHtml(shareUrl)}" />`,
+    `<meta property="og:title" content="${escapeHtml(ogTitle)}" />`,
+    `<meta property="og:description" content="${escapeHtml(ogDescription)}" />`,
+    `<meta property="og:image" content="${escapeHtml(ogImage)}" />`,
+    `<meta property="og:image:alt" content="${escapeHtml(ogTitle)}" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:url" content="${escapeHtml(shareUrl)}" />`,
+    `<meta name="twitter:title" content="${escapeHtml(ogTitle)}" />`,
+    `<meta name="twitter:description" content="${escapeHtml(ogDescription)}" />`,
+    `<meta name="twitter:image" content="${escapeHtml(ogImage)}" />`,
+  ].join("\n    ");
+
+  let modifiedHtml = rawHtml
+    .replace(/<title>.*?<\/title>/gi, "")
+    .replace(/<meta\s+property=["']og:title["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:description["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:image["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:image:.*?["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:url["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:site_name["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:type["'].*?>/gi, "")
+    .replace(/<meta\s+name=["']description["'].*?>/gi, "")
+    .replace(/<meta\s+name=["']twitter:.*?["'].*?>/gi, "");
+
+  if (modifiedHtml.includes("<head>")) {
+    modifiedHtml = modifiedHtml.replace("<head>", `<head>\n    ${metaTags}`);
+  } else {
+    modifiedHtml = `<head>\n    ${metaTags}\n  </head>\n` + modifiedHtml;
+  }
+
+  // Pre-render a crawler-friendly semantic block for crawlers or curl
+  if (report) {
+    const crawlerBlock = `\n    <noscript><div id="crawler-summary"><h1>${escapeHtml(ogTitle)}</h1><p>${escapeHtml(ogDescription)}</p><a href="/">测测我的认知</a></div></noscript>`;
+    if (modifiedHtml.includes("</body>")) {
+      modifiedHtml = modifiedHtml.replace("</body>", `${crawlerBlock}\n  </body>`);
+    }
+  }
+
+  return c.html(modifiedHtml);
+};
+
+app.get("/share/:sessionId", handleSharePage);
+app.get("/share/:sessionId/", handleSharePage);
+
 app.get("/admin", serveAsset({ path: "./dist/index.html" }));
 app.get("/admin/*", serveAsset({ path: "./dist/index.html" }));
 app.get("/*", async (c, next) => {

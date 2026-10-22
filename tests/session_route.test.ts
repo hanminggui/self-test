@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   extractSessionIdFromUrl,
   buildSessionReportUrl,
+  buildSessionShareUrl,
 } from "../src/frontend/utils/sessionRoute";
 
 describe("Session Route & Permalink Extraction Suite", () => {
@@ -12,9 +13,11 @@ describe("Session Route & Permalink Extraction Suite", () => {
     expect(extractSessionIdFromUrl("/", "?id=sess_id_001", "")).toBe("sess_id_001");
   });
 
-  it("通过 Path 路径 /report/:id 专用路由解析", () => {
+  it("通过 Path 路径 /report/:id 与 /share/:id 专用路由解析", () => {
     expect(extractSessionIdFromUrl("/report/sess_xyz123", "", "")).toBe("sess_xyz123");
     expect(extractSessionIdFromUrl("/report/sess_998877/", "", "")).toBe("sess_998877");
+    expect(extractSessionIdFromUrl("/share/sess_share_001", "", "")).toBe("sess_share_001");
+    expect(extractSessionIdFromUrl("/share/sess_share_002/", "", "")).toBe("sess_share_002");
   });
 
   it("通过兼容路径 /session/:id 与 /session/:id/report 解析", () => {
@@ -37,5 +40,10 @@ describe("Session Route & Permalink Extraction Suite", () => {
   it("buildSessionReportUrl 组装合法的永久专属 URL", () => {
     const url = buildSessionReportUrl("sess_demo_100", "http://localhost:8000");
     expect(url).toBe("http://localhost:8000/report/sess_demo_100");
+  });
+
+  it("buildSessionShareUrl 组装合法的公开分享着陆页 URL", () => {
+    const url = buildSessionShareUrl("sess_share_888", "http://localhost:8000");
+    expect(url).toBe("http://localhost:8000/share/sess_share_888");
   });
 });

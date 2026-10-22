@@ -34,7 +34,7 @@ import {
   PosterShareData,
   SkillDisplayItem,
 } from "./posterGenerator";
-import { buildSessionReportUrl } from "../../utils/sessionRoute";
+import { buildSessionReportUrl, buildSessionShareUrl } from "../../utils/sessionRoute";
 import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 
 export interface WesternArcanePosterProps {
@@ -101,7 +101,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
   const resolvedUrl = useMemo(() => {
     if (entryUrl) return entryUrl;
     if (report?.session_id) {
-      return buildSessionReportUrl(report.session_id);
+      return buildSessionShareUrl(report.session_id);
     }
     if (typeof window !== "undefined") {
       return `${window.location.origin}/`;
