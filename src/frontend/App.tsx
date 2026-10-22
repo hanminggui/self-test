@@ -1137,8 +1137,19 @@ export default function App() {
       )}
 
       {/* 底部极简静谧脚注 */}
-      <footer className="py-4 text-center text-xs text-slate-600 border-t border-white/5 mt-8">
-        {t.app.footerText}
+      <footer className="py-4 text-center text-xs text-slate-500 border-t border-white/5 mt-8 space-y-1.5">
+        <div>{t.app.footerText}</div>
+        <div className="flex items-center justify-center gap-3 text-[11px] text-slate-600">
+          <a href="/privacy" className="hover:text-amber-300 transition-colors">
+            {t.legal?.privacyPolicy || "隐私政策"}
+          </a>
+          <span>•</span>
+          <a href="/terms" className="hover:text-amber-300 transition-colors">
+            {t.legal?.termsOfService || "服务条款"}
+          </a>
+          <span>•</span>
+          <span className="font-mono">&copy; {new Date().getFullYear()} Self-Test</span>
+        </div>
       </footer>
     </div>
   );

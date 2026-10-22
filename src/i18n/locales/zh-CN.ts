@@ -360,8 +360,8 @@ export const zhCN: I18nDictionary = {
     viewInAdmin: "在管理台中检视",
   },
   app: {
-    appTitle: "思维星图 · 专属特质探索",
-    appSubtitle: "跟随直觉与决断，映射独一无二的深层特质",
+    appTitle: "Self-Test · 思维星图",
+    appSubtitle: "专属特质探索 · 映照真实的直觉与自我掌控",
     voyageProgress: "探索航程",
     welcomeBadge: "沉浸式思维灵觉探索",
     welcomeTitle: "探索属于你的本命特质",
@@ -407,7 +407,7 @@ export const zhCN: I18nDictionary = {
     posterModalTitle: "认知流形 · 原创画像专属分享卡",
     copyCard: "复制专属名片",
     copiedAlert: "专属本命名片文案已复制至剪贴板，可随心分享！",
-    footerText: "思维星图 · 映照真实的直觉与自我掌控",
+    footerText: "Self-Test · 映照真实的直觉与自我掌控",
     startErrorFallback: "旅程启程准备中，请稍候重试",
     networkErrorFallback: "网络连接微澜，请稍后刷新",
     buyHintErrorFallback: "获取灵感启示失败",
@@ -484,5 +484,12 @@ export const zhCN: I18nDictionary = {
     buyHintToolDesc: "当推演遇到瓶颈、条件存在歧义或无法唯一锁定正确选项时，调用此工具消耗分数购买辅助线索。若当前已能推导出答案，请勿调用此工具，直接输出最终 JSON 决策。",
     buyHintTierDesc: "购买线索级别：1 表示调阅第 1 级宏观线索（消耗 1 分）；2 表示直接调阅完整两级线索（累计消耗 3 分）。",
     buyHintAnalysisDesc: "简要记录目前已排除的选项、已完成的推导结论及需要线索解决的具体卡点，以便获取线索后直接作答而不必重新推演。",
+  },
+  legal: {
+    privacyPolicy: "隐私政策",
+    termsOfService: "服务条款",
+    lastUpdated: "最后更新于",
+    backToHome: "返回探索",
+    agreementNotice: "登录或使用即代表您已阅读并同意",
   },
 };

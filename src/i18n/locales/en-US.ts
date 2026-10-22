@@ -360,8 +360,8 @@ export const enUS: I18nDictionary = {
     viewInAdmin: "Inspect in Admin Console",
   },
   app: {
-    appTitle: "Mind Astrolabe · Cognitive Odyssey",
-    appSubtitle: "Follow your intuition and resolve to illuminate your innate archetype",
+    appTitle: "Self-Test · Mind Astrolabe",
+    appSubtitle: "Cognitive Odyssey · Metacognitive Manifold & Bias Calibration",
     voyageProgress: "Voyage Progress",
     welcomeBadge: "Immersive Cognitive Exploration",
     welcomeTitle: "Unveil Your Innate Archetype",
@@ -407,7 +407,7 @@ export const enUS: I18nDictionary = {
     posterModalTitle: "Arcane Order · Cognitive Archetype Seal",
     copyCard: "Copy Archetype Seal",
     copiedAlert: "Archetype Seal copied to clipboard! Ready to share.",
-    footerText: "Mind Astrolabe · Reflecting Authentic Intuition & Sovereign Mastery",
+    footerText: "Self-Test · Reflecting Authentic Intuition & Sovereign Mastery",
     startErrorFallback: "Preparing the odyssey; please try again shortly",
     networkErrorFallback: "Network ripple encountered; please refresh",
     buyHintErrorFallback: "Failed to reveal arcane clue",
@@ -484,5 +484,12 @@ Please output your decision in JSON format, e.g.: {"strategy": "BUY_HINT_TIER2"}
     buyHintToolDesc: "Call this tool to buy auxiliary clues when deduction is blocked or conditions are ambiguous. If you can already deduce the answer, do not call this tool; output final JSON decision directly.",
     buyHintTierDesc: "Hint tier to purchase: 1 for Tier 1 macro clue (costs 1 pt); 2 for full 2-tier clues (costs 3 pts total).",
     buyHintAnalysisDesc: "Brief summary of options eliminated so far and specific question the clue should resolve, allowing immediate final answer without restarting deduction.",
+  },
+  legal: {
+    privacyPolicy: "Privacy Policy",
+    termsOfService: "Terms of Service",
+    lastUpdated: "Last Updated",
+    backToHome: "Back to Explore",
+    agreementNotice: "By signing in or using this service, you agree to our",
   },
 };

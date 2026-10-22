@@ -214,4 +214,11 @@ export interface I18nDictionary {
     buyHintTierDesc: string;
     buyHintAnalysisDesc: string;
   };
+  legal: {
+    privacyPolicy: string;
+    termsOfService: string;
+    lastUpdated: string;
+    backToHome: string;
+    agreementNotice: string;
+  };
 }
