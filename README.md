@@ -11,7 +11,7 @@
 [![Tests: 66 Passed](https://img.shields.io/badge/Tests-66_Passed_(1%2C594_Assertions)-10b981)](./tests)
 [![Spec: v2.1 Manifold](https://img.shields.io/badge/Architecture-v2.1_4D_Manifold-8b5cf6)](./spec/metacognitive_v2_spec.md)
 
-**English** | **[简体中文](./doc/README.md)**
+**English** | **[简体中文](./docs/README.md)**
 
 </div>
 
@@ -296,7 +296,7 @@ Navigating to `/admin` unlocks a multi-perspective diagnostic console powered by
 self-test/
 ├── .agents/skills/
 │   └── metacognitive-testing/     # Standardized AI Agent Self-Evaluation Skill (SKILL.md)
-├── doc/
+├── docs/
 │   └── README.md                  # Chinese documentation (简体中文版 README)
 ├── spec/
 │   ├── metacognitive_testing_system_spec.md      # v1.0 Core Psychophysics & Protocol Spec
