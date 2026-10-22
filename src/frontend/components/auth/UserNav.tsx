@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User as UserIcon, LogOut, ChevronDown, Compass, Shield } from "lucide-react";
+import { User as UserIcon, LogOut, ChevronDown, Compass, Shield, Activity } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { AuthModal } from "./AuthModal";
@@ -95,12 +95,28 @@ export const UserNav: React.FC = () => {
                   </div>
                 </div>
 
+                <a
+                  href="/me"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setDropdownOpen(false);
+                    if (window.location.pathname !== "/me") {
+                      window.history.pushState({}, "", "/me");
+                      window.dispatchEvent(new PopStateEvent("popstate"));
+                    }
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/10 rounded-xl transition-colors text-left"
+                >
+                  <Activity className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{t.profile?.navLink || "历史评测与轨迹"}</span>
+                </a>
+
                 <button
                   onClick={() => {
                     setDropdownOpen(false);
                     logout();
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 rounded-xl transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 rounded-xl transition-colors text-left cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>{t.auth?.signOut || "退出登录"}</span>

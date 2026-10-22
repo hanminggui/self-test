@@ -425,14 +425,28 @@ app.post("/api/auth/logout", (c) => {
   return c.json({ success: true });
 });
 
-// User Completed Sessions
+// User Completed Sessions (Issue #9 & #13)
 app.get("/api/auth/sessions", async (c) => {
   const user = c.get("user");
   if (!user) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  const sessions = await sessionManager.getUserSessionsAsync(user.id);
-  return c.json({ sessions });
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  const sessions = await sm.getUserSessionsAsync(user.id, locale);
+  return c.json({ user, sessions });
+});
+
+// Personal Test History & Trajectory Endpoint (GitHub Issue #13)
+app.get("/api/me/sessions", async (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  const sessions = await sm.getUserSessionsAsync(user.id, locale);
+  return c.json({ user, sessions });
 });
 
 // OAuth: Enabled Providers Discovery Endpoint
@@ -698,6 +712,8 @@ app.use("/linuxdo-logo.png", serveAsset({ root: "./dist" }));
 app.use("/linuxdo-logo-1024.png", serveAsset({ root: "./dist" }));
 app.get("/admin", serveAsset({ path: "./dist/index.html" }));
 app.get("/admin/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/me", serveAsset({ path: "./dist/index.html" }));
+app.get("/me/*", serveAsset({ path: "./dist/index.html" }));
 app.get("/*", async (c, next) => {
   if (c.req.path.startsWith("/api")) {
     return next();

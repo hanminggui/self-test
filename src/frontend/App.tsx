@@ -19,6 +19,7 @@ import {
   Check,
   Bookmark,
   AlertCircle,
+  Activity,
 } from "lucide-react";
 
 import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
@@ -598,6 +599,21 @@ export default function App() {
                 {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
               </span>
             </div>
+          )}
+          {user && (
+            <a
+              href="/me"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, "", "/me");
+                window.dispatchEvent(new PopStateEvent("popstate"));
+              }}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-indigo-400/40 text-xs font-medium text-slate-200 hover:text-white transition-all shadow-sm cursor-pointer"
+              title={t.profile?.navLink || "历史评测与轨迹"}
+            >
+              <Activity className="w-3.5 h-3.5 text-indigo-400" />
+              <span>{t.profile?.navLink || "历史评测与轨迹"}</span>
+            </a>
           )}
           <LanguageToggle />
           <UserNav />
