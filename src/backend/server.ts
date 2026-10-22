@@ -193,6 +193,9 @@ export function getUserManagerForContext(c: any): UserManager {
   if (c.get?.("userManager")) {
     return c.get("userManager");
   }
+  if (c.env?.userManager) {
+    return c.env.userManager;
+  }
   const db = c.env?.DB;
   if (db) {
     let um = d1UserManagers.get(db);
@@ -478,6 +481,78 @@ app.get("/api/me/sessions", async (c) => {
   return c.json({ user, sessions });
 });
 
+// Personal Profile & Visibility Settings Endpoints (GitHub Issue #14)
+app.get("/api/me/profile", async (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const um = getUserManagerForContext(c);
+  const freshUser = (await um.getUserById(user.id)) || user;
+  const providers = um.getConnectedProviders(freshUser);
+  return c.json({ user: freshUser, providers });
+});
+
+app.put("/api/me/profile", async (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const body = await c.req.json().catch(() => ({}));
+  const um = getUserManagerForContext(c);
+  try {
+    const updated = await um.updateUserProfile(user.id, body);
+    const token = await createAuthToken(updated);
+    setAuthCookie(c, token);
+    const providers = um.getConnectedProviders(updated);
+    return c.json({ success: true, user: updated, providers });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 400);
+  }
+});
+
+// Unlink a secondary OAuth provider (GitHub Issue #14)
+const handleUnlinkProvider = async (c: any) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const provider = c.req.param("provider");
+  const um = getUserManagerForContext(c);
+  try {
+    const updated = await um.unlinkProvider(user.id, provider);
+    const token = await createAuthToken(updated);
+    setAuthCookie(c, token);
+    const providers = um.getConnectedProviders(updated);
+    return c.json({ success: true, user: updated, providers });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 400);
+  }
+};
+
+app.post("/api/me/providers/:provider/unlink", handleUnlinkProvider);
+app.delete("/api/me/providers/:provider", handleUnlinkProvider);
+
+// Initiate secondary OAuth provider linking (GitHub Issue #14)
+app.get("/api/auth/link/:provider", (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const provider = c.req.param("provider");
+  if (!["github", "linuxdo", "google"].includes(provider)) {
+    return c.json({ error: "Invalid provider" }, 400);
+  }
+  // Store linking user ID in secure cookie for callback
+  setCookie(c, "oauth_link_uid", user.id, {
+    httpOnly: true,
+    sameSite: "Lax",
+    path: "/",
+    maxAge: 600,
+  });
+  return c.redirect(`/api/auth/${provider}`);
+});
+
 // OAuth: Enabled Providers Discovery Endpoint
 app.get("/api/auth/providers", (c) => {
   const providers = oauthService.getEnabledProviders(c.env);
@@ -518,7 +593,34 @@ app.get("/api/auth/github/callback", async (c) => {
   const redirectUri = `${origin}/api/auth/github/callback`;
   try {
     const profile = await oauthService.handleGithubCallback(code, redirectUri, c.env);
-    const user = await userManager.upsertUser({
+    const um = getUserManagerForContext(c);
+    const linkUid = getCookie(c, "oauth_link_uid");
+    deleteCookie(c, "oauth_link_uid", { path: "/" });
+
+    if (linkUid) {
+      try {
+        const updated = await um.linkProvider(linkUid, "github", {
+          id: profile.provider_id,
+          email: profile.email,
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url,
+          metadata: profile.metadata,
+        });
+        const token = await createAuthToken(updated);
+        setAuthCookie(c, token);
+        if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
+          return c.json({ success: true, linked: true, user: updated });
+        }
+        return c.redirect("/me/settings?linked=github");
+      } catch (linkErr: any) {
+        if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
+          return c.json({ error: linkErr.message }, 400);
+        }
+        return c.redirect(`/me/settings?error=${encodeURIComponent(linkErr.message)}`);
+      }
+    }
+
+    const user = await um.upsertUser({
       primary_provider: "github",
       provider_id: profile.provider_id,
       email: profile.email,
@@ -572,7 +674,34 @@ app.get("/api/auth/linuxdo/callback", async (c) => {
   const redirectUri = `${origin}/api/auth/linuxdo/callback`;
   try {
     const profile = await oauthService.handleLinuxDoCallback(code, redirectUri, c.env);
-    const user = await userManager.upsertUser({
+    const um = getUserManagerForContext(c);
+    const linkUid = getCookie(c, "oauth_link_uid");
+    deleteCookie(c, "oauth_link_uid", { path: "/" });
+
+    if (linkUid) {
+      try {
+        const updated = await um.linkProvider(linkUid, "linuxdo", {
+          id: profile.provider_id,
+          email: profile.email,
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url,
+          metadata: profile.metadata,
+        });
+        const token = await createAuthToken(updated);
+        setAuthCookie(c, token);
+        if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
+          return c.json({ success: true, linked: true, user: updated });
+        }
+        return c.redirect("/me/settings?linked=linuxdo");
+      } catch (linkErr: any) {
+        if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
+          return c.json({ error: linkErr.message }, 400);
+        }
+        return c.redirect(`/me/settings?error=${encodeURIComponent(linkErr.message)}`);
+      }
+    }
+
+    const user = await um.upsertUser({
       primary_provider: "linuxdo",
       provider_id: profile.provider_id,
       email: profile.email,
@@ -626,7 +755,34 @@ app.get("/api/auth/google/callback", async (c) => {
   const redirectUri = `${origin}/api/auth/google/callback`;
   try {
     const profile = await oauthService.handleGoogleCallback(code, redirectUri, c.env);
-    const user = await userManager.upsertUser({
+    const um = getUserManagerForContext(c);
+    const linkUid = getCookie(c, "oauth_link_uid");
+    deleteCookie(c, "oauth_link_uid", { path: "/" });
+
+    if (linkUid) {
+      try {
+        const updated = await um.linkProvider(linkUid, "google", {
+          id: profile.provider_id,
+          email: profile.email,
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url,
+          metadata: profile.metadata,
+        });
+        const token = await createAuthToken(updated);
+        setAuthCookie(c, token);
+        if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
+          return c.json({ success: true, linked: true, user: updated });
+        }
+        return c.redirect("/me/settings?linked=google");
+      } catch (linkErr: any) {
+        if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
+          return c.json({ error: linkErr.message }, 400);
+        }
+        return c.redirect(`/me/settings?error=${encodeURIComponent(linkErr.message)}`);
+      }
+    }
+
+    const user = await um.upsertUser({
       primary_provider: "google",
       provider_id: profile.provider_id,
       email: profile.email,
