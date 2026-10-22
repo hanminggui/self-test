@@ -1703,4 +1703,123 @@ export class SessionManager {
     const rows = (await this.storage.query(sql, [userId])) as any[];
     return this.assembleCohortScatterFromRows(rows, undefined, targetLocale).subjects;
   }
+
+  public async claimGuestSessionsAsync(
+    userId: string,
+    sessionIds: string[],
+    locale?: SupportedLocale
+  ): Promise<{ claimed: string[]; sessions: SubjectDataPoint[] }> {
+    const cleanIds = Array.from(
+      new Set((sessionIds || []).map((id) => String(id || "").trim()).filter(Boolean))
+    );
+    const claimed: string[] = [];
+
+    for (const sessionId of cleanIds) {
+      // Only claim human sessions that currently have no user_id (or already belong to this user)
+      const rows = (await this.storage.query(
+        "SELECT id, user_id, subject_type FROM completed_sessions WHERE id = ?",
+        [sessionId]
+      )) as any[];
+
+      if (rows.length > 0) {
+        const row = rows[0];
+        const existingUserId = row.user_id;
+        if (!existingUserId) {
+          await this.storage.run(
+            "UPDATE completed_sessions SET user_id = ? WHERE id = ? AND (user_id IS NULL OR user_id = '')",
+            [userId, sessionId]
+          );
+          claimed.push(sessionId);
+        } else if (existingUserId === userId) {
+          claimed.push(sessionId);
+        }
+      }
+
+      // Also update in-memory cache if present and unclaimed
+      const memSession = this.sessions.get(sessionId);
+      if (memSession && (!memSession.userId || memSession.userId === userId)) {
+        memSession.userId = userId;
+        if (memSession.finalReport) {
+          memSession.finalReport.user_id = userId;
+        }
+      }
+    }
+
+    const sessions = await this.getUserSessionsAsync(userId, locale);
+    return { claimed, sessions };
+  }
+
+  public async getUserCognitiveAssetsAsync(
+    userId: string,
+    locale?: SupportedLocale
+  ): Promise<{
+    unlocked_count: number;
+    total_archetypes: number;
+    assets: Array<{
+      quadrant_code: string;
+      archetype: string;
+      role_title: string;
+      english_title: string;
+      praise_tagline: string;
+      strength_tags: string[];
+      empowering_feedback: string;
+      skills: any[];
+      unlocked: boolean;
+      count: number;
+      best_d_prime: number | null;
+      best_m_ratio: number | null;
+      latest_session_id: string | null;
+      latest_unlocked_at: string | null;
+    }>;
+  }> {
+    const targetLocale = locale || getLocale();
+    const userSessions = await this.getUserSessionsAsync(userId, targetLocale);
+    const canonicalCodes = [
+      "Q1-CAL",
+      "Q2-EVO",
+      "Q3-SEN",
+      "Q4-PIO",
+      "Q5-RET",
+      "Q6-GAM",
+      "Q7-ARB",
+      "Q8-DRI",
+    ];
+
+    const assets = canonicalCodes.map((code) => {
+      const def = getArchetypeDefinition(code, targetLocale);
+      const matching = userSessions.filter((s) => (s.quadrant_code || "Q1-CAL") === code);
+      const unlocked = matching.length > 0;
+      const bestDPrime = unlocked
+        ? Math.max(...matching.map((s) => s.d_prime ?? s.metrics?.d_prime ?? 0))
+        : null;
+      const bestMRatio = unlocked
+        ? Math.max(...matching.map((s) => s.m_ratio ?? s.metrics?.m_ratio ?? 0))
+        : null;
+      const latest = matching[0] || null;
+
+      return {
+        quadrant_code: code,
+        archetype: def.archetype,
+        role_title: def.role_title,
+        english_title: def.english_title,
+        praise_tagline: def.praise_tagline,
+        strength_tags: def.strength_tags,
+        empowering_feedback: def.empowering_feedback,
+        skills: def.skills,
+        unlocked,
+        count: matching.length,
+        best_d_prime: bestDPrime !== null ? Math.round(bestDPrime * 100) / 100 : null,
+        best_m_ratio: bestMRatio !== null ? Math.round(bestMRatio * 100) / 100 : null,
+        latest_session_id: latest ? latest.id : null,
+        latest_unlocked_at: latest ? latest.created_at : null,
+      };
+    });
+
+    const unlockedCount = assets.filter((a) => a.unlocked).length;
+    return {
+      unlocked_count: unlockedCount,
+      total_archetypes: canonicalCodes.length,
+      assets,
+    };
+  }
 }

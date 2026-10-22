@@ -36,41 +36,12 @@ import { ProfileSettings } from "./components/profile/ProfileSettings";
 import type { SubjectPoint } from "./types/admin";
 
 export const ProfileDashboard: React.FC = () => {
-  const { user, loading: userLoading, openAuthModal } = useUser();
+  const { user, loading: userLoading, openAuthModal, sessionSyncVersion } = useUser();
   const { locale, t } = useLocale();
 
   const [sessions, setSessions] = useState<SubjectPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Primary Section Tab: "history" (timeline & 4D manifold) vs "settings" (profile & privacy)
-  const [activeTab, setActiveTab] = useState<"history" | "settings">(
-    typeof window !== "undefined" && window.location.pathname.startsWith("/me/settings")
-      ? "settings"
-      : "history"
-  );
-
-  useEffect(() => {
-    const handlePopState = () => {
-      if (typeof window !== "undefined") {
-        if (window.location.pathname.startsWith("/me/settings")) {
-          setActiveTab("settings");
-        } else if (window.location.pathname === "/me" || window.location.pathname.startsWith("/me/")) {
-          setActiveTab("history");
-        }
-      }
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  const handleTabChange = (tab: "history" | "settings") => {
-    setActiveTab(tab);
-    const targetPath = tab === "settings" ? "/me/settings" : "/me";
-    if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
-      window.history.pushState({}, "", targetPath);
-    }
-  };
 
   // Filter & sort states
   const [typeFilter, setTypeFilter] = useState<"ALL" | "HUMAN" | "AGENT">("ALL");
@@ -113,7 +84,7 @@ export const ProfileDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchSessions();
-  }, [fetchSessions]);
+  }, [fetchSessions, sessionSyncVersion]);
 
   // Chronological sessions (oldest to newest for trajectory & trend lines)
   const chronologicalSessions = useMemo(() => {
@@ -240,53 +211,24 @@ export const ProfileDashboard: React.FC = () => {
 
   // Navigate to /report/:id
   const handleViewReport = (sessionId: string) => {
-    window.location.href = `/report/${sessionId}`;
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", `/report/${sessionId}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
   };
 
   // Return to test page
   const handleReturnToAssessment = () => {
-    window.location.href = "/";
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-slate-950/80 backdrop-blur-xl px-4 lg:px-8 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleReturnToAssessment}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-amber-500/40 text-xs font-medium text-slate-200 hover:text-white transition-all shadow-sm cursor-pointer"
-            title={t.profile?.backToAssessment || "返回答题测试"}
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-amber-400" />
-            <span>{t.profile?.backToAssessment || "返回测试"}</span>
-          </button>
-
-          <div className="h-4 w-px bg-white/10 mx-1 hidden sm:block" />
-
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center">
-              <Activity className="w-4 h-4 text-indigo-400" />
-            </div>
-            <div>
-              <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
-                {t.profile?.title || "个人评测历史与认知流形轨迹"}
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300">
-                  /me
-                </span>
-              </h1>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <LanguageToggle />
-          <UserNav />
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-8">
+    <div className="w-full text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200">
+      {/* Main Content Area (No Top Fixed Bar, No History/Settings Tab Bar) */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 lg:px-8 py-8 space-y-8">
         {/* State 1: Guest / Unauthenticated */}
         {!userLoading && !user && (
           <div className="w-full my-12 p-8 lg:p-12 rounded-3xl bg-white/[0.02] border border-white/10 shadow-2xl backdrop-blur-xl text-center flex flex-col items-center justify-center space-y-6 max-w-xl mx-auto">
@@ -317,7 +259,7 @@ export const ProfileDashboard: React.FC = () => {
                 onClick={handleReturnToAssessment}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 hover:text-white transition-all cursor-pointer"
               >
-                <span>{t.profile?.backToAssessment || "返回测试"}</span>
+                <span>{t.profile?.backToAssessment || "返回首页"}</span>
               </button>
             </div>
           </div>
@@ -326,55 +268,7 @@ export const ProfileDashboard: React.FC = () => {
         {/* State 2: User Authenticated */}
         {user && (
           <>
-            {/* Sub-Navigation Tabs: History vs Settings */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleTabChange("history")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                    activeTab === "history"
-                      ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm"
-                      : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
-                  }`}
-                >
-                  <Activity className="w-3.5 h-3.5" />
-                  <span>{t.profile?.tabHistory || "评测历史与流形"}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleTabChange("settings")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                    activeTab === "settings"
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
-                      : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
-                  }`}
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                  <span>{t.profile?.tabSettings || "个人资料与偏好"}</span>
-                </button>
-              </div>
-
-              {activeTab === "history" && (
-                <button
-                  onClick={fetchSessions}
-                  disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-300 hover:text-white transition-all cursor-pointer"
-                  title="刷新数据"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-indigo-400" : ""}`} />
-                  <span className="hidden sm:inline">刷新记录</span>
-                </button>
-              )}
-            </div>
-
-            {/* View Mode Switching */}
-            {activeTab === "settings" ? (
-              <ProfileSettings />
-            ) : (
-              <>
-                {/* User Profile Header Card */}
+            {/* User Profile & History Page Header Card */}
             <div className="w-full p-6 rounded-2xl bg-gradient-to-r from-slate-900/90 via-indigo-950/40 to-slate-900/90 border border-white/10 shadow-xl backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div className="flex items-center gap-4">
                 {user.avatar_url ? (
@@ -866,8 +760,6 @@ export const ProfileDashboard: React.FC = () => {
                     })}
                   </div>
                 </div>
-              </>
-            )}
               </>
             )}
           </>

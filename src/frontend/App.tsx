@@ -20,6 +20,9 @@ import {
   Bookmark,
   AlertCircle,
   Activity,
+  Lock,
+  LogIn,
+  ArrowLeft,
 } from "lucide-react";
 
 import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
@@ -34,6 +37,7 @@ import {
   buildSessionReportUrl,
   saveLastCompletedSession,
   getLastCompletedSession,
+  canGuestStartNewSession,
 } from "./utils/sessionRoute";
 import { UserNav } from "./components/auth/UserNav";
 
@@ -230,9 +234,14 @@ const renderPrompt = (rawPrompt: string) => {
   );
 };
 
-export default function App() {
+interface AppProps {
+  inAppLayout?: boolean;
+  onNavigate?: (path: string) => void;
+}
+
+export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) {
   const { locale, t, formatMessage } = useLocale();
-  const { user } = useUser();
+  const { user, openAuthModal, notifySessionChanged, sessionSyncVersion } = useUser();
   const isEn = locale === "en-US";
 
   const [stage, setStage] = useState<"WELCOME" | "TESTING" | "REPORT">("WELCOME");
@@ -262,6 +271,22 @@ export default function App() {
     setPlaceholderCodename(generateRandomCodename(locale));
   }, [locale]);
 
+  useEffect(() => {
+    setLastSessionRecord(getLastCompletedSession());
+  }, [user, sessionSyncVersion]);
+
+  const navigateTo = useCallback(
+    (path: string) => {
+      if (onNavigate) {
+        onNavigate(path);
+      } else if (typeof window !== "undefined") {
+        window.history.pushState({}, "", path);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }
+    },
+    [onNavigate]
+  );
+
   // 按会话 ID 加载专属报告
   const loadReportById = useCallback(async (targetId: string, updateUrl: boolean = false) => {
     if (!targetId) return;
@@ -280,8 +305,10 @@ export default function App() {
       setSessionId(targetId);
       setReport(repData);
       setStage("REPORT");
-      saveLastCompletedSession(targetId);
-      setLastSessionRecord(getLastCompletedSession());
+      if (!user) {
+        saveLastCompletedSession(targetId);
+        setLastSessionRecord(getLastCompletedSession());
+      }
 
       if (updateUrl && typeof window !== "undefined") {
         const targetUrl = buildSessionReportUrl(targetId);
@@ -293,7 +320,7 @@ export default function App() {
     } finally {
       setReportLoading(false);
     }
-  }, [locale, t]);
+  }, [locale, t, user]);
 
   // 监听浏览器路由变化与初次加载专用路由 (/report/:id, ?session_id=xxx 等)
   useEffect(() => {
@@ -397,6 +424,13 @@ export default function App() {
 
   // Start a new exploration session
   const startSession = async () => {
+    const currentUnclaimed = getLastCompletedSession();
+    if (!canGuestStartNewSession(Boolean(user), currentUnclaimed?.sessionId)) {
+      setLastSessionRecord(currentUnclaimed);
+      openAuthModal();
+      return;
+    }
+
     setLoading(true);
     setErrorMsg("");
     const finalName = subjectName.trim() || user?.display_name || placeholderCodename;
@@ -514,8 +548,12 @@ export default function App() {
         }
         setReport(repData);
         setStage("REPORT");
-        saveLastCompletedSession(sessionId);
-        setLastSessionRecord(getLastCompletedSession());
+        if (!user) {
+          saveLastCompletedSession(sessionId);
+          setLastSessionRecord(getLastCompletedSession());
+        } else {
+          notifySessionChanged();
+        }
         if (typeof window !== "undefined") {
           const permalink = buildSessionReportUrl(sessionId);
           window.history.pushState({ sessionId }, "", permalink);
@@ -575,50 +613,62 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [stage, trialData, selectedOption, selectedAction, loading, handleSubmitTrial]);
 
+  const isGuestBlockedByUnclaimed = !canGuestStartNewSession(
+    Boolean(user),
+    lastSessionRecord?.sessionId
+  );
+
   return (
     <div className="min-h-screen flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto selection:bg-amber-500/20 selection:text-amber-200">
-      {/* 顶部极简静谧标头 */}
-      <header className="flex items-center justify-between py-4 border-b border-white/5 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500/30 via-indigo-500/30 to-purple-500/30 border border-white/10 flex items-center justify-center shadow-lg shadow-indigo-950/40">
-            <Compass className="w-5 h-5 text-amber-300" />
-          </div>
-          <div>
-            <h1 className="text-sm md:text-base font-bold tracking-wide text-white flex items-center gap-2">
-              {t.app.appTitle}
-            </h1>
-            <p className="text-[11px] text-slate-400">{t.app.appSubtitle}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {stage === "TESTING" && trialData && (
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-slate-400">{t.app.voyageProgress}</span>
-              <span className="font-mono text-amber-300 font-bold text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
-                {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
-              </span>
-            </div>
-          )}
-          {user && (
+      {/* 仅在未进入 App Layout 时展示游客模式顶部导航栏 */}
+      {!inAppLayout && (
+        <header className="flex items-center justify-between py-4 border-b border-white/5 mb-6">
+          <div className="flex items-center gap-3">
             <a
-              href="/me"
+              href="/"
               onClick={(e) => {
                 e.preventDefault();
-                window.history.pushState({}, "", "/me");
-                window.dispatchEvent(new PopStateEvent("popstate"));
+                navigateTo("/");
               }}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-indigo-400/40 text-xs font-medium text-slate-200 hover:text-white transition-all shadow-sm cursor-pointer"
-              title={t.profile?.navLink || "历史评测与轨迹"}
+              className="flex items-center gap-2.5 group cursor-pointer"
             >
-              <Activity className="w-3.5 h-3.5 text-indigo-400" />
-              <span>{t.profile?.navLink || "历史评测与轨迹"}</span>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500/30 via-indigo-500/30 to-purple-500/30 border border-white/10 flex items-center justify-center shadow-lg shadow-indigo-950/40">
+                <Compass className="w-5 h-5 text-amber-300" />
+              </div>
+              <div>
+                <h1 className="text-sm md:text-base font-bold tracking-wide text-white flex items-center gap-2 group-hover:text-amber-300 transition-colors">
+                  {t.app.appTitle}
+                </h1>
+                <p className="text-[11px] text-slate-400">{t.app.appSubtitle}</p>
+              </div>
             </a>
-          )}
-          <LanguageToggle />
-          <UserNav />
-        </div>
-      </header>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {stage === "TESTING" && trialData && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400">{t.app.voyageProgress}</span>
+                <span className="font-mono text-amber-300 font-bold text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                  {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
+                </span>
+              </div>
+            )}
+            <a
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                navigateTo("/");
+              }}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 hover:text-white transition-all cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isEn ? "Official Home" : "返回官网首页"}</span>
+            </a>
+            <LanguageToggle />
+            <UserNav />
+          </div>
+        </header>
+      )}
 
       {/* 主体区域 */}
       <main className="flex-1 flex flex-col justify-center">
@@ -652,9 +702,7 @@ export default function App() {
               onClick={() => {
                 setReportNotFound(false);
                 setStage("WELCOME");
-                if (typeof window !== "undefined") {
-                  window.history.pushState(null, "", "/");
-                }
+                navigateTo("/");
               }}
               className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs inline-flex items-center gap-2 cursor-pointer transition-colors border border-white/10 mx-auto"
             >
@@ -663,8 +711,58 @@ export default function App() {
           </div>
         )}
 
-        {/* 1. 欢迎探索阶段：极致温暖、毫无防备、尊崇体验 */}
-        {!reportLoading && !reportNotFound && stage === "WELCOME" && (
+        {/* 1A. 游客单画像未认领门禁卡片：未登录且本地已有未认领画像时禁止开启新测试 */}
+        {!reportLoading && !reportNotFound && stage === "WELCOME" && isGuestBlockedByUnclaimed && lastSessionRecord && (
+          <div className="glass-panel rounded-3xl p-8 md:p-12 text-center max-w-xl mx-auto w-full shadow-2xl relative overflow-hidden border border-amber-500/35 space-y-6">
+            <div className="absolute -top-24 -left-24 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center mx-auto text-amber-300 shadow-lg shadow-amber-950/30">
+              <Lock className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-xs font-bold text-amber-300">
+                <Crown className="w-3.5 h-3.5" />
+                <span>{isEn ? "1 / 1 Guest Archetype Quota Reached" : "游客单次画像额度已满 (1 / 1)"}</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                {isEn
+                  ? "Sign In to Claim Your Unclaimed Archetype First"
+                  : "请先登录认领您本机的专属认知画像"}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+                {isEn
+                  ? "Guests can hold only one unclaimed cognitive archetype locally. Sign in now to automatically claim your completed result into your Cognitive Assets and unlock unlimited new assessments!"
+                  : "游客状态下仅可保有一份本地未认领画像。登录后系统将自动把您的未认领评测记录关联至个人账号并点亮认知资产图鉴，随后即可开启全新测试！"}
+              </p>
+              <div className="text-[11px] font-mono text-slate-400 bg-black/40 px-3 py-1.5 rounded-xl border border-white/10 inline-block">
+                UNCLAIMED SESSION: {lastSessionRecord.sessionId}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={openAuthModal}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 hover:brightness-110 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>{isEn ? "Sign In & Auto-Claim Archetype" : "立即登录 · 自动认领画像"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => loadReportById(lastSessionRecord.sessionId, true)}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-slate-200 hover:text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all"
+              >
+                <Bookmark className="w-4 h-4 text-amber-400" />
+                <span>{isEn ? "View Unclaimed Report" : "查看未认领画像报告"}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 1B. 欢迎探索阶段：极致温暖、毫无防备、尊崇体验 */}
+        {!reportLoading && !reportNotFound && stage === "WELCOME" && !isGuestBlockedByUnclaimed && (
           <div className="glass-panel rounded-3xl p-8 md:p-12 text-center max-w-2xl mx-auto w-full shadow-2xl relative overflow-hidden border border-white/10">
             <div className="absolute -top-32 -left-32 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -789,6 +887,18 @@ export default function App() {
         {/* 2. 答题进行阶段：无对错焦虑、无分数扣罚压迫 */}
         {stage === "TESTING" && trialData && (
           <div className="w-full max-w-3xl mx-auto space-y-6">
+            {/* 在 App Layout 内无顶部固定栏时展示内联进度计数器 */}
+            {inAppLayout && (
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span className="flex items-center gap-2 font-medium text-slate-300">
+                  <Compass className="w-4 h-4 text-amber-400" />
+                  <span>{t.app.voyageProgress}</span>
+                </span>
+                <span className="font-mono text-amber-300 font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                  {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
+                </span>
+              </div>
+            )}
             {/* 顶部长条柔和流光进度 */}
             <div className="w-full h-1 bg-slate-800/80 rounded-full overflow-hidden">
               <div
@@ -986,6 +1096,36 @@ export default function App() {
           const profile = displayReport.diagnostic_profile;
           return (
             <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-700 pb-12">
+              {/* 游客答题完成后的强引导登录收集结果画像卡片 */}
+              {!user && (
+                <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-amber-500/20 via-indigo-950/80 to-purple-500/20 border border-amber-400/40 shadow-2xl shadow-amber-950/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1 text-left">
+                    <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-300">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>
+                        {isEn
+                          ? "Unclaimed Cognitive Archetype Unlocked!"
+                          : "恭喜解锁专属认知画像！当前处于未认领游客状态"}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+                      {isEn
+                        ? `Sign in now to claim "${profile.role_title}" into your personal Cognitive Assets codex and unlock unlimited future assessments.`
+                        : `立即登录即可将【${profile.role_title}】自动认领并永久收入您的认知资产图鉴，同时解锁无限次新一轮评测与 4D 流形轨迹追踪！`}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={openAuthModal}
+                    className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg shadow-amber-500/25 flex items-center gap-2 shrink-0 cursor-pointer transition-all"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>{isEn ? "Sign In to Collect Archetype" : "登录收集此结果画像"}</span>
+                  </button>
+                </div>
+              )}
+
               {/* 专属本命神级名片卡 */}
               <div className="glass-panel rounded-3xl p-8 md:p-12 relative overflow-hidden text-center shadow-2xl border border-amber-500/30 glow-gold bg-gradient-to-b from-amber-950/20 via-slate-900/80 to-[#0b0d13]">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -1113,21 +1253,34 @@ export default function App() {
 
               {/* 按钮区 */}
               <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStage("WELCOME");
-                    setReport(null);
-                    setTrialData(null);
-                    setSessionId("");
-                    if (typeof window !== "undefined") {
-                      window.history.pushState(null, "", "/");
-                    }
-                  }}
-                  className="px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors border border-white/10 shadow-lg"
-                >
-                  <RotateCcw className="w-4 h-4" /> {t.app.restartVoyage}
-                </button>
+                {user ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStage("WELCOME");
+                      setReport(null);
+                      setTrialData(null);
+                      setSessionId("");
+                      navigateTo("/");
+                    }}
+                    className="px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors border border-white/10 shadow-lg"
+                  >
+                    <RotateCcw className="w-4 h-4" /> {t.app.restartVoyage}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={openAuthModal}
+                    className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors border border-indigo-400/30 shadow-lg shadow-indigo-600/25"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>
+                      {isEn
+                        ? "Sign In & Claim to Start New Test"
+                        : "登录认领画像以开启新测试"}
+                    </span>
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -1152,21 +1305,37 @@ export default function App() {
         />
       )}
 
-      {/* 底部极简静谧脚注 */}
-      <footer className="py-4 text-center text-xs text-slate-500 border-t border-white/5 mt-8 space-y-1.5">
-        <div>{t.app.footerText}</div>
-        <div className="flex items-center justify-center gap-3 text-[11px] text-slate-600">
-          <a href="/privacy" className="hover:text-amber-300 transition-colors">
-            {t.legal?.privacyPolicy || "隐私政策"}
-          </a>
-          <span>•</span>
-          <a href="/terms" className="hover:text-amber-300 transition-colors">
-            {t.legal?.termsOfService || "服务条款"}
-          </a>
-          <span>•</span>
-          <span className="font-mono">&copy; {new Date().getFullYear()} Self-Test</span>
-        </div>
-      </footer>
+      {/* 仅在未进入 App Layout 时展示底部极简脚注 */}
+      {!inAppLayout && (
+        <footer className="py-4 text-center text-xs text-slate-500 border-t border-white/5 mt-8 space-y-1.5">
+          <div>{t.app.footerText}</div>
+          <div className="flex items-center justify-center gap-3 text-[11px] text-slate-600">
+            <a
+              href="/privacy"
+              onClick={(e) => {
+                e.preventDefault();
+                navigateTo("/privacy");
+              }}
+              className="hover:text-amber-300 transition-colors"
+            >
+              {t.legal?.privacyPolicy || "隐私政策"}
+            </a>
+            <span>•</span>
+            <a
+              href="/terms"
+              onClick={(e) => {
+                e.preventDefault();
+                navigateTo("/terms");
+              }}
+              className="hover:text-amber-300 transition-colors"
+            >
+              {t.legal?.termsOfService || "服务条款"}
+            </a>
+            <span>•</span>
+            <span className="font-mono">&copy; {new Date().getFullYear()} Self-Test</span>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

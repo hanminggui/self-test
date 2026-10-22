@@ -481,6 +481,49 @@ app.get("/api/me/sessions", async (c) => {
   return c.json({ user, sessions });
 });
 
+// Claim Guest Unclaimed Sessions upon Authentication
+app.post("/api/sessions/claim", async (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const body = await c.req.json().catch(() => ({}));
+  const candidateIds: string[] = [];
+  if (typeof body.session_id === "string" && body.session_id.trim()) {
+    candidateIds.push(body.session_id.trim());
+  }
+  if (Array.isArray(body.session_ids)) {
+    for (const id of body.session_ids) {
+      if (typeof id === "string" && id.trim()) {
+        candidateIds.push(id.trim());
+      }
+    }
+  }
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  const result = await sm.claimGuestSessionsAsync(user.id, candidateIds, locale);
+  return c.json({
+    success: true,
+    claimed: result.claimed,
+    sessions: result.sessions,
+  });
+});
+
+// Personal Cognitive Assets / Unlocked Archetype Collection
+app.get("/api/me/assets", async (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  const data = await sm.getUserCognitiveAssetsAsync(user.id, locale);
+  return c.json({
+    user,
+    ...data,
+  });
+});
+
 // Personal Profile & Visibility Settings Endpoints (GitHub Issue #14)
 app.get("/api/me/profile", async (c) => {
   const user = c.get("user");
@@ -611,12 +654,12 @@ app.get("/api/auth/github/callback", async (c) => {
         if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
           return c.json({ success: true, linked: true, user: updated });
         }
-        return c.redirect("/me/settings?linked=github");
+        return c.redirect("/settings?linked=github");
       } catch (linkErr: any) {
         if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
           return c.json({ error: linkErr.message }, 400);
         }
-        return c.redirect(`/me/settings?error=${encodeURIComponent(linkErr.message)}`);
+        return c.redirect(`/settings?error=${encodeURIComponent(linkErr.message)}`);
       }
     }
 
@@ -692,12 +735,12 @@ app.get("/api/auth/linuxdo/callback", async (c) => {
         if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
           return c.json({ success: true, linked: true, user: updated });
         }
-        return c.redirect("/me/settings?linked=linuxdo");
+        return c.redirect("/settings?linked=linuxdo");
       } catch (linkErr: any) {
         if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
           return c.json({ error: linkErr.message }, 400);
         }
-        return c.redirect(`/me/settings?error=${encodeURIComponent(linkErr.message)}`);
+        return c.redirect(`/settings?error=${encodeURIComponent(linkErr.message)}`);
       }
     }
 
@@ -773,12 +816,12 @@ app.get("/api/auth/google/callback", async (c) => {
         if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
           return c.json({ success: true, linked: true, user: updated });
         }
-        return c.redirect("/me/settings?linked=google");
+        return c.redirect("/settings?linked=google");
       } catch (linkErr: any) {
         if (c.req.header("accept")?.includes("application/json") || c.req.query("json") === "1") {
           return c.json({ error: linkErr.message }, 400);
         }
-        return c.redirect(`/me/settings?error=${encodeURIComponent(linkErr.message)}`);
+        return c.redirect(`/settings?error=${encodeURIComponent(linkErr.message)}`);
       }
     }
 
@@ -1192,6 +1235,14 @@ app.get("/share/:sessionId/", handleSharePage);
 
 app.get("/admin", serveAsset({ path: "./dist/index.html" }));
 app.get("/admin/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/history", serveAsset({ path: "./dist/index.html" }));
+app.get("/history/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/settings", serveAsset({ path: "./dist/index.html" }));
+app.get("/settings/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/assets", serveAsset({ path: "./dist/index.html" }));
+app.get("/assets/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/test", serveAsset({ path: "./dist/index.html" }));
+app.get("/test/*", serveAsset({ path: "./dist/index.html" }));
 app.get("/me", serveAsset({ path: "./dist/index.html" }));
 app.get("/me/*", serveAsset({ path: "./dist/index.html" }));
 app.get("/*", async (c, next) => {

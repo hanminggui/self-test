@@ -151,3 +151,124 @@ export function clearLastCompletedSession(): void {
     localStorage.removeItem(STORAGE_KEY_LAST_TIMESTAMP);
   } catch {}
 }
+
+export type AppViewType =
+  | "landing"
+  | "test"
+  | "report"
+  | "history"
+  | "settings"
+  | "assets"
+  | "share"
+  | "privacy"
+  | "terms"
+  | "admin";
+
+export interface ResolvedRouteView {
+  view: AppViewType;
+  inAppLayout: boolean;
+  redirectTo?: string;
+}
+
+/**
+ * 统一路由与 App Layout 边界判定
+ * 唯一标准：当前是否已登录 (isAuthenticated) + 访问的页面是否属于应用工作台路由
+ */
+export function resolveRouteView(
+  pathname: string = typeof window !== "undefined" ? window.location.pathname : "/",
+  isAuthenticated: boolean = false,
+  search: string = typeof window !== "undefined" ? window.location.search : "",
+  hash: string = typeof window !== "undefined" ? window.location.hash : ""
+): ResolvedRouteView {
+  const cleanPath = (pathname || "/").replace(/\/+$/, "") || "/";
+
+  // 1. 始终在 App Layout 外的特殊/公共页面
+  if (cleanPath === "/admin" || cleanPath.startsWith("/admin/")) {
+    return { view: "admin", inAppLayout: false };
+  }
+  if (cleanPath === "/privacy" || cleanPath.startsWith("/privacy/")) {
+    return { view: "privacy", inAppLayout: false };
+  }
+  if (cleanPath === "/terms" || cleanPath.startsWith("/terms/")) {
+    return { view: "terms", inAppLayout: false };
+  }
+  if (cleanPath === "/share" || cleanPath.startsWith("/share/")) {
+    return { view: "share", inAppLayout: false };
+  }
+
+  // 2. 独立路由：历史记录 (/history) 与 个人偏好 (/settings) 与 认知资产 (/assets)
+  // 兼容旧路径 /me 与 /me/settings
+  if (cleanPath === "/me/settings" || cleanPath.startsWith("/me/settings/")) {
+    return {
+      view: "settings",
+      inAppLayout: isAuthenticated,
+      redirectTo: "/settings",
+    };
+  }
+  if (cleanPath === "/me" || cleanPath.startsWith("/me/")) {
+    return {
+      view: "history",
+      inAppLayout: isAuthenticated,
+      redirectTo: "/history",
+    };
+  }
+  if (cleanPath === "/history" || cleanPath.startsWith("/history/")) {
+    return { view: "history", inAppLayout: isAuthenticated };
+  }
+  if (cleanPath === "/settings" || cleanPath.startsWith("/settings/")) {
+    return { view: "settings", inAppLayout: isAuthenticated };
+  }
+  if (cleanPath === "/assets" || cleanPath.startsWith("/assets/")) {
+    return { view: "assets", inAppLayout: isAuthenticated };
+  }
+
+  // 3. 报告详情页路由 (/report/:id, /session/:id, /result/:id 或携带 session_id query)
+  const extractedReportId = extractSessionIdFromUrl(cleanPath, search, hash);
+  if (
+    extractedReportId &&
+    (cleanPath.startsWith("/report/") ||
+      cleanPath.startsWith("/session/") ||
+      cleanPath.startsWith("/result/") ||
+      Boolean(search) ||
+      Boolean(hash))
+  ) {
+    return {
+      view: "report",
+      inAppLayout: isAuthenticated,
+    };
+  }
+
+  // 4. 答题测试页 (/test)
+  if (cleanPath === "/test" || cleanPath.startsWith("/test/")) {
+    return {
+      view: "test",
+      inAppLayout: isAuthenticated,
+    };
+  }
+
+  // 5. 首页 (/)：未登录时为游客引导官网 (landing, Layout 外)，已登录时进入 App 测评台 (test, Layout 内)
+  if (!isAuthenticated) {
+    return {
+      view: "landing",
+      inAppLayout: false,
+    };
+  }
+
+  return {
+    view: "test",
+    inAppLayout: true,
+  };
+}
+
+/**
+ * 游客单画像限制判定：
+ * 游客只能保有一个未认领画像，当未登录且本地存在未认领画像会话 ID 时，不能开启新测试，需登录认领
+ */
+export function canGuestStartNewSession(
+  isAuthenticated: boolean,
+  unclaimedSessionId: string | null | undefined
+): boolean {
+  if (isAuthenticated) return true;
+  return !unclaimedSessionId || !unclaimedSessionId.trim();
+}
+

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import type { User } from "../../storage/user";
+import { getLastCompletedSession, clearLastCompletedSession } from "../utils/sessionRoute";
 
 export interface EnabledProviders {
   github: boolean;
@@ -19,6 +20,8 @@ export interface UserContextType {
   isAuthModalOpen: boolean;
   refreshUser: () => Promise<void>;
   refreshProviders: () => Promise<void>;
+  sessionSyncVersion: number;
+  notifySessionChanged: () => void;
 }
 
 const UserContext = createContext<UserContextType | null>(null);
@@ -27,11 +30,44 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [sessionSyncVersion, setSessionSyncVersion] = useState<number>(0);
   const [enabledProviders, setEnabledProviders] = useState<EnabledProviders>({
     github: true,
     linuxdo: true,
     google: true,
   });
+
+  const notifySessionChanged = useCallback(() => {
+    setSessionSyncVersion((v) => v + 1);
+  }, []);
+
+  // Automatically claim local unclaimed guest session when user logs in on this device
+  const claimLocalUnclaimedSession = useCallback(async (loggedInUser: User) => {
+    if (!loggedInUser) return;
+    const localRecord = getLastCompletedSession();
+    if (!localRecord?.sessionId) return;
+
+    try {
+      const res = await fetch("/api/sessions/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ session_id: localRecord.sessionId }),
+      });
+      if (res.ok) {
+        clearLastCompletedSession();
+        setSessionSyncVersion((v) => v + 1);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("metacognitive:session-claimed", {
+              detail: { sessionId: localRecord.sessionId },
+            })
+          );
+        }
+      }
+    } catch {
+      // Keep in localStorage to retry on next load if network failed
+    }
+  }, []);
 
   const refreshUser = useCallback(async () => {
     try {
@@ -40,7 +76,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       if (res.ok) {
         const data = await res.json();
-        setUser(data.user || null);
+        const resolvedUser: User | null = data.user || null;
+        setUser(resolvedUser);
+        if (resolvedUser) {
+          await claimLocalUnclaimedSession(resolvedUser);
+        }
       } else {
         setUser(null);
       }
@@ -49,7 +89,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [claimLocalUnclaimedSession]);
 
   const refreshProviders = useCallback(async () => {
     try {
@@ -85,6 +125,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await fetch("/api/auth/logout", { method: "POST" });
     } catch {}
     setUser(null);
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", "/");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
   }, []);
 
   const openAuthModal = useCallback(() => setIsAuthModalOpen(true), []);
@@ -104,6 +148,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthModalOpen,
         refreshUser,
         refreshProviders,
+        sessionSyncVersion,
+        notifySessionChanged,
       }}
     >
       {children}
@@ -126,6 +172,8 @@ export function useUser(): UserContextType {
       isAuthModalOpen: false,
       refreshUser: async () => {},
       refreshProviders: async () => {},
+      sessionSyncVersion: 0,
+      notifySessionChanged: () => {},
     };
   }
   return ctx;

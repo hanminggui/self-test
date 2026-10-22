@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+:root {
+  interpolate-size: allow-keywords;
+}
+
 @layer base {
   body {
     background-color: #090a0f;
@@ -9,6 +13,12 @@
       radial-gradient(at 50% 50%, rgba(20, 24, 38, 0.4) 0px, transparent 100%);
     background-attachment: fixed;
     color: #f1f5f9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  aside {
+    transition: none !important;
   }
 }
 

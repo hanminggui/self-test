@@ -161,10 +161,10 @@ export const ProfileSettings: React.FC = () => {
         setStatusMessage({ type: "success", text: `已成功关联 ${linked.toUpperCase()} 账号！` });
         fetchProfileData();
         refreshUser();
-        window.history.replaceState({}, "", "/me/settings");
+        window.history.replaceState({}, "", "/settings");
       } else if (err) {
         setStatusMessage({ type: "error", text: decodeURIComponent(err) });
-        window.history.replaceState({}, "", "/me/settings");
+        window.history.replaceState({}, "", "/settings");
       }
     }
   }, [refreshUser]);

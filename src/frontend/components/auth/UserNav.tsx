@@ -96,12 +96,12 @@ export const UserNav: React.FC = () => {
                 </div>
 
                 <a
-                  href="/me"
+                  href="/history"
                   onClick={(e) => {
                     e.preventDefault();
                     setDropdownOpen(false);
-                    if (window.location.pathname !== "/me") {
-                      window.history.pushState({}, "", "/me");
+                    if (window.location.pathname !== "/history") {
+                      window.history.pushState({}, "", "/history");
                       window.dispatchEvent(new PopStateEvent("popstate"));
                     }
                   }}
@@ -112,12 +112,12 @@ export const UserNav: React.FC = () => {
                 </a>
 
                 <a
-                  href="/me/settings"
+                  href="/settings"
                   onClick={(e) => {
                     e.preventDefault();
                     setDropdownOpen(false);
-                    if (window.location.pathname !== "/me/settings") {
-                      window.history.pushState({}, "", "/me/settings");
+                    if (window.location.pathname !== "/settings") {
+                      window.history.pushState({}, "", "/settings");
                       window.dispatchEvent(new PopStateEvent("popstate"));
                     }
                   }}

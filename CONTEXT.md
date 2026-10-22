@@ -26,3 +26,11 @@ _Avoid_: Split `SessionSummary` and `MetacognitiveMetrics`
 **Quadrant Code (`quadrant_code`)**:
 The canonical 6-character identifier (`Q1-CAL` through `Q8-DRI`) representing the subject's classified cognitive archetype. Serves as the sole persisted classification key in the database; all human-readable titles, taglines, skills, and clinical summaries are resolved dynamically in memory from the i18n dictionary.
 _Avoid_: Persisting `diagnostic_profile`, `role_title`, or `clinical_summary` in the database
+
+**Unclaimed Session**:
+A completed human assessment session with no bound user (`user_id IS NULL`) retained on the guest's device. A guest may hold at most one unclaimed session at a time and must sign in to claim it before initiating a new assessment.
+_Avoid_: Guest history list, multiple anonymous local sessions
+
+**Cognitive Asset**:
+An archetype identity (`Q1-CAL` through `Q8-DRI`) unlocked and collected by an authenticated user through claimed or completed assessments.
+_Avoid_: Badge, achievement tab
