@@ -1657,12 +1657,50 @@ export class SessionManager {
     };
   }
 
-  public getUserSessions(userId: string): any[] {
+  public getUserSessions(userId: string, locale?: SupportedLocale): SubjectDataPoint[] {
+    const targetLocale = locale || getLocale();
     if (!this.storage.querySync) return [];
-    return this.storage.querySync("SELECT * FROM completed_sessions WHERE user_id = ? ORDER BY created_at DESC", [userId]);
+    const sql = `
+      SELECT 
+        c.*,
+        a.model_name as agent_model,
+        a.persona as agent_persona,
+        a.thinking_effort as agent_effort,
+        a.evaluation_mode as agent_eval_mode,
+        a.prompt_tokens,
+        a.completion_tokens,
+        a.cached_tokens,
+        a.reasoning_tokens,
+        a.total_tokens
+      FROM completed_sessions c
+      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+      WHERE c.user_id = ?
+      ORDER BY c.created_at DESC
+    `;
+    const rows = this.storage.querySync(sql, [userId]) as any[];
+    return this.assembleCohortScatterFromRows(rows, undefined, targetLocale).subjects;
   }
 
-  public async getUserSessionsAsync(userId: string): Promise<any[]> {
-    return this.storage.query("SELECT * FROM completed_sessions WHERE user_id = ? ORDER BY created_at DESC", [userId]);
+  public async getUserSessionsAsync(userId: string, locale?: SupportedLocale): Promise<SubjectDataPoint[]> {
+    const targetLocale = locale || getLocale();
+    const sql = `
+      SELECT 
+        c.*,
+        a.model_name as agent_model,
+        a.persona as agent_persona,
+        a.thinking_effort as agent_effort,
+        a.evaluation_mode as agent_eval_mode,
+        a.prompt_tokens,
+        a.completion_tokens,
+        a.cached_tokens,
+        a.reasoning_tokens,
+        a.total_tokens
+      FROM completed_sessions c
+      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+      WHERE c.user_id = ?
+      ORDER BY c.created_at DESC
+    `;
+    const rows = (await this.storage.query(sql, [userId])) as any[];
+    return this.assembleCohortScatterFromRows(rows, undefined, targetLocale).subjects;
   }
 }
