@@ -7,7 +7,21 @@
 
 export type AuthProvider = "github" | "linuxdo" | "google" | (string & {});
 
+export type SessionVisibilityPreference = "private" | "anonymous" | "public";
+
+export interface UserSocialLinks {
+  github?: string;
+  twitter?: string;
+  linuxdo?: string;
+  website?: string;
+  [key: string]: string | undefined;
+}
+
 export interface UserMetadata {
+  bio?: string;
+  default_visibility?: SessionVisibilityPreference;
+  social_links?: UserSocialLinks;
+  custom_avatar?: string;
   providers?: Record<string, {
     id: string | number;
     username?: string;

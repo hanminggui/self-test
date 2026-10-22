@@ -7,7 +7,8 @@
 
 import { StorageAdapter } from "../storage/adapter";
 import { LocalSqliteAdapter, USERS_TABLE_SCHEMA_SQL } from "../storage/local_sqlite";
-import { User, UserRow, UserMetadata, parseUserRow } from "../storage/user";
+import { User, UserRow, UserMetadata, parseUserRow, SessionVisibilityPreference, UserSocialLinks } from "../storage/user";
+import { validateDisplayName, validateBio, validateVisibility, validateSocialLinks } from "./user_validation";
 
 export interface UpsertUserParams {
   id?: string;
@@ -17,6 +18,26 @@ export interface UpsertUserParams {
   primary_provider: string;
   provider_id?: string | number;
   metadata?: Record<string, any>;
+}
+
+export interface UpdateProfileParams {
+  display_name?: string;
+  bio?: string;
+  avatar_url?: string | null;
+  default_visibility?: SessionVisibilityPreference;
+  social_links?: UserSocialLinks;
+  metadata?: Record<string, any>;
+}
+
+export interface ConnectedProviderInfo {
+  provider: string;
+  linked: boolean;
+  is_primary: boolean;
+  id?: string | number;
+  username?: string;
+  email?: string | null;
+  avatar_url?: string | null;
+  linked_at?: string;
 }
 
 export class UserManager {
@@ -251,5 +272,257 @@ export class UserManager {
   public async deleteUser(id: string): Promise<boolean> {
     const res = await this.storage.run("DELETE FROM users WHERE id = ?", [id]);
     return (res.changes ?? 0) > 0;
+  }
+
+  /**
+   * Updates user profile fields (display name, bio, avatar, default visibility, social links)
+   * with strict validation.
+   */
+  public async updateUserProfile(id: string, params: UpdateProfileParams): Promise<User> {
+    const user = await this.getUserById(id);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // 1. Validation
+    if (params.display_name !== undefined) {
+      const v = validateDisplayName(params.display_name);
+      if (!v.valid) {
+        throw new Error(v.error || "Invalid display name");
+      }
+    }
+
+    if (params.bio !== undefined) {
+      const v = validateBio(params.bio);
+      if (!v.valid) {
+        throw new Error(v.error || "Invalid bio");
+      }
+    }
+
+    if (params.default_visibility !== undefined) {
+      const v = validateVisibility(params.default_visibility);
+      if (!v.valid) {
+        throw new Error(v.error || "Invalid default visibility preference");
+      }
+    }
+
+    if (params.social_links !== undefined) {
+      const v = validateSocialLinks(params.social_links);
+      if (!v.valid) {
+        throw new Error(v.error || "Invalid social links");
+      }
+    }
+
+    // 2. Prepare merged fields
+    const updatedDisplayName = params.display_name !== undefined ? params.display_name.trim() : user.display_name;
+    const updatedAvatar = params.avatar_url !== undefined ? params.avatar_url : user.avatar_url;
+    const now = new Date().toISOString();
+
+    const meta: UserMetadata = {
+      ...(user.metadata || {}),
+      providers: { ...(user.metadata?.providers || {}) },
+    };
+
+    if (params.bio !== undefined) {
+      meta.bio = params.bio.trim();
+    }
+    if (params.default_visibility !== undefined) {
+      meta.default_visibility = params.default_visibility;
+    }
+    if (params.social_links !== undefined) {
+      meta.social_links = {
+        ...(meta.social_links || {}),
+        ...params.social_links,
+      };
+    }
+    if (params.metadata) {
+      for (const [k, v] of Object.entries(params.metadata)) {
+        if (k !== "providers") {
+          meta[k] = v;
+        }
+      }
+    }
+
+    const updateSql = `
+      UPDATE users
+      SET display_name = ?,
+          avatar_url = ?,
+          updated_at = ?,
+          metadata_json = ?
+      WHERE id = ?
+    `;
+    const updateParams = [
+      updatedDisplayName,
+      updatedAvatar,
+      now,
+      JSON.stringify(meta),
+      user.id,
+    ];
+
+    if (this.storage.runSync) {
+      this.storage.runSync(updateSql, updateParams);
+    } else {
+      await this.storage.run(updateSql, updateParams);
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      display_name: updatedDisplayName,
+      avatar_url: updatedAvatar,
+      primary_provider: user.primary_provider,
+      created_at: user.created_at,
+      updated_at: now,
+      metadata: meta,
+    };
+  }
+
+  /**
+   * Links a secondary OAuth provider to an existing user account.
+   */
+  public async linkProvider(
+    userId: string,
+    provider: string,
+    profile: {
+      id: string | number;
+      email?: string | null;
+      display_name?: string;
+      avatar_url?: string | null;
+      metadata?: any;
+    }
+  ): Promise<User> {
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const providerIdStr = String(profile.id);
+
+    // Check if this provider profile is already linked to another user
+    const existingOwner = await this.getUserByProvider(provider, providerIdStr);
+    if (existingOwner && existingOwner.id !== userId) {
+      throw new Error(`This ${provider} account is already linked to another user (${existingOwner.display_name}).`);
+    }
+
+    const now = new Date().toISOString();
+    const meta: UserMetadata = {
+      ...(user.metadata || {}),
+      providers: { ...(user.metadata?.providers || {}) },
+    };
+
+    meta.providers![provider] = {
+      id: providerIdStr,
+      username: profile.display_name,
+      email: profile.email || null,
+      avatar_url: profile.avatar_url || null,
+      linked_at: now,
+      ...(profile.metadata || {}),
+    };
+
+    const updateSql = `
+      UPDATE users
+      SET updated_at = ?,
+          metadata_json = ?
+      WHERE id = ?
+    `;
+    const updateParams = [now, JSON.stringify(meta), userId];
+
+    if (this.storage.runSync) {
+      this.storage.runSync(updateSql, updateParams);
+    } else {
+      await this.storage.run(updateSql, updateParams);
+    }
+
+    return {
+      ...user,
+      updated_at: now,
+      metadata: meta,
+    };
+  }
+
+  /**
+   * Unlinks a secondary OAuth provider from a user account.
+   * Throws an error if attempting to unlink the user's sole authentication method.
+   */
+  public async unlinkProvider(userId: string, provider: string): Promise<User> {
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const meta: UserMetadata = {
+      ...(user.metadata || {}),
+      providers: { ...(user.metadata?.providers || {}) },
+    };
+
+    const providers = meta.providers || {};
+    const linkedProviders = Object.keys(providers);
+
+    // Guard: Prevent unlinking sole authentication method
+    if (linkedProviders.length <= 1) {
+      throw new Error("Cannot unlink your only authentication provider.");
+    }
+
+    if (!providers[provider]) {
+      throw new Error(`Provider '${provider}' is not linked.`);
+    }
+
+    delete providers[provider];
+
+    const now = new Date().toISOString();
+    let newPrimary = user.primary_provider;
+
+    // If unlinking primary provider, promote the first remaining connected provider
+    if (user.primary_provider === provider) {
+      const remaining = Object.keys(providers);
+      if (remaining.length > 0) {
+        newPrimary = remaining[0];
+      }
+    }
+
+    const updateSql = `
+      UPDATE users
+      SET primary_provider = ?,
+          updated_at = ?,
+          metadata_json = ?
+      WHERE id = ?
+    `;
+    const updateParams = [newPrimary, now, JSON.stringify(meta), userId];
+
+    if (this.storage.runSync) {
+      this.storage.runSync(updateSql, updateParams);
+    } else {
+      await this.storage.run(updateSql, updateParams);
+    }
+
+    return {
+      ...user,
+      primary_provider: newPrimary,
+      updated_at: now,
+      metadata: meta,
+    };
+  }
+
+  /**
+   * Returns list of supported OAuth providers with their connection status for a user.
+   */
+  public getConnectedProviders(user: User): ConnectedProviderInfo[] {
+    const supported = ["github", "linuxdo", "google"];
+    const userProviders = user.metadata?.providers || {};
+
+    return supported.map((prov) => {
+      const info = userProviders[prov];
+      const isLinked = Boolean(info || user.primary_provider === prov);
+      return {
+        provider: prov,
+        linked: isLinked,
+        is_primary: user.primary_provider === prov,
+        id: info?.id,
+        username: info?.username,
+        email: info?.email,
+        avatar_url: info?.avatar_url,
+        linked_at: info?.linked_at || (user.primary_provider === prov ? user.created_at : undefined),
+      };
+    });
   }
 }

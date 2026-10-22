@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User as UserIcon, LogOut, ChevronDown, Compass, Shield, Activity } from "lucide-react";
+import { User as UserIcon, LogOut, ChevronDown, Compass, Shield, Activity, Settings } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { AuthModal } from "./AuthModal";
@@ -109,6 +109,22 @@ export const UserNav: React.FC = () => {
                 >
                   <Activity className="w-3.5 h-3.5 text-indigo-400" />
                   <span>{t.profile?.navLink || "历史评测与轨迹"}</span>
+                </a>
+
+                <a
+                  href="/me/settings"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setDropdownOpen(false);
+                    if (window.location.pathname !== "/me/settings") {
+                      window.history.pushState({}, "", "/me/settings");
+                      window.dispatchEvent(new PopStateEvent("popstate"));
+                    }
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 rounded-xl transition-colors text-left"
+                >
+                  <Settings className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{t.profile?.tabSettings || "个人资料与偏好"}</span>
                 </a>
 
                 <button
