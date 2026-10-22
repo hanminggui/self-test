@@ -34,10 +34,16 @@ export function extractSessionIdFromUrl(
     }
   }
 
-  // 2. 解析专用路径路由: /report/:id, /session/:id, /session/:id/report, /result/:id
+  // 2. 解析专用路径路由: /share/:id, /report/:id, /session/:id, /session/:id/report, /result/:id
   if (pathname) {
     const parts = pathname.split("/").filter(Boolean);
     
+    // 匹配 /share/:id
+    const shareIdx = parts.indexOf("share");
+    if (shareIdx !== -1 && parts[shareIdx + 1]) {
+      return parts[shareIdx + 1].trim();
+    }
+
     // 匹配 /report/:id
     const reportIdx = parts.indexOf("report");
     if (reportIdx !== -1 && parts[reportIdx + 1]) {
@@ -89,6 +95,21 @@ export function buildSessionReportUrl(sessionId: string, baseUrl?: string): stri
     return `${window.location.origin}/report/${cleanId}`;
   }
   return `/report/${cleanId}`;
+}
+
+/**
+ * 组装专属公开分享着陆页 (Public Share Page) 的绝对或相对永久链接
+ */
+export function buildSessionShareUrl(sessionId: string, baseUrl?: string): string {
+  const cleanId = encodeURIComponent(sessionId.trim());
+  if (baseUrl) {
+    const cleanBase = baseUrl.replace(/\/+$/, "");
+    return `${cleanBase}/share/${cleanId}`;
+  }
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}/share/${cleanId}`;
+  }
+  return `/share/${cleanId}`;
 }
 
 /**
