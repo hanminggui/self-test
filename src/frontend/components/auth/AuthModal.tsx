@@ -168,8 +168,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="mt-6 text-center">
-          <p className="text-[11px] text-slate-500">
+        <div className="mt-6 text-center space-y-1">
+          <p className="text-[10px] text-slate-500">
+            {t.legal?.agreementNotice || "登录或使用即代表您已阅读并同意"}{" "}
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-400/80 hover:text-amber-300 underline"
+            >
+              {t.legal?.termsOfService || "服务条款"}
+            </a>{" "}
+            &{" "}
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-400/80 hover:text-amber-300 underline"
+            >
+              {t.legal?.privacyPolicy || "隐私政策"}
+            </a>
+          </p>
+          <p className="text-[10px] text-slate-600 font-mono">
             {t.auth?.accountLinked || "账号已关联绑定"} · Metacognitive Testing Suite
           </p>
         </div>
