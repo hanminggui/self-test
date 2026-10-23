@@ -14,6 +14,7 @@ export interface LLMClientOptions {
   isDebug?: boolean;
   thinking?: ThinkingEffort;
   logger?: EvalLogger;
+  timeoutMs?: number | false;
 }
 
 export interface TokenUsage {
@@ -53,6 +54,7 @@ export class LLMClient {
   private isDebug: boolean;
   private thinking: ThinkingEffort;
   private logger?: EvalLogger;
+  private timeoutMs: number | false;
   private totalUsage: TokenUsage = {
     promptTokens: 0,
     completionTokens: 0,
@@ -68,6 +70,7 @@ export class LLMClient {
     this.isDebug = Boolean(options.isDebug);
     this.thinking = options.thinking || "none";
     this.logger = options.logger;
+    this.timeoutMs = options.timeoutMs ?? false;
   }
 
   public getSessionTokenUsage(): TokenUsage {
@@ -237,11 +240,21 @@ export class LLMClient {
     let json: any = null;
 
     const sendRequest = async () => {
-      response = await fetch(endpoint, {
+      const fetchOptions: any = {
         method: "POST",
         headers,
         body: JSON.stringify(currentPayload),
-      });
+      };
+
+      if (this.timeoutMs === false || this.timeoutMs === 0) {
+        // Bun 默认对 fetch 施加 300 秒（5分钟）硬超时。显式设置 timeout: false 彻底解除该限制
+        fetchOptions.timeout = false;
+      } else if (typeof this.timeoutMs === "number" && this.timeoutMs > 0) {
+        fetchOptions.timeout = this.timeoutMs;
+        fetchOptions.signal = AbortSignal.timeout(this.timeoutMs);
+      }
+
+      response = await fetch(endpoint, fetchOptions);
       rawResponseText = await response.text();
       lowerErr = rawResponseText.toLowerCase();
       json = null;

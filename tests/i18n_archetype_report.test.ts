@@ -154,7 +154,7 @@ describe("Seam 3: Western Arcane Archetypes, Codenames & Dynamic Report Localiza
 
   it("SessionManager.getReport 与 getCohortScatterData 在无论存储语言为何时，均支持动态请求语言呈现", () => {
     const mgr = new SessionManager(":memory:");
-    const session = mgr.createSession({ subjectType: "HUMAN", subjectName: "Alpha Tester" });
+    const session = mgr.createSession({ subjectType: "HUMAN", subjectName: "Alpha Tester", initialDelta: 0.30 });
 
     const sessionId = session.sessionId;
     // 完成一个简单试次并结束 session

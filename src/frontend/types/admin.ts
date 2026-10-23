@@ -18,6 +18,9 @@ export interface SubjectPoint {
   warmup_trials?: number;
   total_duration_ms?: number;
   final_score: number;
+  formal_score?: number;
+  composite_cognitive_score?: number;
+  ccs?: number;
   quadrant_code: string;
   is_current?: boolean;
   metrics: AssessmentMetrics;

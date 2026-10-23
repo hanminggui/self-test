@@ -22,6 +22,10 @@ import {
   SessionExecutionMetadata,
   TokenUsageStats,
   RiskAttitude,
+  AssessmentMetrics,
+  AgentExecutionMetadata,
+  DEFAULT_CONFIDENCE_HIGH_BET,
+  DEFAULT_CONFIDENCE_SAFE_BET,
 } from "./models";
 import { StaircaseController, StaircaseSnapshot } from "./staircase";
 import { TaskGenerator, GeneratedTask, TaskGeneratorSnapshot } from "./task_generator";
@@ -399,7 +403,7 @@ export class SessionManager {
     const warmupTrials = params.warmupTrials ?? 10;
     const initialDelta = params.initialDelta ?? 0.50;
 
-    const staircase = new StaircaseController(initialDelta);
+    const staircase = new StaircaseController(initialDelta, 0.08, 0.05, 0.85, 3, warmupTrials, 0.18);
     const taskGenerator = new TaskGenerator(params.seed);
     const initialTask = taskGenerator.generate(1, staircase.getCurrentDelta());
 
@@ -612,9 +616,6 @@ export class SessionManager {
       // Unlock Tier 1 (1 point)
       session.hintsUnlockedForCurrentTrial = 1;
       session.hintsCostForCurrentTrial = 1;
-      if (session.stagedP1Choice === null) {
-        session.hintsUnlockedBeforeP1 = 1;
-      }
       const hintText = task.bilingual?.hint_tier1[targetLocale] || task.hint_tier1;
       const msg = targetLocale === "en-US"
         ? "Unlocked Tier 1 Macro Clue (Cost: 1 pt). You may further unlock Tier 2 Micro Distractor Elimination (-2 pts) if uncertainty persists."
@@ -635,9 +636,6 @@ export class SessionManager {
       // Unlock Tier 2 (2 points, total 3)
       session.hintsUnlockedForCurrentTrial = 2;
       session.hintsCostForCurrentTrial = 3;
-      if (session.stagedP1Choice === null) {
-        session.hintsUnlockedBeforeP1 = 2;
-      }
       const hintText = task.bilingual?.hint_tier2[targetLocale] || task.hint_tier2;
       const msg = targetLocale === "en-US"
         ? "Unlocked Tier 2 Micro Constraint Clue (Cost: 2 pts, Cumulative: 3 pts). All clues unlocked; please proceed with wagering."
@@ -731,9 +729,9 @@ export class SessionManager {
 
     let conf = confidenceLevel;
     if (conf === undefined || conf === null) {
-      if (action === MetacognitiveAction.HIGH_BET) conf = 0.95;
-      else if (action === MetacognitiveAction.SAFE_BET) conf = 0.50;
-      else conf = 0.50;
+      if (action === MetacognitiveAction.HIGH_BET) conf = DEFAULT_CONFIDENCE_HIGH_BET;
+      else if (action === MetacognitiveAction.SAFE_BET) conf = DEFAULT_CONFIDENCE_SAFE_BET;
+      else conf = DEFAULT_CONFIDENCE_SAFE_BET;
     }
 
     const hintCost = session.hintsCostForCurrentTrial || 0;
@@ -747,9 +745,11 @@ export class SessionManager {
       scoreDelta = (isFinalCorrect ? +10 : -10) - hintCost;
     }
 
-    session.score += scoreDelta;
-
     const isWarmup = session.currentTrialIndex <= session.warmupTrials;
+    if (!isWarmup) {
+      session.score += scoreDelta;
+    }
+
     const record: TrialRecord = {
       trial_index: session.currentTrialIndex,
       difficulty_level: task.difficulty_level,
@@ -783,10 +783,8 @@ export class SessionManager {
       }
     }
 
-    // Update Staircase using first-order objective correctness.
-    // If Tier 2 deep hint was unlocked before Phase 1 choice was made, damp 2-up advancement.
-    const heavyHintBeforeP1 = session.hintsUnlockedBeforeP1 >= 2;
-    const newDelta = session.staircase.update(isP1Correct, heavyHintBeforeP1);
+    // Update Staircase using first-order objective correctness with two-stage adaptive engine
+    const newDelta = session.staircase.update(isP1Correct, isWarmup);
 
     if (session.currentTrialIndex >= session.totalTrials) {
       session.isCompleted = true;
@@ -812,7 +810,6 @@ export class SessionManager {
     session.stagedP1Choice = null;
     session.hintRevealedForCurrentTrial = false;
     session.hintsUnlockedForCurrentTrial = 0;
-    session.hintsUnlockedBeforeP1 = 0;
     session.hintsCostForCurrentTrial = 0;
     session.currentTask = session.taskGenerator.generate(session.currentTrialIndex, newDelta);
     this.saveActiveSession(session);
@@ -882,10 +879,11 @@ export class SessionManager {
 
   private localizeReport(report: FinalAssessmentReport, locale?: SupportedLocale): FinalAssessmentReport {
     const targetLocale = locale || getLocale();
+    if (!report.diagnostic_profile) return report;
     const archetype = report.diagnostic_profile.archetype;
     const def = getArchetypeDefinition(archetype, targetLocale);
     const weakness = ReportGenerator.diagnoseWeakness(
-      report.metacognitive_metrics,
+      report.metacognitive_metrics || (report.metrics as any),
       archetype,
       report.diagnostic_profile.risk_attitude,
       targetLocale
@@ -895,6 +893,7 @@ export class SessionManager {
       ...report,
       diagnostic_profile: {
         ...report.diagnostic_profile,
+        archetype,
         role_title: def.role_title,
         english_title: def.english_title,
         quadrant_code: def.quadrant_code,
@@ -915,6 +914,13 @@ export class SessionManager {
     const dStar = session.staircase.computeDStar(undefined, session.warmupTrials);
     const rawMetrics = PsychometricScorer.evaluate(session.records, true, dStar);
     const targetLocale = locale || session.metadata?.locale || getLocale();
+
+    // 纯净正式试次计分 (热身轮 100% 隔离不计分)
+    const formalScore = session.records
+      .filter(r => !r.is_warmup)
+      .reduce((sum, r) => sum + (r.score_delta || 0), 0);
+    session.score = formalScore;
+
     const report = ReportGenerator.generateReport(
       session.sessionId,
       session.subjectType,
@@ -1333,11 +1339,18 @@ export class SessionManager {
     const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
     const archetype = archetypeDef.archetype;
 
+    // 历史存量数据平滑向后兼容：若包含试次记录，则重算纯净正式分
+    const formalScore = records && records.length > 0
+      ? records.filter(r => !r.is_warmup).reduce((sum, r) => sum + (r.score_delta || 0), 0)
+      : (row.final_score ?? 0);
+    const dStarVal = row.d_star ?? 0.50;
+    const ccs = Math.round(dStarVal * formalScore * 100) / 100;
+
     const metrics: AssessmentMetrics = {
       first_order_accuracy: row.first_order_accuracy ?? 0.7,
       second_order_accuracy: row.second_order_accuracy ?? 0.7,
       reversals_count: row.reversals_count ?? 0,
-      d_star: row.d_star ?? 0.5,
+      d_star: dStarVal,
       d_prime: row.d_prime ?? 1.2,
       meta_d_prime: row.meta_d_prime ?? 1.1,
       m_ratio: row.m_ratio ?? 0.9,
@@ -1346,6 +1359,9 @@ export class SessionManager {
       ive: row.ive ?? 0.50,
       coachability_index: row.coachability_index ?? 50,
       risk_attitude: (row.risk_attitude as RiskAttitude) || RiskAttitude.MODERATE_RATIONAL,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
     };
 
     let agentMetadata: AgentExecutionMetadata | undefined = undefined;
@@ -1391,7 +1407,10 @@ export class SessionManager {
       warmup_trials: row.warmup_trials ?? 10,
       completed_trials: row.completed_trials ?? records.length,
       total_duration_ms: row.total_duration_ms ?? 0,
-      final_score: row.final_score ?? 0,
+      final_score: formalScore,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
       quadrant_code: quadrantCode,
       archetype,
       metrics,
@@ -1404,9 +1423,12 @@ export class SessionManager {
       summary: {
         total_trials: row.total_trials ?? records.length,
         first_order_accuracy: row.first_order_accuracy ?? 0.7,
-        final_score: row.final_score ?? 0,
+        final_score: formalScore,
+        formal_score: formalScore,
+        composite_cognitive_score: ccs,
+        ccs,
         reversals_count: row.reversals_count ?? 0,
-        d_star: row.d_star ?? 0.5,
+        d_star: dStarVal,
       },
       metacognitive_metrics: {
         d_prime: row.d_prime ?? 1.2,
@@ -1487,11 +1509,15 @@ export class SessionManager {
     const subjects: SubjectDataPoint[] = rows.map(r => {
       const quadrantCode = r.quadrant_code || "Q1-CAL";
       const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
+      const dStarVal = r.d_star ?? 0.5;
+      const formalScore = r.final_score ?? 0;
+      const ccs = Math.round(dStarVal * formalScore * 100) / 100;
+
       const metrics: AssessmentMetrics = {
         first_order_accuracy: r.first_order_accuracy ?? 0.7,
         second_order_accuracy: r.second_order_accuracy ?? 0.7,
         reversals_count: r.reversals_count ?? 0,
-        d_star: r.d_star ?? 0.5,
+        d_star: dStarVal,
         d_prime: r.d_prime ?? 1.2,
         meta_d_prime: r.meta_d_prime ?? 1.1,
         m_ratio: r.m_ratio ?? 0.9,
@@ -1500,6 +1526,9 @@ export class SessionManager {
         ive: r.ive ?? 0.50,
         coachability_index: r.coachability_index ?? 50,
         risk_attitude: (r.risk_attitude as RiskAttitude) || RiskAttitude.MODERATE_RATIONAL,
+        formal_score: formalScore,
+        composite_cognitive_score: ccs,
+        ccs,
       };
 
       let agentMetadata: AgentExecutionMetadata | undefined = undefined;
@@ -1528,7 +1557,10 @@ export class SessionManager {
         total_trials: r.total_trials ?? 30,
         warmup_trials: r.warmup_trials ?? 10,
         total_duration_ms: r.total_duration_ms ?? 0,
-        final_score: r.final_score ?? 0,
+        final_score: formalScore,
+        formal_score: formalScore,
+        composite_cognitive_score: ccs,
+        ccs,
         quadrant_code: quadrantCode,
         is_current: r.id === currentSessionId,
         metrics,
@@ -1581,9 +1613,14 @@ export class SessionManager {
         });
         const def = getArchetypeDefinition(archetype, targetLocale);
 
+        const formalScore = active.records
+          .filter(r => !r.is_warmup)
+          .reduce((sum, r) => sum + (r.score_delta || 0), 0);
+        const ccs = Math.round(metrics.d_star * formalScore * 100) / 100;
+
         const activeMetrics: AssessmentMetrics = {
           first_order_accuracy: Math.round(firstAcc * 1000) / 1000,
-          second_order_accuracy: Math.round(secondOrderAcc * 1000) / 1000,
+          second_order_accuracy: Math.round(secondAcc * 1000) / 1000,
           reversals_count: active.staircase.reversalCount,
           d_star: metrics.d_star,
           d_prime: metrics.d_prime,
@@ -1594,6 +1631,9 @@ export class SessionManager {
           ive: metrics.info_buying_efficiency,
           coachability_index: 50,
           risk_attitude: RiskAttitude.MODERATE_RATIONAL,
+          formal_score: formalScore,
+          composite_cognitive_score: ccs,
+          ccs,
         };
 
         subjects.unshift({
@@ -1605,7 +1645,10 @@ export class SessionManager {
           total_trials: active.totalTrials,
           warmup_trials: active.warmupTrials,
           total_duration_ms: Date.now() - active.startTimeMs,
-          final_score: active.score,
+          final_score: formalScore,
+          formal_score: formalScore,
+          composite_cognitive_score: ccs,
+          ccs,
           quadrant_code: def.quadrant_code,
           is_current: true,
           metrics: activeMetrics,

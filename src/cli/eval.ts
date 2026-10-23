@@ -24,6 +24,8 @@ import {
   type TokenUsageStats,
   type TrialOperation,
   type TrialPayload,
+  DEFAULT_CONFIDENCE_HIGH_BET,
+  DEFAULT_CONFIDENCE_SAFE_BET,
 } from "../backend/models";
 import { formatDuration, formatTokenCount, getFullDateTime, getShortTime, maskKey } from "./lib/formatters";
 import { LLMClient, type TokenUsage } from "./lib/llm_client";
@@ -54,6 +56,7 @@ export interface EvalConfig {
   thinking: ThinkingEffort;
   locale: SupportedLocale;
   logFile?: string;
+  timeoutSeconds?: number;
 }
 
 interface SavedConfig {
@@ -64,6 +67,7 @@ interface SavedConfig {
   persona?: string;
   thinking?: ThinkingEffort;
   locale?: SupportedLocale;
+  timeout?: number;
 }
 
 /**
@@ -206,6 +210,7 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       persona: { type: "string", short: "p" },
       thinking: { type: "string", short: "t" },
       lang: { type: "string", short: "l" },
+      timeout: { type: "string" },
       debug: { type: "boolean", short: "d", default: false },
       yes: { type: "boolean", short: "y", default: false },
     },
@@ -220,9 +225,19 @@ async function resolveConfiguration(): Promise<EvalConfig> {
   const rawApiUrl = typeof args.apiUrl === "string" ? args.apiUrl : undefined;
   const rawPersona = typeof args.persona === "string" ? args.persona : undefined;
   const rawLang = typeof args.lang === "string" ? args.lang : undefined;
+  const rawTimeout = typeof args.timeout === "string" ? args.timeout : undefined;
   const cliTrials = typeof args.trials === "string" ? parseInt(args.trials, 10) : undefined;
   const cliWarmup = typeof args.warmup === "string" ? parseInt(args.warmup, 10) : undefined;
   const chosenLang: SupportedLocale = normalizeLocale(rawLang || process.env.EVAL_LANG || saved.locale || process.env.LOCALE || process.env.LANG || "zh-CN");
+
+  const rawTimeoutStr = rawTimeout || process.env.EVAL_TIMEOUT || (saved.timeout !== undefined ? String(saved.timeout) : undefined);
+  let chosenTimeout: number | undefined = undefined;
+  if (rawTimeoutStr !== undefined) {
+    const parsedT = parseInt(rawTimeoutStr, 10);
+    if (!isNaN(parsedT) && parsedT >= 0) {
+      chosenTimeout = parsedT;
+    }
+  }
 
   let rawThinking: ThinkingEffort | undefined = undefined;
   if (typeof args.thinking === "string") {
@@ -296,6 +311,7 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       persona: chosenPersona,
       thinking: chosenThinking,
       locale: chosenLang,
+      timeoutSeconds: chosenTimeout,
     };
   }
 
@@ -313,11 +329,12 @@ async function resolveConfiguration(): Promise<EvalConfig> {
 
   // 2. Mock 模式交互启动
   if (isMock) {
-    if (rawThinking !== undefined || rawLang !== undefined) {
+    if (rawThinking !== undefined || rawLang !== undefined || rawTimeout !== undefined) {
       saveConfig({
         ...saved,
         thinking: chosenThinking,
         locale: chosenLang,
+        ...(chosenTimeout !== undefined ? { timeout: chosenTimeout } : {}),
       });
     }
     return {
@@ -332,6 +349,7 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       persona: chosenPersona,
       thinking: chosenThinking,
       locale: chosenLang,
+      timeoutSeconds: chosenTimeout,
     };
   }
 
@@ -345,6 +363,7 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       ...(chosenPersona ? { persona: chosenPersona } : {}),
       thinking: chosenThinking,
       locale: chosenLang,
+      ...(chosenTimeout !== undefined ? { timeout: chosenTimeout } : {}),
     });
     return {
       model: rawModel,
@@ -358,6 +377,7 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       persona: chosenPersona,
       thinking: chosenThinking,
       locale: chosenLang,
+      timeoutSeconds: chosenTimeout,
     };
   }
 
@@ -380,6 +400,7 @@ async function resolveConfiguration(): Promise<EvalConfig> {
     ...(chosenPersona ? { persona: chosenPersona } : {}),
     thinking: wizardRes.thinking,
     locale: chosenLang,
+    ...(chosenTimeout !== undefined ? { timeout: chosenTimeout } : {}),
   });
 
   return {
@@ -394,6 +415,7 @@ async function resolveConfiguration(): Promise<EvalConfig> {
     persona: chosenPersona,
     thinking: wizardRes.thinking,
     locale: chosenLang,
+    timeoutSeconds: chosenTimeout,
   };
 }
 
@@ -491,7 +513,7 @@ function finalizeTrialDecision(
   const action = betParsed?.action === "HIGH_BET" ? MetacognitiveAction.HIGH_BET : MetacognitiveAction.SAFE_BET;
   const confidence = typeof betParsed?.confidence === "number"
     ? Math.min(1.0, Math.max(0.0, betParsed.confidence))
-    : (action === MetacognitiveAction.HIGH_BET ? 0.85 : 0.55);
+    : (action === MetacognitiveAction.HIGH_BET ? DEFAULT_CONFIDENCE_HIGH_BET : DEFAULT_CONFIDENCE_SAFE_BET);
 
   operations.push({
     step: "SECOND_ORDER_BET",
@@ -575,7 +597,7 @@ export async function executeStepByStepTrial(
     const isConfident = Math.random() > 0.40;
     const choice = choices[Math.floor(Math.random() * choices.length)];
     const action = isConfident ? MetacognitiveAction.HIGH_BET : MetacognitiveAction.SAFE_BET;
-    const confidence = isConfident ? 0.90 : 0.50;
+    const confidence = isConfident ? DEFAULT_CONFIDENCE_HIGH_BET : DEFAULT_CONFIDENCE_SAFE_BET;
 
     operations.push({
       step: "FIRST_ORDER_CHOICE",
@@ -1037,6 +1059,7 @@ async function main() {
     isDebug: config.isDebug,
     thinking: config.thinking,
     logger,
+    timeoutMs: config.timeoutSeconds ? config.timeoutSeconds * 1000 : false,
   });
 
   const isEn = config.locale === "en-US";
@@ -1050,6 +1073,10 @@ async function main() {
         ? `已开启 [${config.thinking} 强度] (单通推演 + buy_hint 工具中断续接模式)`
         : "未开启 (显式关闭思考 + 经典分步协议模式)");
 
+  const timeoutDisplay = config.timeoutSeconds && config.timeoutSeconds > 0
+    ? `${config.timeoutSeconds}s`
+    : (isEn ? "Unlimited (Disabled Bun 300s limit)" : "无限制 (已解除 Bun 300s 默认限制)");
+
   if (isEn) {
     console.log(`\n========================================================================`);
     console.log(`  🧠 LLM Metacognitive Evaluation Pipeline (${isThinkingMode ? "Single-pass Thinking + Tool" : "Stepped Protocol"})`);
@@ -1062,6 +1089,7 @@ async function main() {
     if (!config.isMock) {
       console.log(`  🔗 LLM API Endpoint:  ${config.openaiBaseUrl}`);
       console.log(`  🔑 Auth Status:       ${maskKey(config.openaiApiKey)}`);
+      console.log(`  ⏱️  Request Timeout:   ${timeoutDisplay}`);
     }
     console.log(`  📁 Dedicated Log:     ${config.logFile}`);
     console.log(`  🐞 Debug Mode:        ${config.isDebug ? "Enabled (--debug / Full request and raw response logging)" : "Disabled (Use --debug to enable)"}`);
@@ -1078,6 +1106,7 @@ async function main() {
     if (!config.isMock) {
       console.log(`  🔗 LLM API 接入点: ${config.openaiBaseUrl}`);
       console.log(`  🔑 鉴权状态:      ${maskKey(config.openaiApiKey)}`);
+      console.log(`  ⏱️  单次请求超时:  ${timeoutDisplay}`);
     }
     console.log(`  📁 独立日志文件:  ${config.logFile}`);
     console.log(`  🐞 调试排查模式:  ${config.isDebug ? "已开启 (--debug / 完整打印请求报文与原始响应)" : "未开启 (可添加 --debug 参数开启)"}`);

@@ -26,6 +26,7 @@ import { runWithLocale, normalizeLocale, DEFAULT_LOCALE, type SupportedLocale } 
 import { getMythicArchetype } from "../frontend/components/share/mythicArchetypes";
 import { getArcaneArchetype } from "../frontend/components/share/arcaneArchetypes";
 import { getArchetypeDefinition } from "./archetype_matrix";
+import { generateLeaderboardOverview, subjectDataPointToLeaderboardInput } from "./leaderboard";
 
 export type CloudflareBindings = {
   DB?: D1Database;
@@ -441,6 +442,17 @@ app.get("/api/cohort/scatter", async (c) => {
   const locale = c.get("locale");
   const sm = getSessionManagerForContext(c);
   return c.json(await sm.getCohortScatterDataAsync(currentSessionId, locale));
+});
+
+// 8.1 Multi-Dimensional Leaderboard & TOPSIS Overview (ADR 0003 / Spec v2.3)
+app.get("/api/leaderboard/overview", async (c) => {
+  const currentSessionId = c.req.query("current_session_id");
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  const cohortData = await sm.getCohortScatterDataAsync(currentSessionId, locale);
+  const inputs = (cohortData.subjects || []).map(subjectDataPointToLeaderboardInput);
+  const overview = generateLeaderboardOverview(inputs);
+  return c.json(overview);
 });
 
 // --- Auth & OAuth Matrix Routes ---

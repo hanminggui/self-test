@@ -730,6 +730,46 @@ describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
       globalThis.fetch = origFetch;
     }
   });
+
+  it("LLMClient 默认配置 timeout: false 解除 Bun 300s 硬超时，且支持显式设置自定义超时", async () => {
+    const { LLMClient } = await import("../src/cli/lib/llm_client");
+    const origFetch = globalThis.fetch;
+    const interceptedOptions: any[] = [];
+
+    try {
+      globalThis.fetch = (async (_url: any, opts: any) => {
+        interceptedOptions.push(opts);
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: JSON.stringify({ strategy: "DECIDE" }) } }],
+          }),
+          { status: 200 }
+        );
+      }) as any;
+
+      // 1. 默认情况 (未传 timeoutMs 或设为 false): 必须设置 timeout: false
+      const defaultClient = new LLMClient({
+        baseUrl: "http://localhost:11434/v1",
+        apiKey: "test",
+        model: "test-model",
+      });
+      await defaultClient.query([], null, "default timeout test");
+      expect(interceptedOptions[0].timeout).toBe(false);
+
+      // 2. 自定义超时 (例如 600000ms): 必须设置 timeout 与 signal
+      const customClient = new LLMClient({
+        baseUrl: "http://localhost:11434/v1",
+        apiKey: "test",
+        model: "test-model",
+        timeoutMs: 600000,
+      });
+      await customClient.query([], null, "custom timeout test");
+      expect(interceptedOptions[1].timeout).toBe(600000);
+      expect(interceptedOptions[1].signal).toBeDefined();
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
 });
 
 

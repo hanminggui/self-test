@@ -3,7 +3,7 @@
 
 > **文档性质**：系统核心架构规格说明书（System Architectural Specification）  
 > **面向对象**：系统架构师、认知心理物理学算法工程师、全栈研发 Agent、大模型评测科学家  
-> **状态标记**：Completed & Fully Implemented（已全面完成工程落地与自动化验收测试闭环）  
+> **状态标记**：Completed (核心指标校准与多维天梯算法已演进至 [`spec/scientific_scoring_and_leaderboard_recalibration_spec.md`](file:///Users/aduang/github/self-test/spec/scientific_scoring_and_leaderboard_recalibration_spec.md) 及 [ADR-0003](file:///Users/aduang/github/self-test/docs/adr/0003-scientific-scoring-recalibration-and-multi-dimensional-leaderboard.md))  
 > **核心演进**：彻底解决 v1.0 阶梯自适应导致的一元胜率方差压缩问题；引入严格有界的 4D 正交“认知流形”相空间；重构严密无死角（MECE）的 8 大认知画像分类拓扑；实施“用户展示层（极致正面赋能）”与“后台统计层（严谨客观临床真值）”彻底物理隔离的双层契约架构。
 
 ---

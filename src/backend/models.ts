@@ -12,6 +12,14 @@ export enum PhaseType {
   COMPLETED = "COMPLETED",
 }
 
+/**
+ * Standard revealed preference expectation centroids for discrete wagering:
+ * HIGH_BET: geometric/expectation midpoint of [0.65, 1.00] = 0.825
+ * SAFE_BET: geometric/expectation midpoint of [0.25, 0.65] = 0.450
+ */
+export const DEFAULT_CONFIDENCE_HIGH_BET = 0.825;
+export const DEFAULT_CONFIDENCE_SAFE_BET = 0.450;
+
 export enum MetacognitiveAction {
   HIGH_BET = "HIGH_BET",   // 选对 +10，选错 -10
   SAFE_BET = "SAFE_BET",   // 保底 +3
@@ -175,7 +183,12 @@ export interface AssessmentMetrics {
   ive: number;
   coachability_index: number;
   risk_attitude: RiskAttitude;
+  formal_score?: number;
+  composite_cognitive_score?: number;
+  ccs?: number;
 }
+
+export type MetacognitiveMetrics = AssessmentMetrics;
 
 export interface SkillItem {
   icon: string;
@@ -212,6 +225,9 @@ export interface FinalAssessmentReport {
   completed_trials: number;
   total_duration_ms: number;
   final_score: number;
+  formal_score?: number;
+  composite_cognitive_score?: number;
+  ccs?: number;
   quadrant_code: string;
   archetype: CognitiveArchetype;
   metrics: AssessmentMetrics;
@@ -251,6 +267,9 @@ export interface SubjectDataPoint {
   warmup_trials: number;
   total_duration_ms: number;
   final_score: number;
+  formal_score?: number;
+  composite_cognitive_score?: number;
+  ccs?: number;
   quadrant_code: string;
   is_current?: boolean;
   metrics: AssessmentMetrics;

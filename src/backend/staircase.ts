@@ -7,7 +7,10 @@ export class StaircaseController {
   minDelta: number;
   maxDelta: number;
   initialStepSize: number;
+  formalStepSize: number;
+  warmupStepSize: number;
   currentStepSize: number;
+  warmupTrials: number;
   reversalsForStepReduction: number;
 
   currentDelta: number;
@@ -17,6 +20,7 @@ export class StaircaseController {
   lastDirection: number; // -1 (harder, delta down), +1 (easier, delta up), 0 (none)
   reversalCount: number;
   reversalTrials: number[];
+  reversalDeltas: number[];
 
   historyDeltas: number[];
   historyResponses: boolean[];
@@ -26,12 +30,17 @@ export class StaircaseController {
     initialStepSize: number = 0.08,
     minDelta: number = 0.05,
     maxDelta: number = 0.85,
-    reversalsForStepReduction: number = 3
+    reversalsForStepReduction: number = 3,
+    warmupTrials: number = 0,
+    warmupStepSize: number = 0.18
   ) {
     this.minDelta = minDelta;
     this.maxDelta = maxDelta;
+    this.formalStepSize = initialStepSize;
     this.initialStepSize = initialStepSize;
-    this.currentStepSize = initialStepSize;
+    this.warmupStepSize = warmupStepSize;
+    this.warmupTrials = warmupTrials;
+    this.currentStepSize = warmupTrials > 0 ? warmupStepSize : initialStepSize;
     this.reversalsForStepReduction = reversalsForStepReduction;
 
     this.currentDelta = Math.max(minDelta, Math.min(maxDelta, initialDelta));
@@ -47,33 +56,46 @@ export class StaircaseController {
     this.historyResponses = [];
   }
 
-  reversalDeltas: number[];
-
   /**
    * Update the staircase state based on the first-order accuracy of current trial.
-   * If heavyHintAssisted is true (e.g. unlocked Tier 2 hint), a correct answer does not advance
-   * the 2-up streak toward harder difficulty, preventing hint-buying from artificially inflating D*.
+   * Stage 1: Warmup Coarse Hunting (trialCount <= warmupTrials or isWarmup = true)
+   *   Step size Delta_warmup = 0.18, 1-up-1-down hunting.
+   * Stage 2: Formal Precision Measurement (trialCount > warmupTrials or isWarmup = false)
+   *   Step size Delta_formal = 0.08 (halved to 0.04 after >= 3 reversals), standard Levitt 2-up-1-down.
+   * Completely eliminates asymmetric heavyHintAssisted suppression.
    * Returns the new delta parameter for next trial.
    */
-  update(isCorrect: boolean, heavyHintAssisted: boolean = false): number {
+  update(isCorrect: boolean, isWarmup?: boolean): number {
+    const inWarmup = isWarmup !== undefined
+      ? isWarmup
+      : (this.warmupTrials > 0 && this.trialCount < this.warmupTrials);
+
     this.trialCount += 1;
     this.historyResponses.push(isCorrect);
 
     let direction = 0; // -1 means harder (decrease delta), +1 means easier (increase delta)
 
-    if (isCorrect) {
-      if (!heavyHintAssisted) {
+    if (inWarmup) {
+      // Stage 1: Warmup Coarse Hunting (1-up-1-down, step = 0.18)
+      this.currentStepSize = this.warmupStepSize;
+      if (isCorrect) {
+        direction = -1; // 1-up: harder, delta decreases
+      } else {
+        direction = 1;  // 1-down: easier, delta increases
+      }
+      this.consecutiveCorrect = 0;
+    } else {
+      // Stage 2: Formal Precision Measurement (standard Levitt 2-up-1-down)
+      if (isCorrect) {
         this.consecutiveCorrect += 1;
         if (this.consecutiveCorrect >= 2) {
-          // 2-up rule: difficulty increases (delta decreases)
           direction = -1;
           this.consecutiveCorrect = 0;
         }
+      } else {
+        direction = 1;
+        this.consecutiveCorrect = 0;
       }
-    } else {
-      // 1-down rule: difficulty decreases (delta increases)
-      direction = 1;
-      this.consecutiveCorrect = 0;
     }
 
     if (direction !== 0) {
@@ -86,16 +108,20 @@ export class StaircaseController {
 
       this.lastDirection = direction;
 
-      // Step size adaptation: after trial 10 and >= reversalsForStepReduction, halve step size
-      if (this.trialCount > 10 && this.reversalCount >= this.reversalsForStepReduction) {
-        this.currentStepSize = this.initialStepSize / 2.0;
+      // In formal stage, step size adaptation: halve step size when reversals reach threshold
+      if (!inWarmup) {
+        if (this.trialCount > 10 && this.reversalCount >= this.reversalsForStepReduction) {
+          this.currentStepSize = this.formalStepSize / 2.0;
+        } else {
+          this.currentStepSize = this.formalStepSize;
+        }
       }
 
       // Update delta
       if (direction === -1) {
-        this.currentDelta = Math.max(this.minDelta, this.currentDelta - this.currentStepSize);
+        this.currentDelta = Math.max(this.minDelta, Math.round((this.currentDelta - this.currentStepSize) * 10000) / 10000);
       } else {
-        this.currentDelta = Math.min(this.maxDelta, this.currentDelta + this.currentStepSize);
+        this.currentDelta = Math.min(this.maxDelta, Math.round((this.currentDelta + this.currentStepSize) * 10000) / 10000);
       }
     }
 
@@ -178,6 +204,9 @@ export class StaircaseController {
       minDelta: this.minDelta,
       maxDelta: this.maxDelta,
       initialStepSize: this.initialStepSize,
+      formalStepSize: this.formalStepSize,
+      warmupStepSize: this.warmupStepSize,
+      warmupTrials: this.warmupTrials,
       currentStepSize: this.currentStepSize,
       reversalsForStepReduction: this.reversalsForStepReduction,
       currentDelta: this.currentDelta,
@@ -195,10 +224,12 @@ export class StaircaseController {
   static fromJSON(snapshot: StaircaseSnapshot): StaircaseController {
     const sc = new StaircaseController(
       snapshot.currentDelta,
-      snapshot.initialStepSize,
+      snapshot.formalStepSize ?? snapshot.initialStepSize ?? 0.08,
       snapshot.minDelta,
       snapshot.maxDelta,
-      snapshot.reversalsForStepReduction
+      snapshot.reversalsForStepReduction,
+      snapshot.warmupTrials ?? 0,
+      snapshot.warmupStepSize ?? 0.18
     );
     sc.currentStepSize = snapshot.currentStepSize;
     sc.consecutiveCorrect = snapshot.consecutiveCorrect;
@@ -217,6 +248,9 @@ export interface StaircaseSnapshot {
   minDelta: number;
   maxDelta: number;
   initialStepSize: number;
+  formalStepSize?: number;
+  warmupStepSize?: number;
+  warmupTrials?: number;
   currentStepSize: number;
   reversalsForStepReduction: number;
   currentDelta: number;

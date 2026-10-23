@@ -170,6 +170,7 @@ export default function Admin() {
 
           {viewMode === "TABLE" && (
             <SubjectDataTableView
+              allSubjects={subjects}
               tagCounts={tagCounts}
               selectedTag={selectedTag}
               setSelectedTag={(tag) => {

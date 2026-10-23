@@ -171,5 +171,18 @@ describe("Hono REST API Suite", () => {
     const resCheck = await fetchApp(`/api/sessions/${sessionId}/report`);
     expect(resCheck.status).toBe(404);
   });
+
+  test("GET /api/leaderboard/overview returns TOPSIS unified ranking and 5 orthogonal sub-leaderboards", async () => {
+    const res = await fetchApp("/api/leaderboard/overview");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.topsis_leaderboard)).toBe(true);
+    expect(data.sub_leaderboards).toBeDefined();
+    expect(Array.isArray(data.sub_leaderboards.reasoning)).toBe(true);
+    expect(Array.isArray(data.sub_leaderboards.metacognition)).toBe(true);
+    expect(Array.isArray(data.sub_leaderboards.calibration)).toBe(true);
+    expect(Array.isArray(data.sub_leaderboards.game_utility)).toBe(true);
+    expect(Array.isArray(data.sub_leaderboards.efficiency)).toBe(true);
+  });
 });
 

@@ -83,12 +83,23 @@ export class ReportGenerator {
     const archetypeDef = getArchetypeDefinition(archetype, targetLocale);
 
     // Calculate Coachability Index [0, 100]
+    // 当 N_hints = 0 且表现优异 (firstOrderAcc >= 0.70 或 D* >= 0.60) 时，免除未借力惩罚
     const calibScore = Math.max(0.0, 1.0 - Math.abs(metrics.calibration_bias) * 2.5);
     const mScore = Math.min(1.0, Math.max(0.0, metrics.m_ratio));
     const iveScore = metrics.info_buying_efficiency ?? metrics.ive ?? 0.50;
 
-    const rawCoachability = (mScore * 0.45 + calibScore * 0.35 + iveScore * 0.20) * 100;
+    let rawCoachability: number;
+    const isAutonomousMaster = hintsCount === 0 && (firstOrderAcc >= 0.70 || (metrics.d_star ?? 0) >= 0.60);
+    if (isAutonomousMaster) {
+      rawCoachability = ((mScore * 0.45 + calibScore * 0.35) / 0.80) * 100;
+    } else {
+      rawCoachability = (mScore * 0.45 + calibScore * 0.35 + iveScore * 0.20) * 100;
+    }
     const coachabilityIndex = Math.round(Math.max(10, Math.min(99, rawCoachability)));
+
+    const formalScore = finalScore;
+    const dStarVal = metrics.d_star ?? 0.50;
+    const ccs = Math.round(dStarVal * formalScore * 100) / 100;
 
     const assessmentMetrics: AssessmentMetrics = {
       first_order_accuracy: Math.round(firstOrderAcc * 1000) / 1000,
@@ -103,12 +114,18 @@ export class ReportGenerator {
       ive: iveScore,
       coachability_index: coachabilityIndex,
       risk_attitude: riskAttitude,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
     };
 
     const summary = {
       total_trials: totalTrials,
       first_order_accuracy: Math.round(firstOrderAcc * 1000) / 1000,
       final_score: finalScore,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
       reversals_count: reversalsCount,
       d_star: metrics.d_star,
     };
@@ -140,6 +157,9 @@ export class ReportGenerator {
       completed_trials: totalTrials,
       total_duration_ms: 0,
       final_score: finalScore,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
       quadrant_code: archetypeDef.quadrant_code,
       archetype,
       metrics: assessmentMetrics,

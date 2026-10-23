@@ -40,16 +40,35 @@ describe("Scientific Computing & 5-Tier Difficulty Audit Verification", () => {
     expect(dStar).toBe(1.0);
   });
 
-  test("2. Staircase 重度线索防虚高: Phase 1 前解锁二级线索答对不推进 2-up 升难连胜计数", () => {
-    const sc = new StaircaseController(0.50, 0.08, 0.05, 0.85, 3);
-    const startDelta = sc.getCurrentDelta();
+  test("2. 两阶段加速寻峰与对称流动测试: Stage 1 粗测寻峰 (Delta=0.18, 1升1降) 快速触达边界，Stage 2 精密锁定 (Delta=0.08, 2升1降且对称)", () => {
+    // 构造具有 3 轮热身粗测的阶梯控制器 (warmupTrials = 3)
+    const sc = new StaircaseController(0.50, 0.08, 0.05, 0.85, 3, 3, 0.18);
+    expect(sc.currentStepSize).toBe(0.18);
 
-    // 连续 10 次依赖二级线索答对 (heavyHintAssisted = true)
-    for (let i = 0; i < 10; i++) {
-      sc.update(true, true);
-    }
-    // 难度不应被虚高推向 0.05，应保持在初始水平
-    expect(sc.getCurrentDelta()).toBe(startDelta);
+    // Stage 1 - Trial 1: 1-up, 1 次答对即大幅升难 (delta 减小 0.18: 0.50 -> 0.32)
+    sc.update(true, true);
+    expect(sc.getCurrentDelta()).toBeCloseTo(0.32, 4);
+
+    // Stage 1 - Trial 2: 1-up, 再答对一次 (delta 减小 0.18: 0.32 -> 0.14)
+    sc.update(true, true);
+    expect(sc.getCurrentDelta()).toBeCloseTo(0.14, 4);
+
+    // Stage 1 - Trial 3: 1-down, 答错一次 (delta 增加 0.18: 0.14 -> 0.32)
+    sc.update(false, true);
+    expect(sc.getCurrentDelta()).toBeCloseTo(0.32, 4);
+
+    // Stage 2 - Trial 4 (正式第 1 题): 转入标准 Levitt 2-up-1-down
+    // 单次答对不应改变 delta (必须 2 连对才升难)
+    sc.update(true, false);
+    expect(sc.getCurrentDelta()).toBeCloseTo(0.32, 4);
+
+    // Stage 2 - Trial 5 (正式第 2 题): 连续第 2 次答对，触发 2-up (delta 减小 formalStepSize 0.08: 0.32 -> 0.24)
+    sc.update(true, false);
+    expect(sc.getCurrentDelta()).toBeCloseTo(0.24, 4);
+
+    // 验证对称性: 答错 1 次立即降难 (1-down, delta 增加 0.08: 0.24 -> 0.32)
+    sc.update(false, false);
+    expect(sc.getCurrentDelta()).toBeCloseTo(0.32, 4);
   });
 
   test("3. 4AFC 小样本防退化修复 (gemma-4-e4b 场景): 即使选项恰好全为 A/B 且全对，d' 也必须按 4AFC 计算 (> 1.8) 而非退化为 0.01", () => {

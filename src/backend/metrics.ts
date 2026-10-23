@@ -10,7 +10,13 @@
  *   7. Balanced Type-2 Decision Alignment Rate
  */
 
-import { TrialRecord, MetacognitiveAction, MetacognitiveMetrics } from "./models";
+import {
+  TrialRecord,
+  MetacognitiveAction,
+  MetacognitiveMetrics,
+  DEFAULT_CONFIDENCE_HIGH_BET,
+  DEFAULT_CONFIDENCE_SAFE_BET,
+} from "./models";
 import { normPpf, normCdf, compute4AFCdPrime, nelderMead } from "./math";
 
 export class PsychometricScorer {
@@ -206,7 +212,7 @@ export class PsychometricScorer {
       if (r.confidence_level !== undefined && r.confidence_level !== null) {
         return r.confidence_level;
       }
-      return r.action === MetacognitiveAction.HIGH_BET ? 0.95 : 0.50;
+      return r.action === MetacognitiveAction.HIGH_BET ? DEFAULT_CONFIDENCE_HIGH_BET : DEFAULT_CONFIDENCE_SAFE_BET;
     });
     const accuracies: number[] = records.map(r => (r.is_correct_first_order ? 1.0 : 0.0));
 
@@ -223,7 +229,7 @@ export class PsychometricScorer {
     if (!records || records.length === 0) return 0.25;
     const squaredErrors = records.map(r => {
       const outcome = r.is_correct_first_order ? 1.0 : 0.0;
-      const conf = r.confidence_level ?? (r.action === MetacognitiveAction.HIGH_BET ? 0.95 : 0.50);
+      const conf = r.confidence_level ?? (r.action === MetacognitiveAction.HIGH_BET ? DEFAULT_CONFIDENCE_HIGH_BET : DEFAULT_CONFIDENCE_SAFE_BET);
       return Math.pow(conf - outcome, 2);
     });
     const avg = squaredErrors.reduce((a, b) => a + b, 0) / squaredErrors.length;
@@ -319,9 +325,10 @@ export class PsychometricScorer {
     if (h2Star < fa2Star) {
       mRatio = 0.05;
     } else {
-      // 1. 低一元基底衰减：当 d' < 0.50 (做题接近随机猜测) 时，抑制极小样本噪声引起的虚高二阶敏感度
+      // 1. 低一元基底衰减与有效认知带宽限制 [0.40, 2.50]
       const signalModulation = Math.min(1.0, Math.max(0.05, dPrime / 0.50));
-      const rawRatio = (metaD / Math.max(0.40, dPrime)) * signalModulation;
+      const clampedDPrime = Math.max(0.40, Math.min(2.50, dPrime));
+      const rawRatio = (metaD / clampedDPrime) * signalModulation;
       // 2. 严格遵循 4D 相空间理论极限，物理硬上限截断为 [0.01, 2.00]
       const clampedRatio = Math.max(0.01, Math.min(2.0, rawRatio));
       mRatio = Math.round(clampedRatio * 10000) / 10000;
