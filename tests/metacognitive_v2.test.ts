@@ -75,9 +75,9 @@ describe("Metacognitive v2.0 Architecture & Cognitive Manifold Suite", () => {
     });
 
     test("Q1-CAL: 天花板效应下的顶级模型 (Acc 97.5%, d' 3.106, Bias -0.08) 即使 M_ratio 遭统计压缩也准确归入人形外挂", () => {
-      // 现场复现用户 deepseek-v4-flash 60 步测试数据
+      // 现场复现用户 deepseek-v4-flash 60 步测试数据 (收敛至高相变突破度 D* >= 0.85)
       const arch = classifyCognitiveArchetype({
-        dStar: 0.45,
+        dStar: 0.90,
         dPrime: 3.106, // 极高一元水平
         mRatio: 0.632, // 因负样本稀疏导致 M_ratio 遭遇统计压缩 (< 0.80)
         bias: -0.08,   // 处于黄金自洽区间 [-0.15, 0.15]

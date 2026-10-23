@@ -19,6 +19,7 @@ export class StaircaseController {
 
   lastDirection: number; // -1 (harder, delta down), +1 (easier, delta up), 0 (none)
   reversalCount: number;
+  formalReversalCount: number;
   reversalTrials: number[];
   reversalDeltas: number[];
 
@@ -49,6 +50,7 @@ export class StaircaseController {
 
     this.lastDirection = 0;
     this.reversalCount = 0;
+    this.formalReversalCount = 0;
     this.reversalTrials = [];
     this.reversalDeltas = [];
 
@@ -104,13 +106,16 @@ export class StaircaseController {
         this.reversalCount += 1;
         this.reversalTrials.push(this.trialCount);
         this.reversalDeltas.push(this.currentDelta);
+        if (!inWarmup) {
+          this.formalReversalCount += 1;
+        }
       }
 
       this.lastDirection = direction;
 
-      // In formal stage, step size adaptation: halve step size when reversals reach threshold
+      // In formal stage, step size adaptation: halve step size when formal reversals reach threshold
       if (!inWarmup) {
-        if (this.trialCount > 10 && this.reversalCount >= this.reversalsForStepReduction) {
+        if (this.trialCount > 10 && this.formalReversalCount >= this.reversalsForStepReduction) {
           this.currentStepSize = this.formalStepSize / 2.0;
         } else {
           this.currentStepSize = this.formalStepSize;
@@ -214,6 +219,7 @@ export class StaircaseController {
       trialCount: this.trialCount,
       lastDirection: this.lastDirection,
       reversalCount: this.reversalCount,
+      formalReversalCount: this.formalReversalCount,
       reversalTrials: [...this.reversalTrials],
       reversalDeltas: [...this.reversalDeltas],
       historyDeltas: [...this.historyDeltas],
@@ -236,6 +242,7 @@ export class StaircaseController {
     sc.trialCount = snapshot.trialCount;
     sc.lastDirection = snapshot.lastDirection;
     sc.reversalCount = snapshot.reversalCount;
+    sc.formalReversalCount = snapshot.formalReversalCount ?? snapshot.reversalCount;
     sc.reversalTrials = [...snapshot.reversalTrials];
     sc.reversalDeltas = [...snapshot.reversalDeltas];
     sc.historyDeltas = [...snapshot.historyDeltas];
@@ -258,6 +265,7 @@ export interface StaircaseSnapshot {
   trialCount: number;
   lastDirection: number;
   reversalCount: number;
+  formalReversalCount?: number;
   reversalTrials: number[];
   reversalDeltas: number[];
   historyDeltas: number[];

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -68,6 +68,24 @@ export default function SubjectDataTableView({
 
   const [tabMode, setTabMode] = useState<TableTabMode>("TOPSIS");
   const [subDimension, setSubDimension] = useState<SubBoardDimension>("reasoning");
+  const [serverOverview, setServerOverview] = useState<LeaderboardOverviewResponse | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/leaderboard/overview")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: LeaderboardOverviewResponse | null) => {
+        if (isMounted && data && data.total_evaluated > 0) {
+          setServerOverview(data);
+        }
+      })
+      .catch((err) => {
+        console.debug("Failed to fetch server leaderboard overview:", err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Compute multi-dimensional leaderboards from all subjects (or fallback to current page)
   const cohortPool = useMemo(() => {
@@ -75,12 +93,15 @@ export default function SubjectDataTableView({
   }, [allSubjects, paginatedSubjects]);
 
   const leaderboardOverview: LeaderboardOverviewResponse = useMemo(() => {
+    if (serverOverview && (!allSubjects || allSubjects.length === 0)) {
+      return serverOverview;
+    }
     const inputs = cohortPool.map((s) => {
       // Map to LeaderboardSubjectInput
       return subjectDataPointToLeaderboardInput(s as any);
     });
     return generateLeaderboardOverview(inputs);
-  }, [cohortPool]);
+  }, [serverOverview, allSubjects, cohortPool]);
 
   // Top 3 for podium
   const top3Topsis = leaderboardOverview.topsis_leaderboard.slice(0, 3);

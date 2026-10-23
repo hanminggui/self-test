@@ -379,13 +379,13 @@ export function classifyCognitiveArchetype(x: {
   }
 
   // 天花板高维自洽保护 (Ceiling Effect Calibration Protection):
-  // 当一元辨别力极高 (d' >= 2.20 或 D* >= 0.85) 且置信偏差处于黄金自洽带 (|bias| <= 0.15) 时，
+  // 当相变突破度极高 (D* >= 0.85) 且置信偏差处于黄金自洽带 (|bias| <= 0.15) 时，
   // 错误样本极度稀疏 (零/极少错题) 会造成 Type-2 SDT 统计分母放大从而压低 M_ratio (天花板压缩效应)。
   // 此时模型客观上知行高度自洽、无盲目冒进 (Brier 极低)，属于知行合一的【人形外挂】(Q1-CAL)
-  const isCeilingMaster = (x.dPrime >= 2.20 || x.dStar >= 0.85) && Math.abs(x.bias) <= 0.15;
+  const isCeilingMaster = x.dStar >= 0.85 && Math.abs(x.bias) <= 0.15;
 
-  // Step 3: 一元认知能力划分 (严格由相变突破度 D* >= 0.60 主导，废除 || dPrime >= 1.40 漏洞)
-  const isHighFirstOrder = x.dStar >= 0.60 || isCeilingMaster;
+  // Step 3: 一元认知能力划分 (严格由相变突破度 D* >= 0.60 主导，彻底废除 d' 漏洞)
+  const isHighFirstOrder = x.dStar >= 0.60;
 
   if (isHighFirstOrder) {
     // 高一元分支：知行自洽 vs 谨慎守舵 vs 果敢进攻

@@ -14,6 +14,8 @@
  */
 
 import { SubjectDataPoint } from "./models";
+import { getArchetypeDefinition } from "./archetype_matrix";
+import type { SupportedLocale } from "../i18n";
 
 export interface LeaderboardSubjectInput {
   id: string;
@@ -103,6 +105,35 @@ export function computeEIR(subject: LeaderboardSubjectInput): number {
   const sec = Math.max(1.0, totalDurationMs / 1000);
   const rawEir = (effectivePayoff / (sec / 10.0)) * leverageMod;
   return Math.round(rawEir * 100) / 100;
+}
+
+function resolveRoleTitle(s: LeaderboardSubjectInput): string {
+  if (s.role_title) return s.role_title;
+  const targetLocale = (s.locale as SupportedLocale) || "zh-CN";
+  return getArchetypeDefinition(s.quadrant_code || "Q1-CAL", targetLocale).role_title;
+}
+
+function buildLeaderboardMetrics(s: LeaderboardSubjectInput): LeaderboardMetrics {
+  const formalScore = s.formal_score ?? 0;
+  const dStar = s.d_star ?? 0.50;
+  const ccs = s.composite_cognitive_score ?? s.ccs ?? Math.round(dStar * formalScore * 100) / 100;
+  const brier = s.brier_score ?? 0.20;
+  const eir = computeEIR(s);
+
+  return {
+    d_star: dStar,
+    m_ratio: s.m_ratio ?? 0.9,
+    calibration_accuracy: Math.round((1.0 - brier) * 10000) / 10000,
+    brier_score: brier,
+    calibration_bias: s.calibration_bias ?? 0.0,
+    ive: s.ive ?? 0.50,
+    formal_score: formalScore,
+    composite_cognitive_score: ccs,
+    ccs,
+    eir,
+    total_duration_ms: s.total_duration_ms,
+    total_tokens: s.token_usage?.total_tokens,
+  };
 }
 
 /**
@@ -199,33 +230,13 @@ export function computeTOPSIS(subjects: LeaderboardSubjectInput[]): TOPSISLeader
 
   return scores.map((item, idx) => {
     const s = item.subject;
-    const formalScore = s.formal_score ?? 0;
-    const dStar = s.d_star ?? 0.50;
-    const ccs = s.composite_cognitive_score ?? s.ccs ?? Math.round(dStar * formalScore * 100) / 100;
-    const brier = s.brier_score ?? 0.20;
-    const eir = computeEIR(s);
-
-    const metrics: LeaderboardMetrics = {
-      d_star: dStar,
-      m_ratio: s.m_ratio ?? 0.9,
-      calibration_accuracy: Math.round((1.0 - brier) * 10000) / 10000,
-      brier_score: brier,
-      calibration_bias: s.calibration_bias ?? 0.0,
-      ive: s.ive ?? 0.50,
-      formal_score: formalScore,
-      composite_cognitive_score: ccs,
-      ccs,
-      eir,
-      total_duration_ms: s.total_duration_ms,
-      total_tokens: s.token_usage?.total_tokens,
-    };
-
+    const metrics = buildLeaderboardMetrics(s);
     return {
       rank: idx + 1,
       id: s.id,
       name: s.name,
       subject_type: s.subject_type,
-      role_title: s.role_title || "人形外挂",
+      role_title: resolveRoleTitle(s),
       quadrant_code: s.quadrant_code || "Q1-CAL",
       score: item.topsisScore,
       topsis_score: item.topsisScore,
@@ -261,27 +272,7 @@ export function generateLeaderboardOverview(subjects: LeaderboardSubjectInput[])
     scoreExtractor: (s: LeaderboardSubjectInput) => number
   ): LeaderboardEntry[] => {
     return sorted.map((s, idx) => {
-      const formalScore = s.formal_score ?? 0;
-      const dStar = s.d_star ?? 0.50;
-      const ccs = s.composite_cognitive_score ?? s.ccs ?? Math.round(dStar * formalScore * 100) / 100;
-      const brier = s.brier_score ?? 0.20;
-      const eir = computeEIR(s);
-
-      const metrics: LeaderboardMetrics = {
-        d_star: dStar,
-        m_ratio: s.m_ratio ?? 0.9,
-        calibration_accuracy: Math.round((1.0 - brier) * 10000) / 10000,
-        brier_score: brier,
-        calibration_bias: s.calibration_bias ?? 0.0,
-        ive: s.ive ?? 0.50,
-        formal_score: formalScore,
-        composite_cognitive_score: ccs,
-        ccs,
-        eir,
-        total_duration_ms: s.total_duration_ms,
-        total_tokens: s.token_usage?.total_tokens,
-      };
-
+      const metrics = buildLeaderboardMetrics(s);
       const primaryScore = Math.round(scoreExtractor(s) * 100) / 100;
 
       return {
@@ -289,7 +280,7 @@ export function generateLeaderboardOverview(subjects: LeaderboardSubjectInput[])
         id: s.id,
         name: s.name,
         subject_type: s.subject_type,
-        role_title: s.role_title || "人形外挂",
+        role_title: resolveRoleTitle(s),
         quadrant_code: s.quadrant_code || "Q1-CAL",
         score: primaryScore,
         metrics,
@@ -307,9 +298,9 @@ export function generateLeaderboardOverview(subjects: LeaderboardSubjectInput[])
 
   // 3. Calibration Accuracy Sub-Dimension (1 - Brier Score desc)
   const calibrationSorted = [...subjects].sort(
-    (a, b) => (1.0 - (a.brier_score ?? 0.25)) - (1.0 - (b.brier_score ?? 0.25))
-  ).reverse();
-  const calibrationLeaderboard = formatEntries(calibrationSorted, (s) => 1.0 - (s.brier_score ?? 0.25));
+    (a, b) => (a.brier_score ?? 0.20) - (b.brier_score ?? 0.20)
+  );
+  const calibrationLeaderboard = formatEntries(calibrationSorted, (s) => 1.0 - (s.brier_score ?? 0.20));
 
   // 4. Game Utility Payoff (Formal Score desc)
   const gameUtilitySorted = [...subjects].sort((a, b) => (b.formal_score ?? 0) - (a.formal_score ?? 0));
