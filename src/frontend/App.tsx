@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import confetti from "canvas-confetti";
 import {
   Compass,
@@ -264,11 +264,6 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
   // Gamified transitions state
   const [portalStarting, setPortalStarting] = useState(false);
-  const [levelShiftState, setLevelShiftState] = useState<{
-    active: boolean;
-    direction: "up" | "down";
-    level: number;
-  } | null>(null);
   const [settlementState, setSettlementState] = useState<{
     active: boolean;
     stepIndex: number;
@@ -468,6 +463,26 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     [user, notifySessionChanged, playSound, triggerHaptic, isReducedMotion]
   );
 
+  const settlementTimeoutsRef = useRef<any[]>([]);
+  const [pendingReportData, setPendingReportData] = useState<{
+    repData: ReportData;
+    targetSessionId: string;
+  } | null>(null);
+
+  const clearSettlementTimeouts = useCallback(() => {
+    settlementTimeoutsRef.current.forEach((id) => clearTimeout(id));
+    settlementTimeoutsRef.current = [];
+  }, []);
+
+  const handleSkipSettlement = useCallback(() => {
+    clearSettlementTimeouts();
+    setSettlementState(null);
+    if (pendingReportData) {
+      finalizeReport(pendingReportData.repData, pendingReportData.targetSessionId);
+      setPendingReportData(null);
+    }
+  }, [clearSettlementTimeouts, pendingReportData, finalizeReport]);
+
   // Start a new exploration session
   const startSession = async () => {
     const currentUnclaimed = getLastCompletedSession();
@@ -609,56 +624,52 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
         if (isReducedMotion) {
           finalizeReport(repData, sessionId);
         } else {
+          setPendingReportData({ repData, targetSessionId: sessionId });
           setSettlementState({ active: true, stepIndex: 0 });
           playSound("settlement_pulse");
           triggerHaptic("light");
+          clearSettlementTimeouts();
 
-          setTimeout(() => {
-            setSettlementState({ active: true, stepIndex: 1 });
-            playSound("settlement_pulse");
-            triggerHaptic("light");
-          }, 350);
+          settlementTimeoutsRef.current.push(
+            setTimeout(() => {
+              setSettlementState({ active: true, stepIndex: 1 });
+              playSound("settlement_pulse");
+              triggerHaptic("light");
+            }, 750)
+          );
 
-          setTimeout(() => {
-            setSettlementState({ active: true, stepIndex: 2 });
-            playSound("settlement_pulse");
-            triggerHaptic("medium");
-          }, 700);
+          settlementTimeoutsRef.current.push(
+            setTimeout(() => {
+              setSettlementState({ active: true, stepIndex: 2 });
+              playSound("settlement_pulse");
+              triggerHaptic("medium");
+            }, 1500)
+          );
 
-          setTimeout(() => {
-            setSettlementState({ active: true, stepIndex: 3 });
-            playSound("settlement_pulse");
-            triggerHaptic("heavy");
-          }, 1050);
+          settlementTimeoutsRef.current.push(
+            setTimeout(() => {
+              setSettlementState({ active: true, stepIndex: 3 });
+              playSound("settlement_pulse");
+              triggerHaptic("heavy");
+            }, 2250)
+          );
 
-          setTimeout(() => {
-            setSettlementState(null);
-            finalizeReport(repData, sessionId);
-          }, 1400);
+          settlementTimeoutsRef.current.push(
+            setTimeout(() => {
+              setSettlementState(null);
+              setPendingReportData(null);
+              finalizeReport(repData, sessionId);
+            }, 3000)
+          );
         }
       } else {
-        // Fetch next trial
+        // Fetch next trial (隐蔽自适应阶梯，严禁向受测者暴露任何难度变动提示)
         const nextReqRes = await fetch(`/api/sessions/${sessionId}/trial?lang=${encodeURIComponent(locale)}`, {
           headers: { "Accept-Language": locale },
         });
         if (!nextReqRes.ok) throw new Error(t.app.fetchNextTrialError);
         const nextTrial: TrialRequest = await nextReqRes.json();
-
-        // Detect adaptive difficulty staircase shift
-        const nextDiff = nextTrial.payload.difficulty_level;
-        if (nextDiff > currentDifficulty) {
-          setLevelShiftState({ active: true, direction: "up", level: nextDiff });
-          playSound("level_up");
-          triggerHaptic("medium");
-          setTimeout(() => setLevelShiftState(null), 1800);
-        } else if (nextDiff < currentDifficulty) {
-          setLevelShiftState({ active: true, direction: "down", level: nextDiff });
-          playSound("level_down");
-          triggerHaptic("light");
-          setTimeout(() => setLevelShiftState(null), 1800);
-        } else {
-          playSound("tap");
-        }
+        playSound("tap");
 
         setTrialData(nextTrial);
         setSelectedOption(null);
@@ -1445,14 +1456,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           t.gameEffects?.deductionStep4 || "认知试炼圆满 · 神级画像铸成！",
         ]}
         currentStepIndex={settlementState?.stepIndex ?? 0}
-      />
-
-      {/* 自适应难度阶梯升降阶 HUD 微反馈 */}
-      <GamifiedTransition
-        active={Boolean(levelShiftState?.active)}
-        variant="level_shift"
-        direction={levelShiftState?.direction ?? "up"}
-        level={levelShiftState?.level ?? 1}
+        onSkip={handleSkipSettlement}
       />
 
       {/* 仅在未进入 App Layout 时展示底部极简脚注 */}

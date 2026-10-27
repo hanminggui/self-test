@@ -36,7 +36,7 @@ describe("Seam 3: Gamified Transition & Portal Transition Components", () => {
     expect(html).toContain("portal-ring");
   });
 
-  it("settlement 变体能够展示算力推演多阶段里程碑步进", () => {
+  it("settlement 变体能够展示算力推演多阶段里程碑步进，并在传入 onSkip 时提供跳过按钮", () => {
     const steps = [
       "一阶作答响应聚合",
       "二阶置信博弈推演 (Meta-d')",
@@ -50,10 +50,12 @@ describe("Seam 3: Gamified Transition & Portal Transition Components", () => {
         title="认知流形高维推演"
         steps={steps}
         currentStepIndex={1}
+        onSkip={() => {}}
       />
     );
     expect(html).toContain("认知流形高维推演");
     expect(html).toContain("二阶置信博弈推演");
+    expect(html).toContain("跳过推演 · 直接查看报告");
   });
 
   it("level_shift 变体正确展示阶梯升降阶自适应视觉反馈", () => {

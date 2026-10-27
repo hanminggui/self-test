@@ -31,6 +31,7 @@ export interface GamifiedTransitionProps {
   level?: number;
   fullScreen?: boolean;
   onComplete?: () => void;
+  onSkip?: () => void;
   className?: string;
 }
 
@@ -46,10 +47,12 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
   level = 1,
   fullScreen = true,
   onComplete,
+  onSkip,
   className = "",
 }) => {
   const { isReducedMotion, isEcoMode, triggerHaptic } = useGameEffects();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
+  const isEn = String(locale).toLowerCase().startsWith("en");
 
   useEffect(() => {
     if (active) {
@@ -221,6 +224,18 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
                 </div>
               );
             })}
+
+            {onSkip && (
+              <div className="text-center pt-3">
+                <button
+                  type="button"
+                  onClick={onSkip}
+                  className="px-4 py-1.5 rounded-full text-xs text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                >
+                  {isEn ? "Skip deduction · View report →" : "跳过推演 · 直接查看报告 →"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
