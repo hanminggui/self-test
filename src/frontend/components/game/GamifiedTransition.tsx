@@ -11,12 +11,12 @@ import {
 } from "lucide-react";
 import { PortalTransition } from "./PortalTransition";
 import { useGameEffects } from "../../contexts/GameEffectsContext";
+import { useLocale } from "../../contexts/LocaleContext";
 
 export type TransitionVariant =
   | "portal"
   | "charge"
   | "settlement"
-  | "warp"
   | "level_shift";
 
 export interface GamifiedTransitionProps {
@@ -48,13 +48,17 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
   onComplete,
   className = "",
 }) => {
-  const { isReducedMotion, isEcoMode, playSound, triggerHaptic } = useGameEffects();
+  const { isReducedMotion, isEcoMode, triggerHaptic } = useGameEffects();
+  const { t } = useLocale();
 
   useEffect(() => {
     if (active) {
       triggerHaptic("light");
+      if (onComplete) {
+        onComplete();
+      }
     }
-  }, [active, triggerHaptic]);
+  }, [active, triggerHaptic, onComplete]);
 
   if (!active) return null;
 
@@ -89,15 +93,19 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
           </div>
           <div className="text-left">
             <div className="text-xs font-black tracking-wide flex items-center gap-1.5">
-              <span>{isUp ? "难度跃迁" : "阶梯自适应校准"}</span>
+              <span>
+                {isUp
+                  ? t.gameEffects?.levelShiftUpTitle || "难度跃迁"
+                  : t.gameEffects?.levelShiftDownTitle || "阶梯自适应校准"}
+              </span>
               <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-black/40 border border-white/10">
                 Lv.{level}
               </span>
             </div>
             <p className="text-[10px] opacity-80">
               {isUp
-                ? "根据一阶高准度表现，系统已自动提升认知难度梯度"
-                : "正在调整探测步长，持续定位您的认知敏锐边界"}
+                ? t.gameEffects?.levelShiftUpDesc || "根据一阶高准度表现，系统已自动提升认知难度梯度"
+                : t.gameEffects?.levelShiftDownDesc || "正在调整探测步长，持续定位您的认知敏锐边界"}
             </p>
           </div>
         </div>
@@ -158,16 +166,6 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
               />
               <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-amber-300 animate-spin [animation-duration:6s]" />
             </div>
-          </div>
-        )}
-
-        {variant === "warp" && (
-          <div className="relative flex items-center justify-center w-28 h-28">
-            <Layers
-              className={`w-16 h-16 text-cyan-300 ${
-                isReducedMotion ? "" : "animate-pulse"
-              }`}
-            />
           </div>
         )}
 

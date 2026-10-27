@@ -78,7 +78,7 @@ export const PortalTransition: React.FC<PortalTransitionProps> = ({
             size === "sm" ? "w-4 h-4" : size === "lg" ? "w-12 h-12" : "w-8 h-8"
           } ${isReducedMotion ? "" : "animate-pulse"}`}
         />
-        {!isEcoMode && (
+        {!isEcoMode && !isReducedMotion && (
           <Sparkles className="absolute -top-1 -right-1 w-3.5 h-3.5 text-amber-300 animate-ping [animation-duration:2s]" />
         )}
       </div>

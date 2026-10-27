@@ -438,6 +438,36 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     }
   };
 
+  // 终结并展示测评报告卡片 (统一收敛报告落地与无障碍减弱动效适配)
+  const finalizeReport = useCallback(
+    (repData: ReportData, targetSessionId: string) => {
+      setReport(repData);
+      setStage("REPORT");
+      playSound("report_reveal");
+      if (!user) {
+        saveLastCompletedSession(targetSessionId);
+        setLastSessionRecord(getLastCompletedSession());
+      } else {
+        notifySessionChanged();
+      }
+      if (typeof window !== "undefined") {
+        const permalink = buildSessionReportUrl(targetSessionId);
+        window.history.pushState({ sessionId: targetSessionId }, "", permalink);
+      }
+      // 严格尊重无障碍减弱动效偏好：在 reduced 模式下严禁喷射粒子烟花
+      if (!isReducedMotion) {
+        triggerHaptic("heavy");
+        confetti({
+          particleCount: 150,
+          spread: 90,
+          origin: { y: 0.55 },
+          colors: ["#f59e0b", "#6366f1", "#a855f7", "#38bdf8"],
+        });
+      }
+    },
+    [user, notifySessionChanged, playSound, triggerHaptic, isReducedMotion]
+  );
+
   // Start a new exploration session
   const startSession = async () => {
     const currentUnclaimed = getLastCompletedSession();
@@ -577,26 +607,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
         // Orchestrate 4-stage Metacognitive Manifold Deduction sequence
         if (isReducedMotion) {
-          setReport(repData);
-          setStage("REPORT");
-          playSound("report_reveal");
-          triggerHaptic("heavy");
-          if (!user) {
-            saveLastCompletedSession(sessionId);
-            setLastSessionRecord(getLastCompletedSession());
-          } else {
-            notifySessionChanged();
-          }
-          if (typeof window !== "undefined") {
-            const permalink = buildSessionReportUrl(sessionId);
-            window.history.pushState({ sessionId }, "", permalink);
-          }
-          confetti({
-            particleCount: 150,
-            spread: 90,
-            origin: { y: 0.55 },
-            colors: ["#f59e0b", "#6366f1", "#a855f7", "#38bdf8"],
-          });
+          finalizeReport(repData, sessionId);
         } else {
           setSettlementState({ active: true, stepIndex: 0 });
           playSound("settlement_pulse");
@@ -622,26 +633,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
           setTimeout(() => {
             setSettlementState(null);
-            setReport(repData);
-            setStage("REPORT");
-            playSound("report_reveal");
-            triggerHaptic("heavy");
-            if (!user) {
-              saveLastCompletedSession(sessionId);
-              setLastSessionRecord(getLastCompletedSession());
-            } else {
-              notifySessionChanged();
-            }
-            if (typeof window !== "undefined") {
-              const permalink = buildSessionReportUrl(sessionId);
-              window.history.pushState({ sessionId }, "", permalink);
-            }
-            confetti({
-              particleCount: 150,
-              spread: 90,
-              origin: { y: 0.55 },
-              colors: ["#f59e0b", "#6366f1", "#a855f7", "#38bdf8"],
-            });
+            finalizeReport(repData, sessionId);
           }, 1400);
         }
       } else {
@@ -691,8 +683,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     isReducedMotion,
     playSound,
     triggerHaptic,
-    user,
-    notifySessionChanged,
+    finalizeReport,
   ]);
 
   // Keyboard navigation shortcuts
