@@ -300,4 +300,35 @@ export interface I18nDictionary {
     saveSuccess: string;
     saveError: string;
   };
+  gameEffects: {
+    portalStartingTitle: string;
+    portalStartingSubtitle: string;
+    reportDeductionTitle: string;
+    reportDeductionSubtitle: string;
+    deductionStep1: string;
+    deductionStep2: string;
+    deductionStep3: string;
+    deductionStep4: string;
+    levelShiftUpTitle: string;
+    levelShiftUpDesc: string;
+    levelShiftDownTitle: string;
+    levelShiftDownDesc: string;
+    settingsAudioMotionTitle: string;
+    settingsAudioMotionDesc: string;
+    motionModeLabel: string;
+    motionModeFull: string;
+    motionModeFullDesc: string;
+    motionModeReduced: string;
+    motionModeReducedDesc: string;
+    soundModeLabel: string;
+    soundModeEnabled: string;
+    soundModeMuted: string;
+    perfModeLabel: string;
+    perfModeHigh: string;
+    perfModeHighDesc: string;
+    perfModeEco: string;
+    perfModeEcoDesc: string;
+    toggleSoundQuick: string;
+    toggleMotionQuick: string;
+  };
 }

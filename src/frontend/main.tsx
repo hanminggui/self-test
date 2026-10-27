@@ -11,6 +11,7 @@ import { AssetsPage } from "./pages/AssetsPage";
 import { AppLayout } from "./components/layout/AppLayout";
 import { LocaleProvider } from "./contexts/LocaleContext";
 import { UserProvider, useUser } from "./contexts/UserContext";
+import { GameEffectsProvider } from "./contexts/GameEffectsContext";
 import { resolveRouteView } from "./utils/sessionRoute";
 import "./index.css";
 
@@ -131,7 +132,9 @@ const Root: React.FC = () => {
   return (
     <LocaleProvider>
       <UserProvider>
-        <AppRouter />
+        <GameEffectsProvider>
+          <AppRouter />
+        </GameEffectsProvider>
       </UserProvider>
     </LocaleProvider>
   );

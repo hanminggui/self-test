@@ -20,6 +20,25 @@
   aside {
     transition: none !important;
   }
+  .portal-ring {
+    animation: none !important;
+  }
+}
+
+/* Gamified Portal & Runic Keyframes */
+@keyframes portal-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+.portal-pulse-glow {
+  animation: portal-pulse 3s ease-in-out infinite;
 }
 
 /* Glassmorphism custom utilities */
