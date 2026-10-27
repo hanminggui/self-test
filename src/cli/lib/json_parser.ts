@@ -77,9 +77,8 @@ export function cleanAndExtractJson(raw: string): ParsedLLMDecision {
     semanticRes.action = "SAFE_BET";
   }
 
-  const explicitChoice = text.match(/(?:选项|choice|答案|选择|最终答案|推导结果)[^\wA-D]*([A-D])\b/i) ||
-                         text.match(/\[([A-D])\]/i) ||
-                         text.match(/\b([A-D])\b/);
+  const explicitChoice = text.match(/(?:选项|choice|答案|选择|最终答案|推导结果|因此选|故选|锁定)[^\wA-D]*([A-D])\b/i) ||
+                         text.match(/\[([A-D])\]/i);
   if (explicitChoice) {
     semanticRes.choice = explicitChoice[1].toUpperCase();
   }
@@ -97,3 +96,26 @@ export function cleanAndExtractJson(raw: string): ParsedLLMDecision {
 
   throw new Error("无法从输出中提取有效 JSON 结构");
 }
+
+/**
+ * 从模型思考文本 (Reasoning / CoT) 中抢救推导出的客观选项 (A/B/C/D)
+ * 专用于模型打满截断、未输出完整 JSON 但思考已得出明确结论的残局保底
+ */
+export function rescueOptionFromReasoning(reasoning?: string): string | null {
+  if (!reasoning || typeof reasoning !== "string") return null;
+  const tail = reasoning.slice(-1500);
+  const patterns = [
+    /(?:最终选择|倾向于|选择|答案是|答案为|应选|正确答案是|最终推导结果为|因此选|故选)\s*[:：]?\s*([A-D])\b/i,
+    /(?:Option|Answer is|Choice is)\s*[:：]?\s*([A-D])\b/i,
+    /(?:选项|候选)\s*([A-D])\s*(?:正确|是正确答案|更为合理|最为符合|更符合题意)/i,
+    /\b([A-D])\s*(?:选项正确|是正确答案|更为合理|最为符合)/i,
+    /(?:排除[A-D\s、,]+，?故选|因此选)\s*([A-D])\b/i,
+    /【(?:答案|选项)】\s*[:：]?\s*([A-D])\b/i,
+  ];
+  for (const p of patterns) {
+    const match = tail.match(p);
+    if (match) return match[1].toUpperCase();
+  }
+  return null;
+}
+

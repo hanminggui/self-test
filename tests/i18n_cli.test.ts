@@ -6,24 +6,25 @@ import { sessionManager } from "../src/backend/server";
 
 describe("Seam 5: CLI Evaluator & Bilingual Schemas/Prompts", () => {
   let serverProcess: ChildProcess | undefined;
+  const TEST_PORT = 8899;
+  const TEST_API_URL = `http://localhost:${TEST_PORT}`;
 
   beforeAll(async () => {
-    // Check if server is already running on port 8000
-    try {
-      const ping = await fetch("http://localhost:8000/api/admin/sessions", { signal: AbortSignal.timeout(300) });
-      if (ping) return; // already running
-    } catch {}
-
     serverProcess = spawn("bun", ["run", "src/backend/server.ts"], {
       cwd: process.cwd(),
       stdio: "ignore",
+      env: {
+        ...process.env,
+        PORT: String(TEST_PORT),
+        NODE_ENV: "test",
+      },
     });
 
     // Wait for server to become responsive
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 40; i++) {
       try {
-        await fetch("http://localhost:8000/api/admin/sessions", { signal: AbortSignal.timeout(300) });
-        break;
+        const ping = await fetch(`${TEST_API_URL}/api/health`, { signal: AbortSignal.timeout(300) });
+        if (ping.ok) break;
       } catch {
         await new Promise((r) => setTimeout(r, 100));
       }
@@ -75,15 +76,17 @@ describe("Seam 5: CLI Evaluator & Bilingual Schemas/Prompts", () => {
     const res = spawnSync("bun", [
       "run",
       "src/cli/eval.ts",
+      "--apiUrl", TEST_API_URL,
       "--mock",
       "--trials", "3",
       "--warmup", "1",
       "--lang", "en",
+      "--no-log",
       "-y"
     ], {
       cwd: process.cwd(),
       encoding: "utf-8",
-      env: { ...process.env, NON_INTERACTIVE: "1" },
+      env: { ...process.env, NODE_ENV: "test", NON_INTERACTIVE: "1" },
     });
 
     if (res.status !== 0) {
@@ -108,15 +111,17 @@ describe("Seam 5: CLI Evaluator & Bilingual Schemas/Prompts", () => {
     const resZh = spawnSync("bun", [
       "run",
       "src/cli/eval.ts",
+      "--apiUrl", TEST_API_URL,
       "--mock",
       "--trials", "3",
       "--warmup", "1",
       "--lang", "zh",
+      "--no-log",
       "-y"
     ], {
       cwd: process.cwd(),
       encoding: "utf-8",
-      env: { ...process.env, NON_INTERACTIVE: "1" },
+      env: { ...process.env, NODE_ENV: "test", NON_INTERACTIVE: "1" },
     });
     expect(resZh.status).toBe(0);
     expect(resZh.stdout).toContain("大模型二元认知");

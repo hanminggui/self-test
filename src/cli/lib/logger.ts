@@ -10,17 +10,35 @@ export interface LoggerOptions {
   apiKey?: string;
   logsDir?: string;
   isDebug?: boolean;
+  disabled?: boolean;
 }
 
 export class EvalLogger {
   private logFilePath: string;
   private apiKey?: string;
   private isDebug: boolean;
+  private disabled: boolean;
   private origLog = console.log.bind(console);
   private origWarn = console.warn.bind(console);
   private origError = console.error.bind(console);
 
   constructor(options: LoggerOptions) {
+    this.disabled = Boolean(
+      options.disabled ||
+      process.env.NODE_ENV === "test" ||
+      process.env.BUN_TEST === "1" ||
+      process.env.EVAL_DISABLE_LOG === "1" ||
+      process.env.EVAL_NO_LOG === "1"
+    );
+
+    this.apiKey = options.apiKey;
+    this.isDebug = Boolean(options.isDebug);
+
+    if (this.disabled) {
+      this.logFilePath = "";
+      return;
+    }
+
     const logsDir = options.logsDir || path.resolve(process.cwd(), "logs");
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir, { recursive: true });
@@ -30,13 +48,14 @@ export class EvalLogger {
     const timeStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
     const safeModelStr = options.model.replace(/[^a-zA-Z0-9_-]/g, "_");
     this.logFilePath = path.join(logsDir, `eval_${safeModelStr}_${timeStr}.log`);
-
-    this.apiKey = options.apiKey;
-    this.isDebug = Boolean(options.isDebug);
   }
 
   getLogPath(): string {
     return this.logFilePath;
+  }
+
+  isDisabled(): boolean {
+    return this.disabled;
   }
 
   /**
@@ -62,6 +81,7 @@ export class EvalLogger {
   }
 
   private append(text: string) {
+    if (this.disabled || !this.logFilePath) return;
     try {
       fs.appendFileSync(this.logFilePath, this.redact(text) + "\n", "utf-8");
     } catch { }
@@ -100,8 +120,15 @@ export class EvalLogger {
    * 安装全局 Console 重定向（用于无侵入拦截第三方库打印并统一脱敏落盘）
    */
   installGlobalTee() {
+    if (this.disabled) return;
     console.log = (...args: any[]) => this.log(...args);
     console.warn = (...args: any[]) => this.warn(...args);
     console.error = (...args: any[]) => this.error(...args);
+  }
+
+  uninstallGlobalTee() {
+    console.log = this.origLog;
+    console.warn = this.origWarn;
+    console.error = this.origError;
   }
 }

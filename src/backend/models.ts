@@ -113,7 +113,7 @@ export interface TrialMetrics {
   operations?: TrialOperation[];
 }
 
-export type EvaluationMode = "thinking_tool" | "multi_step";
+export type EvaluationMode = "thinking_tool" | "multi_step" | "decision_model";
 
 export interface SessionExecutionMetadata {
   model_name?: string;

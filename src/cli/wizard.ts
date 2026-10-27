@@ -15,11 +15,19 @@ export interface ProviderItem {
   baseUrl: string;
   apiKey?: string;
   isLocal?: boolean;
+  isDecisionModel?: boolean;
 }
 
 export type ThinkingEffort = "none" | "low" | "medium" | "high";
 
 import { normalizeLocale, type SupportedLocale } from "../i18n";
+import {
+  DEFAULT_SAMPLING_PROFILES,
+  getSamplingProfile,
+  formatSamplingParams,
+  type SamplingParams,
+  type SamplingProfile,
+} from "./lib/sampling_profiles";
 
 export interface WizardResult {
   provider: ProviderItem;
@@ -29,12 +37,50 @@ export interface WizardResult {
   totalTrials: number;
   warmupTrials: number;
   thinking: ThinkingEffort;
+  samplingProfileId?: string;
+  samplingParams?: SamplingParams;
   locale: SupportedLocale;
+  isDecisionModel?: boolean;
 }
+
+export const DEFAULT_DECISION_MODELS = [
+  {
+    id: "jev-latest",
+    name: "jev-latest (TypeSafe Jev 旗舰决策模型 · 官方源头)",
+  },
+  {
+    id: "jev-preview",
+    name: "jev-preview (TypeSafe Jev 预览版)",
+  },
+  {
+    id: "decision-models/baseten-elephant-9b-latest",
+    name: "elephant-1 (Baseten 托管 9B · 16k context)",
+  },
+  {
+    id: "decision-models/baseten-mammoth-27b-latest",
+    name: "mammoth-1 (Baseten 托管 27B · 16k context)",
+  },
+];
 
 const PROVIDERS_FILE = path.resolve(process.cwd(), ".eval_providers.json");
 
 const DEFAULT_PROVIDERS: ProviderItem[] = [
+  {
+    id: "typesafe",
+    name: "TypeSafe AI (System One 决策模型 · 官方源头)",
+    baseUrl: "https://api.typesafe.ai",
+    apiKey: process.env.TYPESAFE_API_KEY || "",
+    isLocal: false,
+    isDecisionModel: true,
+  },
+  {
+    id: "baseten",
+    name: "Baseten (System One 决策模型托管)",
+    baseUrl: "https://inference.baseten.co",
+    apiKey: process.env.BASETEN_API_KEY || "",
+    isLocal: false,
+    isDecisionModel: true,
+  },
   {
     id: "lmstudio",
     name: "LM Studio (本地端点: 1234)",
@@ -146,9 +192,13 @@ export async function runInteractiveWizard(options?: {
   lastModel?: string;
   lastBaseUrl?: string;
   lastThinking?: ThinkingEffort;
+  lastSamplingProfile?: string;
+  lastSamplingParams?: SamplingParams;
   presetTrials?: number;
   presetWarmup?: number;
   presetThinking?: ThinkingEffort;
+  presetSamplingProfile?: string;
+  presetSamplingParams?: SamplingParams;
   locale?: SupportedLocale;
 }): Promise<WizardResult> {
   const resolvedLocale: SupportedLocale = normalizeLocale(options?.locale || process.env.EVAL_LANG || process.env.LOCALE || "zh-CN");
@@ -164,6 +214,8 @@ export async function runInteractiveWizard(options?: {
 
   const getProviderLabel = (pr: ProviderItem) => {
     if (!isEn) return pr.name;
+    if (pr.id === "typesafe") return "TypeSafe AI (System One Decision Models · Origin)";
+    if (pr.id === "baseten") return "Baseten (System One Decision Models)";
     if (pr.id === "lmstudio") return "LM Studio (Local endpoint: 1234)";
     if (pr.id === "ollama") return "Ollama (Local endpoint: 11434)";
     if (pr.id === "deepseek") return "DeepSeek Official API";
@@ -251,11 +303,46 @@ export async function runInteractiveWizard(options?: {
     provider = providers.find((pr) => pr.id === selectedProviderId)!;
   }
 
+  const isDecision = Boolean(
+    provider.isDecisionModel ||
+    provider.id === "typesafe" ||
+    provider.id === "baseten" ||
+    provider.baseUrl.includes("typesafe.ai") ||
+    provider.baseUrl.includes("baseten.co")
+  );
+
+  if (isDecision) {
+    let cleanBase = provider.baseUrl.trim().replace(/\/+$/, "");
+    while (cleanBase.endsWith("/v1/systemone") || cleanBase.endsWith("/systemone") || cleanBase.endsWith("/v1")) {
+      if (cleanBase.endsWith("/v1/systemone")) {
+        cleanBase = cleanBase.slice(0, -"/v1/systemone".length).replace(/\/+$/, "");
+      } else if (cleanBase.endsWith("/systemone")) {
+        cleanBase = cleanBase.slice(0, -"/systemone".length).replace(/\/+$/, "");
+      } else if (cleanBase.endsWith("/v1")) {
+        cleanBase = cleanBase.slice(0, -"/v1".length).replace(/\/+$/, "");
+      }
+    }
+    if (cleanBase !== provider.baseUrl) {
+      provider.baseUrl = cleanBase;
+      saveProviders(providers);
+    }
+  }
+
   // 2. 校验与更新 API Key
   if (!provider.isLocal && !provider.apiKey) {
+    const isTypesafe = provider.id === "typesafe" || provider.baseUrl.includes("typesafe.ai");
+    const keyPrompt = isDecision
+      ? (isTypesafe
+          ? (isEn ? "Enter TypeSafe API Key (TYPESAFE_API_KEY):" : "请输入 TypeSafe API Key (TYPESAFE_API_KEY):")
+          : (isEn ? "Enter Baseten API Key (BASETEN_API_KEY):" : "请输入 Baseten API Key (BASETEN_API_KEY):"))
+      : (isEn ? `Enter API Key for ${provider.name}:` : `请输入 ${provider.name} 的 API Key:`);
+    const defaultEnvKey = isTypesafe
+      ? (process.env.TYPESAFE_API_KEY || "")
+      : (isDecision ? (process.env.BASETEN_API_KEY || "") : "");
     const enteredKey = await p.text({
-      message: isEn ? `Enter API Key for ${provider.name}:` : `请输入 ${provider.name} 的 API Key:`,
-      placeholder: "sk-...",
+      message: keyPrompt,
+      placeholder: isTypesafe ? "ts-..." : (isDecision ? "b10-..." : "sk-..."),
+      initialValue: defaultEnvKey || undefined,
       validate: (v) => (!v || !v.trim() ? (isEn ? "API Key cannot be empty" : "API Key 不能为空") : undefined),
     });
     if (p.isCancel(enteredKey)) {
@@ -276,9 +363,10 @@ export async function runInteractiveWizard(options?: {
       process.exit(0);
     }
     if (changeKey) {
+      const isTypesafe = provider.id === "typesafe" || provider.baseUrl.includes("typesafe.ai");
       const newKey = await p.text({
         message: isEn ? "Enter new API Key:" : "请输入新的 API Key:",
-        placeholder: "sk-...",
+        placeholder: isTypesafe ? "ts-..." : (isDecision ? "b10-..." : "sk-..."),
         validate: (v) => (!v || !v.trim() ? (isEn ? "API Key cannot be empty" : "API Key 不能为空") : undefined),
       });
       if (p.isCancel(newKey)) {
@@ -290,53 +378,31 @@ export async function runInteractiveWizard(options?: {
     }
   }
 
-  const effectiveKey = provider.apiKey || (provider.isLocal ? "ollama" : "");
+  const effectiveKey = provider.apiKey || (provider.isLocal ? "ollama" : (process.env.TYPESAFE_API_KEY || process.env.BASETEN_API_KEY || ""));
 
-  // 3. 动态获取远程可用模型
-  const s = p.spinner();
-  s.start(
-    isEn
-      ? `Querying available models from ${provider.name} (${provider.baseUrl}/models)...`
-      : `正在向 ${provider.name} (${provider.baseUrl}/models) 查询可用模型清单...`
-  );
-
-  let remoteModels: string[] = [];
-
-  try {
-    remoteModels = await fetchRemoteModels(provider.baseUrl, effectiveKey);
-    s.stop(
-      isEn
-        ? `✅ Successfully retrieved ${remoteModels.length} available models`
-        : `✅ 成功获取到 ${remoteModels.length} 个可用模型`
-    );
-  } catch (err: any) {
-    s.stop(
-      isEn
-        ? `⚠️ Failed to query /models (${err.message}), falling back to manual entry mode`
-        : `⚠️  查询 /models 失败 (${err.message})，将使用手动输入模式`
-    );
-  }
-
-  // 4. 选择模型 (支持上下方向键)
+  // 3 & 4. 获取与选择模型 (支持上下方向键)
   let selectedModel = "";
 
-  if (remoteModels.length > 0) {
-    const modelChoices = remoteModels.map((m) => ({
-      value: m,
-      label: m,
+  if (isDecision) {
+    const decisionChoices = DEFAULT_DECISION_MODELS.map((m) => ({
+      value: m.id,
+      label: m.name,
     }));
-
-    modelChoices.unshift({
+    decisionChoices.push({
       value: "__manual__",
-      label: isEn ? "✍️ Enter model name manually..." : "✍️ 手动输入其它模型代号...",
+      label: isEn ? "✍️ Enter custom decision model slug..." : "✍️ 手动输入其它决策模型代号...",
     });
+
+    const defaultDecisionModel = options?.lastModel && DEFAULT_DECISION_MODELS.some((m) => m.id === options.lastModel)
+      ? options.lastModel
+      : DEFAULT_DECISION_MODELS[0].id;
 
     const modelPick = await p.select({
       message: isEn
-        ? `Select target evaluation model using [↑/↓ arrow keys] (${remoteModels.length} available):`
-        : `请使用【↑/↓ 方向键】选择目标评测模型 (共 ${remoteModels.length} 个):`,
-      options: modelChoices,
-      initialValue: options?.lastModel && remoteModels.includes(options.lastModel) ? options.lastModel : remoteModels[0],
+        ? "Select target decision model using [↑/↓ arrow keys]:"
+        : "请使用【↑/↓ 方向键】选择目标决策模型 (Decision Model):",
+      options: decisionChoices,
+      initialValue: defaultDecisionModel,
     });
 
     if (p.isCancel(modelPick)) {
@@ -346,8 +412,10 @@ export async function runInteractiveWizard(options?: {
 
     if (modelPick === "__manual__") {
       const manualName = await p.text({
-        message: isEn ? "Enter model identifier (Model Name):" : "请输入模型代号 (Model Name):",
-        placeholder: isEn ? "e.g. google/gemma-4-e4b or deepseek-chat" : "例如: google/gemma-4-e4b 或 deepseek-chat",
+        message: isEn
+          ? "Enter decision model slug (e.g. decision-models/baseten-elephant-9b-latest):"
+          : "请输入决策模型 Slug (如 decision-models/baseten-elephant-9b-latest):",
+        placeholder: "decision-models/...",
         validate: (v) => (!v || !v.trim() ? (isEn ? "Model name cannot be empty" : "模型名称不能为空") : undefined),
       });
       if (p.isCancel(manualName)) {
@@ -356,19 +424,84 @@ export async function runInteractiveWizard(options?: {
       }
       selectedModel = manualName.trim();
     } else {
-      selectedModel = modelPick;
+      selectedModel = modelPick as string;
     }
   } else {
-    const manualName = await p.text({
-      message: isEn ? "Enter target model identifier (Model Name):" : "请输入目标模型代号 (Model Name):",
-      placeholder: isEn ? "e.g. deepseek-chat, gpt-4o, google/gemma-4-e4b" : "例如: deepseek-chat, gpt-4o, google/gemma-4-e4b",
-      validate: (v) => (!v || !v.trim() ? (isEn ? "Model name cannot be empty" : "模型名称不能为空") : undefined),
-    });
-    if (p.isCancel(manualName)) {
-      p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
-      process.exit(0);
+    // 通用 LLM 动态获取远程可用模型
+    const s = p.spinner();
+    s.start(
+      isEn
+        ? `Querying available models from ${provider.name} (${provider.baseUrl}/models)...`
+        : `正在向 ${provider.name} (${provider.baseUrl}/models) 查询可用模型清单...`
+    );
+
+    let remoteModels: string[] = [];
+
+    try {
+      remoteModels = await fetchRemoteModels(provider.baseUrl, effectiveKey);
+      s.stop(
+        isEn
+          ? `✅ Successfully retrieved ${remoteModels.length} available models`
+          : `✅ 成功获取到 ${remoteModels.length} 个可用模型`
+      );
+    } catch (err: any) {
+      s.stop(
+        isEn
+          ? `⚠️ Failed to query /models (${err.message}), falling back to manual entry mode`
+          : `⚠️  查询 /models 失败 (${err.message})，将使用手动输入模式`
+      );
     }
-    selectedModel = manualName.trim();
+
+    if (remoteModels.length > 0) {
+      const modelChoices = remoteModels.map((m) => ({
+        value: m,
+        label: m,
+      }));
+
+      modelChoices.unshift({
+        value: "__manual__",
+        label: isEn ? "✍️ Enter model name manually..." : "✍️ 手动输入其它模型代号...",
+      });
+
+      const modelPick = await p.select({
+        message: isEn
+          ? `Select target evaluation model using [↑/↓ arrow keys] (${remoteModels.length} available):`
+          : `请使用【↑/↓ 方向键】选择目标评测模型 (共 ${remoteModels.length} 个):`,
+        options: modelChoices,
+        initialValue: options?.lastModel && remoteModels.includes(options.lastModel) ? options.lastModel : remoteModels[0],
+      });
+
+      if (p.isCancel(modelPick)) {
+        p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
+        process.exit(0);
+      }
+
+      if (modelPick === "__manual__") {
+        const manualName = await p.text({
+          message: isEn ? "Enter model identifier (Model Name):" : "请输入模型代号 (Model Name):",
+          placeholder: isEn ? "e.g. google/gemma-4-e4b or deepseek-chat" : "例如: google/gemma-4-e4b 或 deepseek-chat",
+          validate: (v) => (!v || !v.trim() ? (isEn ? "Model name cannot be empty" : "模型名称不能为空") : undefined),
+        });
+        if (p.isCancel(manualName)) {
+          p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
+          process.exit(0);
+        }
+        selectedModel = manualName.trim();
+      } else {
+        selectedModel = modelPick;
+      }
+    } else {
+      const manualName = await p.text({
+        message: isEn ? "Enter target model identifier (Model Name):" : "请输入目标模型代号 (Model Name):",
+        placeholder: isEn ? "e.g. deepseek-chat, gpt-4o, google/gemma-4-e4b" : "例如: deepseek-chat, gpt-4o, google/gemma-4-e4b",
+        validate: (v) => (!v || !v.trim() ? (isEn ? "Model name cannot be empty" : "模型名称不能为空") : undefined),
+      });
+      if (p.isCancel(manualName)) {
+        p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
+        process.exit(0);
+      }
+      selectedModel = manualName.trim();
+    }
   }
 
   // 5. 确认或选择评测试次轮数 (Trials & Warmup)
@@ -425,31 +558,10 @@ export async function runInteractiveWizard(options?: {
     warmupTrials = Math.max(1, Math.floor(totalTrials / 3));
   }
 
-  // 6. 确认或选择思维链推理模式 (Thinking / 思考强度)
-  let thinking: ThinkingEffort = options?.presetThinking || "none";
-  if (!options?.presetThinking) {
-    const thinkingChoice = await p.select({
-      message: isEn ? "Select chain-of-thought reasoning mode (Thinking effort):" : "请选择思维链推理模式 (Thinking / 思考强度):",
-      options: isEn ? [
-        { value: "none", label: "⏹️  Disabled (none - Explicitly disable thinking + classic stepped protocol)" },
-        { value: "medium", label: "🟡 Medium effort (medium - Single-pass reasoning + buy_hint tool, recommended)" },
-        { value: "low", label: "🟢 Low effort (low - Single-pass fast thinking + buy_hint tool)" },
-        { value: "high", label: "🔴 High effort (high - Single-pass deep reasoning + buy_hint tool)" },
-      ] : [
-        { value: "none", label: "⏹️  关闭思考 (none - 显式禁用思考 + 经典分步协议)" },
-        { value: "medium", label: "🟡 中等强度 (medium - 单通推演 + buy_hint 工具模式，推荐)" },
-        { value: "low", label: "🟢 低等强度 (low - 单通快速思考 + buy_hint 工具模式)" },
-        { value: "high", label: "🔴 高等强度 (high - 单通深度推演 + buy_hint 工具模式)" },
-      ],
-      initialValue: options?.lastThinking || "none",
-    });
-
-    if (p.isCancel(thinkingChoice)) {
-      p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
-      process.exit(0);
-    }
-    thinking = thinkingChoice as ThinkingEffort;
-  }
+  // 6 & 6b. 确认或选择思维链与采样配置
+  let thinking: ThinkingEffort = "none";
+  let selectedProfileId = "deterministic";
+  let activeSamplingParams: SamplingParams = { temperature: 0.0 };
 
   const thinkingLabelMap: Record<ThinkingEffort, string> = isEn
     ? {
@@ -465,11 +577,145 @@ export async function runInteractiveWizard(options?: {
         high: "🔴 高等强度 (high - 单通推演 + buy_hint 工具模式)",
       };
 
+  if (isDecision) {
+    p.note(
+      isEn
+        ? "Baseten System One decision models evaluate questions through direct probabilistic classification.\nChain-of-thought and sampling parameters are automatically bypassed."
+        : "Baseten System One 决策模型由底层分类器直接输出选项概率与评分 (确定性推断)。\n已自动跳过思维链思考强度与采样参数配置环节。",
+      isEn ? "⚡ System One Architecture" : "⚡ System One 架构特性"
+    );
+  } else {
+    // 6. 确认或选择思维链推理模式 (Thinking / 思考强度)
+    thinking = options?.presetThinking || "none";
+    if (!options?.presetThinking) {
+      const thinkingChoice = await p.select({
+        message: isEn ? "Select chain-of-thought reasoning mode (Thinking effort):" : "请选择思维链推理模式 (Thinking / 思考强度):",
+        options: isEn ? [
+          { value: "none", label: "⏹️  Disabled (none - Explicitly disable thinking + classic stepped protocol)" },
+          { value: "medium", label: "🟡 Medium effort (medium - Single-pass reasoning + buy_hint tool, recommended)" },
+          { value: "low", label: "🟢 Low effort (low - Single-pass fast thinking + buy_hint tool)" },
+          { value: "high", label: "🔴 High effort (high - Single-pass deep reasoning + buy_hint tool)" },
+        ] : [
+          { value: "none", label: "⏹️  关闭思考 (none - 显式禁用思考 + 经典分步协议)" },
+          { value: "medium", label: "🟡 中等强度 (medium - 单通推演 + buy_hint 工具模式，推荐)" },
+          { value: "low", label: "🟢 低等强度 (low - 单通快速思考 + buy_hint 工具模式)" },
+          { value: "high", label: "🔴 高等强度 (high - 单通深度推演 + buy_hint 工具模式)" },
+        ],
+        initialValue: options?.lastThinking || "none",
+      });
+
+      if (p.isCancel(thinkingChoice)) {
+        p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
+        process.exit(0);
+      }
+      thinking = thinkingChoice as ThinkingEffort;
+    }
+
+    // 6b. 确认或选择采样参数配置组合 (Sampling Profile)
+    selectedProfileId = options?.presetSamplingProfile || options?.lastSamplingProfile || "optimal";
+    activeSamplingParams = options?.presetSamplingParams || options?.lastSamplingParams || (getSamplingProfile(selectedProfileId)?.params || { temperature: 0.2, min_p: 0.05, top_p: 0.95 });
+
+    if (!options?.presetSamplingProfile && !options?.presetSamplingParams) {
+      const profileChoices = DEFAULT_SAMPLING_PROFILES.map((prof) => ({
+        value: prof.id,
+        label: isEn ? prof.nameEn : prof.name,
+        hint: isEn ? prof.descriptionEn : prof.description,
+      }));
+
+      profileChoices.push({
+        value: "__custom__",
+        label: isEn ? "✍️ Custom Sampling Parameters..." : "✍️ 自定义采样参数 (手动输入)...",
+        hint: isEn ? "Manually configure temperature, min_p, top_p" : "手动设定 temperature, min_p, top_p 等",
+      });
+
+      const chosenProfile = await p.select({
+        message: isEn
+          ? "Select sampling parameter configuration [↑/↓ arrow keys]:"
+          : "请选择采样参数配置组合 (Sampling Profile) [↑/↓ 方向键]:",
+        options: profileChoices,
+        initialValue: DEFAULT_SAMPLING_PROFILES.some((p) => p.id === selectedProfileId) ? selectedProfileId : "optimal",
+      });
+
+      if (p.isCancel(chosenProfile)) {
+        p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
+        process.exit(0);
+      }
+
+      if (chosenProfile === "__custom__") {
+        selectedProfileId = "custom";
+        const customTemp = await p.text({
+          message: isEn ? "Enter Temperature (0.0 ~ 2.0, default 0.2):" : "请输入采样温度 Temperature (0.0 ~ 2.0，默认 0.2):",
+          placeholder: "0.2",
+          validate: (v) => {
+            if (!v || !v.trim()) return undefined;
+            const n = parseFloat(v);
+            if (isNaN(n) || n < 0 || n > 2.0) return isEn ? "Must be a float between 0.0 and 2.0" : "必须是 0.0 到 2.0 之间的浮点数";
+            return undefined;
+          },
+        });
+        if (p.isCancel(customTemp)) {
+          p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
+          process.exit(0);
+        }
+
+        const customMinP = await p.text({
+          message: isEn ? "Enter Min-P (0.0 ~ 1.0, e.g. 0.05, press Enter to skip):" : "请输入 Min-P 动态截断 (0.0 ~ 1.0，如 0.05，回车跳过):",
+          placeholder: "0.05",
+          validate: (v) => {
+            if (!v || !v.trim()) return undefined;
+            const n = parseFloat(v);
+            if (isNaN(n) || n < 0 || n > 1.0) return isEn ? "Must be between 0.0 and 1.0" : "必须在 0.0 到 1.0 之间";
+            return undefined;
+          },
+        });
+        if (p.isCancel(customMinP)) {
+          p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
+          process.exit(0);
+        }
+
+        const customTopP = await p.text({
+          message: isEn ? "Enter Top-P (0.0 ~ 1.0, default 0.95, press Enter to keep):" : "请输入 Top-P (0.0 ~ 1.0，默认 0.95，回车跳过):",
+          placeholder: "0.95",
+          validate: (v) => {
+            if (!v || !v.trim()) return undefined;
+            const n = parseFloat(v);
+            if (isNaN(n) || n < 0 || n > 1.0) return isEn ? "Must be between 0.0 and 1.0" : "必须在 0.0 到 1.0 之间";
+            return undefined;
+          },
+        });
+        if (p.isCancel(customTopP)) {
+          p.cancel(isEn ? "Operation cancelled." : "已取消操作。");
+          process.exit(0);
+        }
+
+        activeSamplingParams = {
+          temperature: customTemp.trim() ? parseFloat(customTemp.trim()) : 0.2,
+          ...(customMinP.trim() ? { min_p: parseFloat(customMinP.trim()) } : {}),
+          ...(customTopP.trim() ? { top_p: parseFloat(customTopP.trim()) } : {}),
+        };
+      } else {
+        selectedProfileId = chosenProfile as string;
+        const matched = getSamplingProfile(selectedProfileId);
+        activeSamplingParams = matched ? { ...matched.params } : { temperature: 0.2, min_p: 0.05, top_p: 0.95 };
+      }
+    }
+  }
+
+  const thinkingDisplay = isDecision
+    ? (isEn ? "⏹️ Direct Probabilistic (System One Decision Model)" : "⏹️ 确定性概率直出 (System One 决策模型)")
+    : thinkingLabelMap[thinking];
+
+  const samplingDisplayStr = isDecision
+    ? (isEn ? "N/A (Deterministic System One)" : "不适用 (System One 确定性推断)")
+    : (selectedProfileId === "custom"
+        ? (isEn ? `Custom (${formatSamplingParams(activeSamplingParams)})` : `自定义 (${formatSamplingParams(activeSamplingParams)})`)
+        : `${isEn ? (getSamplingProfile(selectedProfileId)?.nameEn || selectedProfileId) : (getSamplingProfile(selectedProfileId)?.name || selectedProfileId)} [${formatSamplingParams(activeSamplingParams)}]`);
+
   // 7. 最终确认
   const noteTitle = isEn ? "🚀 Ready to Launch" : "🚀 配置就绪";
   const noteContent = isEn
-    ? `Provider:  ${provider.name}\nBase URL:  ${provider.baseUrl}\nModel:     ${selectedModel}\nAPI Key:   ${maskKey(effectiveKey)}\nThinking:  ${thinkingLabelMap[thinking]}\nScale:     ${totalTrials} trials total (${warmupTrials} warmup + ${totalTrials - warmupTrials} formal)`
-    : `服务商:   ${provider.name}\n端点 URL: ${provider.baseUrl}\n测试模型: ${selectedModel}\n鉴权 Key: ${maskKey(effectiveKey)}\n思考模式: ${thinkingLabelMap[thinking]}\n评测规模: 共 ${totalTrials} 步 (${warmupTrials} 步预热 + ${totalTrials - warmupTrials} 步正式评定)`;
+    ? `Provider:  ${provider.name}\nBase URL:  ${provider.baseUrl}\nModel:     ${selectedModel}\nAPI Key:   ${maskKey(effectiveKey)}\nThinking:  ${thinkingDisplay}\nSampling:  ${samplingDisplayStr}\nScale:     ${totalTrials} trials total (${warmupTrials} warmup + ${totalTrials - warmupTrials} formal)`
+    : `服务商:   ${provider.name}\n端点 URL: ${provider.baseUrl}\n测试模型: ${selectedModel}\n鉴权 Key: ${maskKey(effectiveKey)}\n思考模式: ${thinkingDisplay}\n采样配置: ${samplingDisplayStr}\n评测规模: 共 ${totalTrials} 步 (${warmupTrials} 步预热 + ${totalTrials - warmupTrials} 步正式评定)`;
 
   p.note(noteContent, noteTitle);
 
@@ -493,7 +739,10 @@ export async function runInteractiveWizard(options?: {
     totalTrials,
     warmupTrials,
     thinking,
+    samplingProfileId: selectedProfileId,
+    samplingParams: activeSamplingParams,
     locale: isEn ? "en-US" : "zh-CN",
+    isDecisionModel: isDecision,
   };
 }
 

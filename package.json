@@ -10,7 +10,7 @@
     "build": "vite build",
     "deploy": "bun src/cli/deploy.ts",
     "start": "bun src/backend/server.ts",
-    "test": "bun test",
+    "test": "NODE_ENV=test bun test",
     "provider:config": "bun run src/cli/wizard.ts",
     "eval": "bun run src/cli/eval.ts",
     "eval:debug": "bun run src/cli/eval.ts --debug",
@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",
+    "@typesafe-ai/sdk": "^0.7.0",
     "canvas-confetti": "^1.9.4",
     "hono": "^4.13.13",
     "html-to-image": "^1.11.13",

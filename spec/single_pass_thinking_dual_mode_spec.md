@@ -74,34 +74,26 @@ flowchart TD
   - Sends `reasoning_effort: this.thinking` and `chat_template_kwargs: { enable_thinking: true }`.
   - Supports passing `tools` in the request payload and extracting `message.tool_calls` in the response.
 
-### 3. `buy_hint` Tool Definition & Composite Schema (`src/cli/lib/schema_builder.ts`)
+### 3. Dynamic Zero-Parameter Clue Tools (`src/cli/lib/schema_builder.ts`)
 
-1. **Tool Definition (`BUY_HINT_TOOL`)**:
+1. **Tool Definitions (`BUY_HINT_TIER1_TOOL`, `BUY_HINT_TIER2_TOOL`)**:
+   Tools require zero arguments (`properties: {}`), eliminating hallucination and redundant `analysis_so_far` fields, with costs explicit in descriptions:
 ```typescript
-export const BUY_HINT_TOOL = {
+export const BUY_HINT_TIER1_TOOL = {
   type: "function",
   function: {
-    name: "buy_hint",
-    description:
-      "当推演遇到瓶颈、条件存在歧义或无法唯一锁定正确选项时，调用此工具消耗分数购买辅助线索。若当前已能推导出答案，请勿调用此工具，直接输出最终 JSON 决策。",
-    parameters: {
-      type: "object",
-      properties: {
-        tier: {
-          type: "integer",
-          enum: [1, 2],
-          description:
-            "购买线索级别：1 表示调阅第 1 级宏观线索（消耗 1 分）；2 表示直接调阅完整两级线索（累计消耗 3 分）。",
-        },
-        analysis_so_far: {
-          type: "string",
-          description:
-            "简要记录目前已排除的选项、已完成的推导结论及需要线索解决的具体卡点，以便获取线索后直接作答而不必重新推演。",
-        },
-      },
-      required: ["tier", "analysis_so_far"],
-      additionalProperties: false,
-    },
+    name: "buy_hint_tier1",
+    description: "当推演遇到瓶颈、条件存在歧义或无法唯一锁定正确选项时，调用此工具购买辅助线索（调阅第 1 级宏观线索，消耗 1 积分）。无须参数。若当前已能推导出答案，请勿调用此工具，直接输出最终 JSON 决策。",
+    parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
+  },
+};
+
+export const BUY_HINT_TIER2_TOOL = {
+  type: "function",
+  function: {
+    name: "buy_hint_tier2",
+    description: "在已调阅第 1 级线索后若仍有疑问，调用此工具继续调阅第 2 级细节辅助线索（再消耗 2 积分，累计消耗 3 积分）。无须参数。若已能锁定答案，请勿调用此工具，直接输出最终 JSON 决策。",
+    parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
   },
 };
 ```
@@ -135,17 +127,18 @@ export const SINGLE_PASS_DECISION_SCHEMA = createStrictSchema(
 ### 4. Execution Protocol of `executeThinkingToolTrial`
 
 1. **Initial Prompt Assembly**:
-   - System message: `GAME_RULES_SYSTEM_PROMPT` (+ optional persona).
-   - User message: Task stimulus, options A–D, and clear instructions stating that the model may either invoke `buy_hint` if uncertain, or directly output the final JSON `{"choice": "A|B|C|D", "action": "HIGH_BET|SAFE_BET", "confidence": 0.0~1.0}`.
+   - System message: `GAME_RULES_SYSTEM_PROMPT` + `THINKING_SINGLE_PASS_USER_PROMPT` (+ optional persona). Protocol instructions and rules are consolidated into `system` for optimal Prefix Caching.
+   - User message: Exactly 1 pure stimulus message containing task prompt and options A–D. No redundant instruction messages.
 2. **Pass 1 (Thinking Enabled + `tools: [BUY_HINT_TOOL]`)**:
    - Case 1 (**No Tool Call**): Model finishes thinking and outputs `{ choice, action, confidence }`. Recorded operations: `HINT_TIER1: DECIDE (cost: 0)`, `FIRST_ORDER_CHOICE`, `SECOND_ORDER_BET`. **Done in 1 request.**
    - Case 2 (**Tool Call `buy_hint` triggered**):
      - If `tier === 1`: Client calls `POST /api/sessions/:id/hint` once (`hintsUnlocked = 1, hintsCost = 1`).
      - If `tier === 2` (or if a subsequent Tier 2 tool call is made): Client unlocks up to Tier 2 (`hintsUnlocked = 2, hintsCost = 3`).
-     - Client appends the assistant's `tool_calls` message (preserving `analysis_so_far` in arguments) and the `{ role: "tool", tool_call_id, content: hintText }` message.
-3. **Post-Hint Resolution (Thinking Disabled / Fast Convergence)**:
-   - If the model only bought Tier 1 and still wants Tier 2, it may call `buy_hint(tier: 2)`, or directly output the final JSON.
-   - When resolving the final answer after hint retrieval, the client disables redundant heavy thinking (`thinkingOverride: "none"`) so the model immediately combines `analysis_so_far` + `hintText` into `{ choice, action, confidence }` without re-thinking the entire problem from scratch.
+     - Client appends the assistant's `tool_calls` message (preserving intermediate `reasoning_content` and `analysis_so_far`) and the `{ role: "tool", tool_call_id, content: hintText }` message.
+     - **Zero Redundant User Messages**: No extra user prompt is injected after the tool result.
+3. **Post-Hint Interleaved Thinking**:
+   - The client maintains the exact same `thinking` level (`reasoning_effort`) without forcing thinking off, enabling the model to absorb clue evidence via native Interleaved Thinking.
+   - If the model only bought Tier 1 and still wants Tier 2, it may call `buy_hint(tier: 2)`, or directly output the final JSON `{ choice, action, confidence }`.
 4. **Fallback for Non-Tool-Supporting Local Models**:
    - If a local endpoint returns HTTP 400 on `tools`, `LLMClient` automatically falls back to prompt-based JSON union (`{"strategy": "BUY_HINT", "tier": 1, "analysis_so_far": "..."}` vs `{"choice": "...", "action": "...", "confidence": ...}`), ensuring 100% compatibility across all local/cloud OpenAI-compatible servers.
 

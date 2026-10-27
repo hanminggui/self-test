@@ -13,10 +13,10 @@ We establish a single-responsibility psychometric foundation and decoupled evalu
 3. **Pure Formal Utility & Unscored Burn-in Isolation (P3 & P4)**:
    Warmup trials serve strictly as algorithm convergence search rounds and must be 100% excluded from `session.score` and `final_score`. Game utility payoff remains strictly $+10 / -10 / +3$ based on binary delivery action and objective outcome without fractional confidence scaling. Overall intelligence ranking combines difficulty via the Composite Cognitive Score ($\text{CCS} = D^* \times \text{Utility}$).
 
-4. **Two-Stage Adaptive Staircase Engine (Warmup Acceleration & Precision Tracking)**:
-   The adaptive staircase operates in two distinct phases:
-   - **Stage 1 (Warmup Coarse Hunting)**: Accelerated large-step traversal ($\Delta_{\text{warmup}} = 0.18$, 1-up-1-down) to locate the subject's approximate threshold within 3~4 trials without premature ceiling/floor traps;
-   - **Stage 2 (Formal Precision Locking)**: Transitions smoothly to standard Levitt 2-up-1-down with fine step size ($\Delta = 0.08 \to 0.04$) to accurately estimate the asymptotic $70.71\%$ psychophysical threshold.
+4. **Hybrid Accelerated Reversal-Cascaded Staircase with Centroid Handoff (Leek 2001)**:
+   The adaptive staircase operates in two scientifically decoupled phases:
+   - **Stage 1 (Warmup Accelerated Cascade)**: Initial blind sprint uses 1-up-1-down ($\Delta_{\text{warmup}} = 0.18$) until the first boundary collision (first reversal), then immediately switches permanently to target-tracking 2-up-1-down with reversal-driven step decay ($0.12 \to 0.08 \to 0.04$). Upon warmup completion, formal stage starting delta is reset to the reversal centroid, eliminating single-trial noise and path dependency;
+   - **Stage 2 (Formal Precision Locking)**: Operates 100% on the finest step size ($\Delta = 0.04$) from Trial 21 onwards with standard Levitt 2-up-1-down to accurately estimate the asymptotic $70.71\%$ psychophysical threshold across the entire formal evaluation window.
 
 5. **Single Responsibility for Primitive Metrics (P5)**:
    Information Value Efficiency ($IVE$) strictly measures the economic return on investment when external clues are unlocked. When $N_{hints} = 0$, $IVE$ remains at the uninformative Bayesian prior ($0.50$). Autonomous problem solvers without clue usage are classified and honored via the orthogonal $D^* \ge 0.60$ and $M_{ratio} \ge 0.80$ criteria for **Q1-CAL (The Sovereign / 人形外挂)**, rather than polluting $IVE$ with first-order accuracy.

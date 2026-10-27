@@ -12,6 +12,7 @@ export class StaircaseController {
   currentStepSize: number;
   warmupTrials: number;
   reversalsForStepReduction: number;
+  warmupHandoffDone: boolean;
 
   currentDelta: number;
   consecutiveCorrect: number;
@@ -47,6 +48,7 @@ export class StaircaseController {
     this.currentDelta = Math.max(minDelta, Math.min(maxDelta, initialDelta));
     this.consecutiveCorrect = 0;
     this.trialCount = 0;
+    this.warmupHandoffDone = false;
 
     this.lastDirection = 0;
     this.reversalCount = 0;
@@ -59,12 +61,46 @@ export class StaircaseController {
   }
 
   /**
+   * 计算预热期反转质心 (Reversal Centroid Handoff - Leek 2001 混合加速范式)
+   * 剥离首个盲试冲刺反转 (1-up-1-down 触壁超调点)，取后续 2-up-1-down 稳态反转均值，彻底消除预热末尾单题偶发跳跃噪声
+   */
+  calculateWarmupCentroid(): number {
+    const warmupReversalDeltas: number[] = [];
+    const cutoffTrial = this.warmupTrials > 0 ? this.warmupTrials : this.trialCount;
+    for (let i = 0; i < this.reversalTrials.length; i++) {
+      if (this.reversalTrials[i] <= cutoffTrial) {
+        warmupReversalDeltas.push(this.reversalDeltas[i]);
+      }
+    }
+
+    let centroid: number;
+    if (warmupReversalDeltas.length >= 3) {
+      // 剥离首个盲试冲刺反转 (1-up-1-down 触壁超调点)，取后续 2-up-1-down 目标相变反转的算术均值
+      const valid = warmupReversalDeltas.slice(1);
+      const sum = valid.reduce((acc, d) => acc + d, 0);
+      centroid = sum / valid.length;
+    } else if (warmupReversalDeltas.length >= 2) {
+      // 仅有 2 次反转时，取第 2 次稳态反转
+      const valid = warmupReversalDeltas.slice(1);
+      const sum = valid.reduce((acc, d) => acc + d, 0);
+      centroid = sum / valid.length;
+    } else {
+      // 预热期反转 < 2 次 (单向极端饱和)，平滑沿用当前瞬时难度
+      return this.currentDelta;
+    }
+
+    const clamped = Math.max(this.minDelta, Math.min(this.maxDelta, centroid));
+    return Math.round(clamped * 10000) / 10000;
+  }
+
+  /**
    * Update the staircase state based on the first-order accuracy of current trial.
-   * Stage 1: Warmup Coarse Hunting (trialCount <= warmupTrials or isWarmup = true)
-   *   Step size Delta_warmup = 0.18, 1-up-1-down hunting.
-   * Stage 2: Formal Precision Measurement (trialCount > warmupTrials or isWarmup = false)
-   *   Step size Delta_formal = 0.08 (halved to 0.04 after >= 3 reversals), standard Levitt 2-up-1-down.
-   * Completely eliminates asymmetric heavyHintAssisted suppression.
+   * Stage 1: Warmup Coarse Hunting (Leek 2001 Hybrid Accelerated Procedure)
+   *   - Before 1st reversal: 1-up-1-down, step = 0.18 (Blind Sprint)
+   *   - After 1st reversal: 2-up-1-down (locks 70.71%), step decays: 0.12 -> 0.08 -> 0.04
+   *   - End of warmup: Reversal centroid handoff to formal stage
+   * Stage 2: Formal Precision Measurement (standard Levitt 2-up-1-down)
+   *   - Fine step size 0.04 directly inherited if warmup converged, or 0.08 halved to 0.04 after >= 3 reversals
    * Returns the new delta parameter for next trial.
    */
   update(isCorrect: boolean, isWarmup?: boolean): number {
@@ -72,22 +108,67 @@ export class StaircaseController {
       ? isWarmup
       : (this.warmupTrials > 0 && this.trialCount < this.warmupTrials);
 
+    // 若从外部调用且首次从预热转入正式阶段（尚未执行交接），先执行质心重置
+    if (this.warmupTrials > 0 && !this.warmupHandoffDone && !inWarmup && this.trialCount > 1 && this.reversalCount >= 2) {
+      this.currentDelta = this.calculateWarmupCentroid();
+      this.consecutiveCorrect = 0;
+      this.lastDirection = 0;
+      if (this.reversalCount >= this.reversalsForStepReduction) {
+        this.currentStepSize = this.formalStepSize / 2.0;
+      } else {
+        this.currentStepSize = this.formalStepSize;
+      }
+      this.warmupHandoffDone = true;
+    }
+
     this.trialCount += 1;
     this.historyResponses.push(isCorrect);
 
     let direction = 0; // -1 means harder (decrease delta), +1 means easier (increase delta)
 
     if (inWarmup) {
-      // Stage 1: Warmup Coarse Hunting (1-up-1-down, step = 0.18)
-      this.currentStepSize = this.warmupStepSize;
-      if (isCorrect) {
-        direction = -1; // 1-up: harder, delta decreases
+      // Stage 1: Leek (2001) 混合加速反转级联阶梯 (Hybrid Accelerated Reversal-Cascaded Staircase)
+      if (this.reversalCount === 0) {
+        // 1A. 首次反转前（盲试冲刺）：1-up-1-down，步长 0.18
+        this.currentStepSize = this.warmupStepSize;
+        if (isCorrect) {
+          direction = -1; // 1-up: harder, delta decreases
+        } else {
+          direction = 1;  // 1-down: easier, delta increases
+        }
+        this.consecutiveCorrect = 0;
       } else {
-        direction = 1;  // 1-down: easier, delta increases
+        // 1B. 发生反转后（精准定型）：立即永久切换为 2-up-1-down (锁定 70.71% 目标相变点)
+        // 步长根据预热期反转次数逐级衰减: 1次->0.12, 2次->0.08, >=3次->0.04
+        if (this.reversalCount === 1) {
+          this.currentStepSize = Math.round(this.warmupStepSize * (2 / 3) * 10000) / 10000; // 0.12
+        } else if (this.reversalCount === 2) {
+          this.currentStepSize = this.formalStepSize; // 0.08
+        } else {
+          this.currentStepSize = this.formalStepSize / 2.0; // 0.04
+        }
+
+        if (isCorrect) {
+          this.consecutiveCorrect += 1;
+          if (this.consecutiveCorrect >= 2) {
+            direction = -1;
+            this.consecutiveCorrect = 0;
+          }
+        } else {
+          direction = 1;
+          this.consecutiveCorrect = 0;
+        }
       }
-      this.consecutiveCorrect = 0;
     } else {
       // Stage 2: Formal Precision Measurement (standard Levitt 2-up-1-down)
+      if (this.warmupHandoffDone && this.reversalCount >= this.reversalsForStepReduction) {
+        this.currentStepSize = this.formalStepSize / 2.0; // 0.04
+      } else if (this.trialCount > 10 && this.formalReversalCount >= this.reversalsForStepReduction) {
+        this.currentStepSize = this.formalStepSize / 2.0; // 0.04
+      } else {
+        this.currentStepSize = this.formalStepSize; // 0.08
+      }
+
       if (isCorrect) {
         this.consecutiveCorrect += 1;
         if (this.consecutiveCorrect >= 2) {
@@ -115,7 +196,9 @@ export class StaircaseController {
 
       // In formal stage, step size adaptation: halve step size when formal reversals reach threshold
       if (!inWarmup) {
-        if (this.trialCount > 10 && this.formalReversalCount >= this.reversalsForStepReduction) {
+        if (this.warmupHandoffDone && this.reversalCount >= this.reversalsForStepReduction) {
+          this.currentStepSize = this.formalStepSize / 2.0;
+        } else if (this.trialCount > 10 && this.formalReversalCount >= this.reversalsForStepReduction) {
           this.currentStepSize = this.formalStepSize / 2.0;
         } else {
           this.currentStepSize = this.formalStepSize;
@@ -128,6 +211,20 @@ export class StaircaseController {
       } else {
         this.currentDelta = Math.min(this.maxDelta, Math.round((this.currentDelta + this.currentStepSize) * 10000) / 10000);
       }
+    }
+
+    // 预热阶段向正式阶段交接质心重置（Reversal Centroid Handoff - Leek 2001）
+    // 当预热最后一题完成时，计算预热期反转质心，消除单题瞬态扰动
+    if (!this.warmupHandoffDone && inWarmup && this.warmupTrials > 0 && this.trialCount >= this.warmupTrials) {
+      this.currentDelta = this.calculateWarmupCentroid();
+      this.consecutiveCorrect = 0;
+      this.lastDirection = 0; // 清除预热末期的方向惯性
+      if (this.reversalCount >= this.reversalsForStepReduction) {
+        this.currentStepSize = this.formalStepSize / 2.0;
+      } else {
+        this.currentStepSize = this.formalStepSize;
+      }
+      this.warmupHandoffDone = true;
     }
 
     this.historyDeltas.push(this.currentDelta);
@@ -214,6 +311,7 @@ export class StaircaseController {
       warmupTrials: this.warmupTrials,
       currentStepSize: this.currentStepSize,
       reversalsForStepReduction: this.reversalsForStepReduction,
+      warmupHandoffDone: this.warmupHandoffDone,
       currentDelta: this.currentDelta,
       consecutiveCorrect: this.consecutiveCorrect,
       trialCount: this.trialCount,
@@ -243,6 +341,7 @@ export class StaircaseController {
     sc.lastDirection = snapshot.lastDirection;
     sc.reversalCount = snapshot.reversalCount;
     sc.formalReversalCount = snapshot.formalReversalCount ?? snapshot.reversalCount;
+    sc.warmupHandoffDone = Boolean(snapshot.warmupHandoffDone);
     sc.reversalTrials = [...snapshot.reversalTrials];
     sc.reversalDeltas = [...snapshot.reversalDeltas];
     sc.historyDeltas = [...snapshot.historyDeltas];
@@ -260,6 +359,7 @@ export interface StaircaseSnapshot {
   warmupTrials?: number;
   currentStepSize: number;
   reversalsForStepReduction: number;
+  warmupHandoffDone?: boolean;
   currentDelta: number;
   consecutiveCorrect: number;
   trialCount: number;

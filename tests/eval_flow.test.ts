@@ -6,6 +6,8 @@ import { cleanAndExtractJson } from "../src/cli/lib/json_parser";
 import {
   BET_STEP3_SCHEMA,
   BUY_HINT_TOOL,
+  BUY_HINT_TIER1_TOOL,
+  BUY_HINT_TIER2_TOOL,
   CHOICE_STEP2_SCHEMA,
   HINT_STEP1_SCHEMA,
   HINT_STEP1B_SCHEMA,
@@ -176,13 +178,18 @@ describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
     expect(formatTokenCount(1250000, false)).toBe("1.25M tokens");
   });
 
-  it("BUY_HINT_TOOL 与 SINGLE_PASS_DECISION_SCHEMA 定义符合单通思考+工具调用规范，且支持复合字段提取", () => {
-    expect(BUY_HINT_TOOL.type).toBe("function");
-    expect(BUY_HINT_TOOL.function.name).toBe("buy_hint");
-    const toolProps = BUY_HINT_TOOL.function.parameters.properties;
-    expect(toolProps.tier.enum).toEqual([1, 2]);
-    expect(toolProps.analysis_so_far.type).toBe("string");
-    expect(BUY_HINT_TOOL.function.parameters.required).toEqual(["tier", "analysis_so_far"]);
+  it("BUY_HINT_TIER1_TOOL 与 BUY_HINT_TIER2_TOOL 为无需参数的阶梯式工具且包含明确积分价格", () => {
+    expect(BUY_HINT_TIER1_TOOL.type).toBe("function");
+    expect(BUY_HINT_TIER1_TOOL.function.name).toBe("buy_hint_tier1");
+    expect(BUY_HINT_TIER1_TOOL.function.description).toContain("1 积分");
+    expect(BUY_HINT_TIER1_TOOL.function.parameters.properties).toEqual({});
+    expect(BUY_HINT_TIER1_TOOL.function.parameters.required).toEqual([]);
+
+    expect(BUY_HINT_TIER2_TOOL.type).toBe("function");
+    expect(BUY_HINT_TIER2_TOOL.function.name).toBe("buy_hint_tier2");
+    expect(BUY_HINT_TIER2_TOOL.function.description).toContain("2 积分");
+    expect(BUY_HINT_TIER2_TOOL.function.parameters.properties).toEqual({});
+    expect(BUY_HINT_TIER2_TOOL.function.parameters.required).toEqual([]);
 
     const spProps = SINGLE_PASS_DECISION_SCHEMA.json_schema.schema.properties;
     expect(spProps.choice.enum).toEqual(["A", "B", "C", "D"]);
@@ -368,7 +375,7 @@ describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
 
       expect(llmRequests.length).toBe(1);
       expect(llmRequests[0].reasoning_effort).toBe("high");
-      expect(llmRequests[0].tools?.[0]?.function?.name).toBe("buy_hint");
+      expect(llmRequests[0].tools?.[0]?.function?.name).toBe("buy_hint_tier1");
       expect(result.choice).toBe("C");
       expect(result.action).toBe(MetacognitiveAction.HIGH_BET);
       expect(result.confidence).toBe(0.95);
@@ -384,7 +391,7 @@ describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
     }
   });
 
-  it("runEvaluationTrial 在开启思考且触发 buy_hint 工具调用时，拉取线索并在第 2 步显式关闭思考完成最终作答", async () => {
+  it("runEvaluationTrial 在开启思考且触发 buy_hint 工具调用时，首轮指令并入 system，拉取线索后保持思考级别且仅追加 tool 消息完成作答", async () => {
     const { runEvaluationTrial } = await import("../src/cli/eval");
     const { LLMClient } = await import("../src/cli/lib/llm_client");
 
@@ -409,24 +416,21 @@ describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
           llmRequests.push(body);
 
           if (llmRequests.length === 1) {
-            // 第 1 次请求：思考中途决定调用 buy_hint (tier: 2)
+            // 第 1 次请求：思考中途决定调用无需参数的 buy_hint_tier1
             return new Response(
               JSON.stringify({
                 choices: [
                   {
                     message: {
                       content: "",
-                      reasoning_content: "已排除A和C，但B和D之间缺条件，调用工具买线索。",
+                      reasoning_content: "已排除A和C，但B和D之间缺条件，调用工具买第 1 级线索。",
                       tool_calls: [
                         {
-                          id: "call_hint_tier2",
+                          id: "call_hint_tier1",
                           type: "function",
                           function: {
-                            name: "buy_hint",
-                            arguments: JSON.stringify({
-                              tier: 2,
-                              analysis_so_far: "已排除A(1)和C(3)，仅需在B(2)与D(4)间锁定",
-                            }),
+                            name: "buy_hint_tier1",
+                            arguments: "{}",
                           },
                         },
                       ],
@@ -439,7 +443,7 @@ describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
             );
           }
 
-          // 第 2 次请求：拿到线索后，关闭思考直接输出最终决策
+          // 第 2 次请求：拿到线索后，交错思考直接输出最终决策
           return new Response(
             JSON.stringify({
               choices: [
@@ -490,20 +494,36 @@ describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
         client
       );
 
-      expect(hintApiCalls).toBe(2);
+      expect(hintApiCalls).toBe(1);
       expect(llmRequests.length).toBe(2);
-      // 第 1 次请求开启思考并挂载工具
+      // 第 1 次请求：首轮指令已并入 system，仅包含 1 条 user (原题)，仅提供 buy_hint_tier1 工具
       expect(llmRequests[0].reasoning_effort).toBe("medium");
       expect(llmRequests[0].chat_template_kwargs).toEqual({ enable_thinking: true });
-      // 第 2 次请求（已获线索与阶段结论）显式关闭思考，避免重复思考
-      expect(llmRequests[1].reasoning_effort).toBe("none");
-      expect(llmRequests[1].chat_template_kwargs).toEqual({ enable_thinking: false });
+      expect(llmRequests[0].tools?.[0]?.function?.name).toBe("buy_hint_tier1");
+      expect(llmRequests[0].messages.length).toBe(2);
+      expect(llmRequests[0].messages[0].role).toBe("system");
+      expect(llmRequests[0].messages[0].content).toContain("【决策博弈效用规则】");
+      expect(llmRequests[0].messages[0].content).toContain("【单通决策输出规范】");
+      // 验证 System Prompt 彻底去工具化，绝不剧透具体工具名称
+      expect(llmRequests[0].messages[0].content).not.toContain("buy_hint");
+      expect(llmRequests[0].messages[1].role).toBe("user");
+      expect(llmRequests[0].messages[1].content).toContain("求矩阵缺失项");
+
+      // 第 2 次请求：Tier 1 使用后，仅提供 buy_hint_tier2 工具，绝无 tier1
+      expect(llmRequests[1].reasoning_effort).toBe("medium");
+      expect(llmRequests[1].chat_template_kwargs).toEqual({ enable_thinking: true });
+      expect(llmRequests[1].tools?.[0]?.function?.name).toBe("buy_hint_tier2");
+      expect(llmRequests[1].messages.length).toBe(4);
+      expect(llmRequests[1].messages[2].role).toBe("assistant");
+      expect(llmRequests[1].messages[2].reasoning_content).toContain("已排除A和C");
+      expect(llmRequests[1].messages[3].role).toBe("tool");
+      expect(llmRequests[1].messages[3].content).toContain("奇偶交替");
 
       expect(result.choice).toBe("D");
       expect(result.action).toBe(MetacognitiveAction.HIGH_BET);
       expect(result.confidence).toBe(0.88);
-      expect(result.hintsUnlocked).toBe(2);
-      expect(result.hintsCost).toBe(3);
+      expect(result.hintsUnlocked).toBe(1);
+      expect(result.hintsCost).toBe(1);
     } finally {
       globalThis.fetch = origFetch;
     }
@@ -724,8 +744,11 @@ describe("LLM Eval Protocol & Prompt Assembly Specifications", () => {
       expect(result.hintsUnlocked).toBe(2);
       expect(result.hintsCost).toBe(3);
       expect(result.choice).toBe("C");
-      expect(debugLogs.some((l) => l.includes("[tool_call]"))).toBe(true);
-      expect(debugLogs.some((l) => l.includes("[tool_result]"))).toBe(true);
+      // 验证 debug 完整以原始格式输出原生 tool_calls 与 role: tool 报文
+      expect(debugLogs.some((l) => l.includes('"tool_calls"') || l.includes("tool_calls"))).toBe(true);
+      expect(debugLogs.some((l) => l.includes('"role": "tool"') || l.includes('"tool"'))).toBe(true);
+      expect(debugLogs.some((l) => l.includes("---- [DEBUG REQUEST]"))).toBe(true);
+      expect(debugLogs.some((l) => l.includes("---- [DEBUG RESPONSE]"))).toBe(true);
     } finally {
       globalThis.fetch = origFetch;
     }

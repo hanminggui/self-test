@@ -162,61 +162,86 @@ export const BET_STEP3_SCHEMA_EN = createStrictSchema(
 );
 
 /**
- * 思考模式专用：购买线索工具定义 (BUY_HINT_TOOL)
+ * 思考模式专用：购买第 1 级线索工具 (无需参数，消耗 1 积分)
  */
-export const BUY_HINT_TOOL = {
+export const BUY_HINT_TIER1_TOOL = {
   type: "function" as const,
   function: {
-    name: "buy_hint",
+    name: "buy_hint_tier1",
     description:
-      "当推演遇到瓶颈、条件存在歧义或无法唯一锁定正确选项时，调用此工具消耗分数购买辅助线索。若当前已能推导出答案，请勿调用此工具，直接输出最终 JSON 决策。",
+      "购买辅助线索（调阅第 1 级宏观线索，消耗 1 积分）。无须参数。当前推演无法唯一锁定答案时使用。",
     parameters: {
       type: "object" as const,
-      properties: {
-        tier: {
-          type: "integer" as const,
-          enum: [1, 2],
-          description:
-            "购买线索级别：1 表示调阅第 1 级宏观线索（消耗 1 分）；2 表示直接调阅完整两级线索（累计消耗 3 分）。",
-        },
-        analysis_so_far: {
-          type: "string" as const,
-          description:
-            "简要记录目前已排除的选项、已完成的推导结论及需要线索解决的具体卡点，以便获取线索后直接作答而不必重新推演。",
-        },
-      },
-      required: ["tier", "analysis_so_far"],
+      properties: {},
+      required: [],
       additionalProperties: false,
     },
   },
 };
 
-export const BUY_HINT_TOOL_EN = {
+export const BUY_HINT_TIER1_TOOL_EN = {
   type: "function" as const,
   function: {
-    name: "buy_hint",
+    name: "buy_hint_tier1",
     description:
-      "Call this tool to buy diagnostic clues by spending points when facing deduction bottlenecks, ambiguous constraints, or uncertainty. Do NOT call this if you can already solve the puzzle; instead output the final JSON decision directly.",
+      "Call this tool to buy diagnostic clues (inspect Tier 1 macro clue, cost: 1 pt). Takes no parameters. Use when current deduction cannot uniquely determine the answer.",
     parameters: {
       type: "object" as const,
-      properties: {
-        tier: {
-          type: "integer" as const,
-          enum: [1, 2],
-          description:
-            "Clue tier: 1 for Tier 1 Macro Clue (cost: 1 pt); 2 for both Tier 1 and Tier 2 clues (cumulative cost: 3 pts).",
-        },
-        analysis_so_far: {
-          type: "string" as const,
-          description:
-            "Briefly record eliminated options, deductions so far, and the bottleneck you need the clue to resolve, so you can immediately complete answering upon receiving the clue.",
-        },
-      },
-      required: ["tier", "analysis_so_far"],
+      properties: {},
+      required: [],
       additionalProperties: false,
     },
   },
 };
+
+/**
+ * 思考模式专用：购买第 2 级线索工具 (无需参数，再消耗 2 积分，累计消耗 3 积分)
+ */
+export const BUY_HINT_TIER2_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "buy_hint_tier2",
+    description:
+      "调阅第 2 级细节辅助线索（再消耗 2 积分）。无须参数。第 1 级线索不足以锁定答案时使用。",
+    parameters: {
+      type: "object" as const,
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    },
+  },
+};
+
+export const BUY_HINT_TIER2_TOOL_EN = {
+  type: "function" as const,
+  function: {
+    name: "buy_hint_tier2",
+    description:
+      "Inspect Tier 2 detail diagnostic clue (cost: 2 additional pts). Takes no parameters. Use when Tier 1 clue is insufficient to determine the answer.",
+    parameters: {
+      type: "object" as const,
+      properties: {},
+      required: [],
+      additionalProperties: false,
+    },
+  },
+};
+
+// 保持历史兼容别名
+export const BUY_HINT_TOOL = BUY_HINT_TIER1_TOOL;
+export const BUY_HINT_TOOL_EN = BUY_HINT_TIER1_TOOL_EN;
+
+export function getTier1HintTool(locale: SupportedLocale = "zh-CN") {
+  return locale === "en-US" ? BUY_HINT_TIER1_TOOL_EN : BUY_HINT_TIER1_TOOL;
+}
+
+export function getTier2HintTool(locale: SupportedLocale = "zh-CN") {
+  return locale === "en-US" ? BUY_HINT_TIER2_TOOL_EN : BUY_HINT_TIER2_TOOL;
+}
+
+export function getBuyHintTool(locale: SupportedLocale = "zh-CN") {
+  return getTier1HintTool(locale);
+}
 
 /**
  * 思考模式专用：单通最终复合决策 Schema (同时输出 choice, action, confidence)
@@ -256,9 +281,4 @@ export function getSchemas(locale: SupportedLocale = "zh-CN") {
     BET_STEP3_SCHEMA,
     SINGLE_PASS_DECISION_SCHEMA,
   };
-}
-
-export function getBuyHintTool(locale: SupportedLocale = "zh-CN") {
-  if (locale === "en-US") return BUY_HINT_TOOL_EN;
-  return BUY_HINT_TOOL;
 }

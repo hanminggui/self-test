@@ -29,6 +29,8 @@ import {
 } from "../backend/models";
 import { formatDuration, formatTokenCount, getFullDateTime, getShortTime, maskKey } from "./lib/formatters";
 import { LLMClient, type TokenUsage } from "./lib/llm_client";
+import { cleanAndExtractJson, rescueOptionFromReasoning } from "./lib/json_parser";
+import { choice, noul, score, DecisionModelClient } from "./lib/decision_client";
 import { EvalLogger } from "./lib/logger";
 import {
   BET_STEP3_SCHEMA,
@@ -39,9 +41,16 @@ import {
   SINGLE_PASS_DECISION_SCHEMA,
   getSchemas,
   getBuyHintTool,
+  getTier1HintTool,
+  getTier2HintTool,
 } from "./lib/schema_builder";
 import { runInteractiveWizard, type ThinkingEffort } from "./wizard";
 import { normalizeLocale, type SupportedLocale } from "../i18n";
+import {
+  formatSamplingParams,
+  resolveSamplingParams,
+  type SamplingParams,
+} from "./lib/sampling_profiles";
 
 export interface EvalConfig {
   model: string;
@@ -54,9 +63,15 @@ export interface EvalConfig {
   isDebug: boolean;
   persona?: string;
   thinking: ThinkingEffort;
+  samplingProfile?: string;
+  samplingParams?: SamplingParams;
   locale: SupportedLocale;
   logFile?: string;
   timeoutSeconds?: number;
+  noLog?: boolean;
+  isDecisionModel?: boolean;
+  stream?: boolean;
+  contextLimit?: number;
 }
 
 interface SavedConfig {
@@ -66,8 +81,13 @@ interface SavedConfig {
   api_base?: string;
   persona?: string;
   thinking?: ThinkingEffort;
+  sampling_profile?: string;
+  sampling_params?: SamplingParams;
   locale?: SupportedLocale;
   timeout?: number;
+  is_decision_model?: boolean;
+  stream?: boolean;
+  context_limit?: number;
 }
 
 /**
@@ -123,23 +143,21 @@ export const STEP1_ACTION_USER_PROMPT_EN = `【Current Action Choice】
 Output your choice in JSON format, e.g.: {"strategy": "BUY_HINT"} or {"strategy": "DECIDE"}`;
 
 /**
- * 思考模式单通推演与工具调用指令 (作为思考模式下紧随题目后的第 2 条 User 消息 - 中文)
+ * 思考模式单通推演与决策输出指令 (零工具剧透，纯粹交付契约)
  */
-export const THINKING_SINGLE_PASS_USER_PROMPT = `【单通推演与决策指令】
-- 若当前信息已足够锁定答案，请勿调用任何工具，直接以 JSON 格式输出最终决策：
-  {"choice": "A", "action": "HIGH_BET", "confidence": 0.9}
-  * choice: 唯一选定的选项字母 ("A" / "B" / "C" / "D")
-  * action: 交付下注策略 ("HIGH_BET" 选对+10/选错-10；"SAFE_BET" 固定+3)
-  * confidence: 主观把握度 (0.0 ~ 1.0)
-- 若推演遇到瓶颈或信息不足，请调用 buy_hint 工具调阅辅助线索（tier=1 消耗 1 分；tier=2 累计消耗 3 分），并在 analysis_so_far 中记录当前已排除选项与卡点（若当前端点不支持工具调用，也可直接输出 JSON: {"strategy": "BUY_HINT", "tier": 1, "analysis_so_far": "..."}）。`;
+export const THINKING_SINGLE_PASS_USER_PROMPT = `【单通决策输出规范】
+请以 JSON 格式输出最终推演决策结果：
+{"choice": "A", "action": "HIGH_BET", "confidence": 0.9}
+* choice: 唯一选定的选项字母 ("A" / "B" / "C" / "D")
+* action: 交付策略 ("HIGH_BET" 选对+10/选错-10；"SAFE_BET" 固定+3)
+* confidence: 主观把握度 (0.0 ~ 1.0)`;
 
-export const THINKING_SINGLE_PASS_USER_PROMPT_EN = `【Single-Pass Reasoning & Decision Prompt】
-- If current information is sufficient to determine the answer, do NOT call any tool; directly output your final JSON decision:
-  {"choice": "A", "action": "HIGH_BET", "confidence": 0.9}
-  * choice: Single selected option letter ("A" / "B" / "C" / "D")
-  * action: Wagering action ("HIGH_BET" for +10/-10; "SAFE_BET" for fixed +3)
-  * confidence: Subjective certainty (0.0 to 1.0)
-- If you encounter a bottleneck or ambiguous constraints, call the buy_hint tool to view diagnostic clues (tier=1 costs 1 pt; tier=2 costs cumulative 3 pts), recording your eliminated options and bottleneck in analysis_so_far (if the endpoint does not support tool calling, output JSON: {"strategy": "BUY_HINT", "tier": 1, "analysis_so_far": "..."}).`;
+export const THINKING_SINGLE_PASS_USER_PROMPT_EN = `【Single-Pass Decision Output Specification】
+Output your final deduction decision in JSON format directly:
+{"choice": "A", "action": "HIGH_BET", "confidence": 0.9}
+* choice: Single selected option letter ("A" / "B" / "C" / "D")
+* action: Wagering action ("HIGH_BET" for +10/-10; "SAFE_BET" for fixed +3)
+* confidence: Subjective certainty (0.0 to 1.0)`;
 
 export function getPrompts(locale: SupportedLocale = "zh-CN") {
   if (locale === "en-US") {
@@ -193,6 +211,43 @@ export async function checkServerHealth(apiBase: string): Promise<boolean> {
   }
 }
 
+export function isDecisionModelIdentifier(model?: string, baseUrl?: string, isDecisionFlag?: boolean): boolean {
+  if (isDecisionFlag) return true;
+  if (typeof model === "string") {
+    const m = model.toLowerCase();
+    if (
+      m.startsWith("decision-models/") ||
+      m.includes("elephant") ||
+      m.includes("mammoth") ||
+      m.includes("jev") ||
+      m.includes("typesafe")
+    ) {
+      return true;
+    }
+  }
+  if (typeof baseUrl === "string") {
+    const b = baseUrl.toLowerCase();
+    if (b.includes("typesafe.ai") || b.includes("baseten.co")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function normalizeDecisionBaseUrl(rawUrl: string): string {
+  let clean = (rawUrl || "").trim().replace(/\/+$/, "");
+  while (clean.endsWith("/v1/systemone") || clean.endsWith("/systemone") || clean.endsWith("/v1")) {
+    if (clean.endsWith("/v1/systemone")) {
+      clean = clean.slice(0, -"/v1/systemone".length).replace(/\/+$/, "");
+    } else if (clean.endsWith("/systemone")) {
+      clean = clean.slice(0, -"/systemone".length).replace(/\/+$/, "");
+    } else if (clean.endsWith("/v1")) {
+      clean = clean.slice(0, -"/v1".length).replace(/\/+$/, "");
+    }
+  }
+  return clean;
+}
+
 /**
  * 解析并确定评测配置（支持命令行参数、环境变量、记忆配置及现代化交互向导）
  */
@@ -205,14 +260,28 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       key: { type: "string", short: "k" },
       apiUrl: { type: "string" },
       mock: { type: "boolean", default: false },
+      decision: { type: "boolean", default: false },
+      "decision-model": { type: "boolean", default: false },
+      "system-one": { type: "boolean", default: false },
+      typesafe: { type: "boolean", default: false },
       trials: { type: "string", short: "n" },
       warmup: { type: "string", short: "w" },
       persona: { type: "string", short: "p" },
       thinking: { type: "string", short: "t" },
+      profile: { type: "string", short: "P" },
+      temp: { type: "string" },
+      temperature: { type: "string" },
+      "top-p": { type: "string" },
+      "top-k": { type: "string" },
+      "min-p": { type: "string" },
       lang: { type: "string", short: "l" },
       timeout: { type: "string" },
       debug: { type: "boolean", short: "d", default: false },
       yes: { type: "boolean", short: "y", default: false },
+      "no-log": { type: "boolean", default: false },
+      stream: { type: "boolean" },
+      "no-stream": { type: "boolean", default: false },
+      "context-limit": { type: "string" },
     },
     strict: false,
   });
@@ -230,7 +299,38 @@ async function resolveConfiguration(): Promise<EvalConfig> {
   const cliWarmup = typeof args.warmup === "string" ? parseInt(args.warmup, 10) : undefined;
   const chosenLang: SupportedLocale = normalizeLocale(rawLang || process.env.EVAL_LANG || saved.locale || process.env.LOCALE || process.env.LANG || "zh-CN");
 
+  const rawContextLimit = typeof args["context-limit"] === "string" ? parseInt(args["context-limit"], 10) : undefined;
+  const chosenContextLimit = (rawContextLimit !== undefined && !isNaN(rawContextLimit) && rawContextLimit > 0)
+    ? rawContextLimit
+    : (saved.context_limit ?? 8192);
+
+  const rawIsDecisionFlag = Boolean(args.decision || args["decision-model"] || args["system-one"] || args.typesafe);
+  const isDecision = isDecisionModelIdentifier(
+    rawModel || process.env.MODEL_NAME || saved.model,
+    rawBaseUrl || process.env.OPENAI_BASE_URL || saved.openai_base_url,
+    rawIsDecisionFlag || saved.is_decision_model
+  );
+
+  // 采样参数解析
+  const rawProfile = typeof args.profile === "string" ? args.profile.trim().toLowerCase() : undefined;
+  const rawTempStr = typeof args.temperature === "string" ? args.temperature : (typeof args.temp === "string" ? args.temp : undefined);
+  const rawTopPStr = typeof args["top-p"] === "string" ? args["top-p"] : undefined;
+  const rawTopKStr = typeof args["top-k"] === "string" ? args["top-k"] : undefined;
+  const rawMinPStr = typeof args["min-p"] === "string" ? args["min-p"] : undefined;
+
+  const cliSamplingOverrides: Partial<SamplingParams> = {};
+  if (rawTempStr !== undefined && !isNaN(parseFloat(rawTempStr))) cliSamplingOverrides.temperature = parseFloat(rawTempStr);
+  if (rawTopPStr !== undefined && !isNaN(parseFloat(rawTopPStr))) cliSamplingOverrides.top_p = parseFloat(rawTopPStr);
+  if (rawTopKStr !== undefined && !isNaN(parseInt(rawTopKStr, 10))) cliSamplingOverrides.top_k = parseInt(rawTopKStr, 10);
+  if (rawMinPStr !== undefined && !isNaN(parseFloat(rawMinPStr))) cliSamplingOverrides.min_p = parseFloat(rawMinPStr);
+
+  const resolvedSampling = resolveSamplingParams(
+    rawProfile || saved.sampling_profile || "optimal",
+    Object.keys(cliSamplingOverrides).length > 0 ? cliSamplingOverrides : saved.sampling_params
+  );
+
   const rawTimeoutStr = rawTimeout || process.env.EVAL_TIMEOUT || (saved.timeout !== undefined ? String(saved.timeout) : undefined);
+  const isNoLog = Boolean(args["no-log"] || process.env.NODE_ENV === "test" || process.env.EVAL_NO_LOG === "1" || process.env.EVAL_DISABLE_LOG === "1");
   let chosenTimeout: number | undefined = undefined;
   if (rawTimeoutStr !== undefined) {
     const parsedT = parseInt(rawTimeoutStr, 10);
@@ -253,20 +353,31 @@ async function resolveConfiguration(): Promise<EvalConfig> {
     rawThinking = "medium";
   }
 
+  const defaultDecisionBase = "https://api.typesafe.ai";
+  const defaultDecisionModel = "jev-latest";
+
   const chosenApiBase: string = normalizeApiUrl(rawApiUrl || process.env.API_BASE || saved.api_base);
-  let chosenBaseUrl: string = rawBaseUrl || process.env.OPENAI_BASE_URL || saved.openai_base_url || "";
-  let chosenModel: string = rawModel || process.env.MODEL_NAME || saved.model || "";
-  let chosenKey: string = rawKey || process.env.OPENAI_API_KEY || saved.openai_api_key || "";
+  let chosenBaseUrl: string = rawBaseUrl || process.env.OPENAI_BASE_URL || saved.openai_base_url || (isDecision ? defaultDecisionBase : "");
+  if (isDecision && chosenBaseUrl) {
+    chosenBaseUrl = normalizeDecisionBaseUrl(chosenBaseUrl);
+  }
+  let chosenModel: string = rawModel || process.env.MODEL_NAME || saved.model || (isDecision ? defaultDecisionModel : "");
+  let chosenKey: string = rawKey || (isDecision ? (process.env.TYPESAFE_API_KEY || process.env.BASETEN_API_KEY || "") : "") || process.env.OPENAI_API_KEY || saved.openai_api_key || "";
   const chosenPersona: string | undefined = rawPersona ?? (process.env.AGENT_PERSONA || saved.persona || undefined);
-  const chosenThinking: ThinkingEffort = rawThinking ?? (saved.thinking || "none");
+  const chosenThinking: ThinkingEffort = isDecision ? "none" : (rawThinking ?? (saved.thinking || "none"));
 
   // 若启动参数显式指定了思考强度且有变更，立即固化到 .eval_config.json
   if (rawThinking !== undefined && rawThinking !== saved.thinking) {
     saveConfig({
       ...saved,
       thinking: rawThinking,
+      is_decision_model: isDecision,
     });
   }
+
+  // 默认全面启用流式传输（若服务端不支持自动静默降级为非流式），仅在显式指定 --no-stream 时关闭
+  const explicitNoStream = Boolean(args["no-stream"] || (args as any).stream === false || process.env.EVAL_NO_STREAM === "1");
+  const chosenStream = !explicitNoStream;
 
   const isMock = Boolean(args.mock);
   const isDebug = Boolean(args.debug || process.env.DEBUG === "1" || process.env.DEBUG === "true");
@@ -283,24 +394,28 @@ async function resolveConfiguration(): Promise<EvalConfig> {
 
   if (isForcedNonInteractive || (isMock && (isYes || !process.stdin.isTTY))) {
     if (!isMock) {
-      if (!chosenBaseUrl) chosenBaseUrl = "https://api.deepseek.com/v1";
-      if (!chosenModel) chosenModel = "deepseek-chat";
+      if (!chosenBaseUrl) chosenBaseUrl = isDecision ? defaultDecisionBase : "https://api.deepseek.com/v1";
+      if (!chosenModel) chosenModel = isDecision ? defaultDecisionModel : "deepseek-chat";
       const isLocal = chosenBaseUrl.includes("localhost") || chosenBaseUrl.includes("127.0.0.1");
       if (!chosenKey && isLocal) chosenKey = "ollama";
 
       if (!chosenKey) {
         if (chosenLang === "en-US") {
           console.error("\n❌ [Error] No usable API Key detected in automated/unattended mode!");
-          console.error("   Please specify OPENAI_API_KEY in environment variables or remove -y flag for interactive setup.");
+          console.error(isDecision
+            ? "   Please specify TYPESAFE_API_KEY (or BASETEN_API_KEY) in environment variables or remove -y flag for interactive setup."
+            : "   Please specify OPENAI_API_KEY in environment variables or remove -y flag for interactive setup.");
         } else {
           console.error("\n❌ [错误] 自动化/无人值守模式下未检测到可用的 API Key！");
-          console.error("   请在环境变量中指定 OPENAI_API_KEY，或去掉 -y 参数使用交互式配置。");
+          console.error(isDecision
+            ? "   请在环境变量中指定 TYPESAFE_API_KEY (或 BASETEN_API_KEY)，或去掉 -y 参数使用交互式配置。"
+            : "   请在环境变量中指定 OPENAI_API_KEY，或去掉 -y 参数使用交互式配置。");
         }
         process.exit(1);
       }
     }
     return {
-      model: chosenModel || "gpt-4o",
+      model: chosenModel || (isDecision ? defaultDecisionModel : "gpt-4o"),
       apiBase: chosenApiBase,
       openaiBaseUrl: chosenBaseUrl.replace(/\/+$/, ""),
       openaiApiKey: chosenKey || "mock-key",
@@ -310,8 +425,12 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       isDebug,
       persona: chosenPersona,
       thinking: chosenThinking,
+      samplingProfile: resolvedSampling.profileId,
+      samplingParams: resolvedSampling.params,
       locale: chosenLang,
       timeoutSeconds: chosenTimeout,
+      noLog: isNoLog,
+      isDecisionModel: isDecision,
     };
   }
 
@@ -329,18 +448,21 @@ async function resolveConfiguration(): Promise<EvalConfig> {
 
   // 2. Mock 模式交互启动
   if (isMock) {
-    if (rawThinking !== undefined || rawLang !== undefined || rawTimeout !== undefined) {
+    if (rawThinking !== undefined || rawLang !== undefined || rawTimeout !== undefined || rawProfile !== undefined) {
       saveConfig({
         ...saved,
         thinking: chosenThinking,
+        sampling_profile: resolvedSampling.profileId,
+        sampling_params: resolvedSampling.params,
         locale: chosenLang,
+        is_decision_model: isDecision,
         ...(chosenTimeout !== undefined ? { timeout: chosenTimeout } : {}),
       });
     }
     return {
-      model: chosenModel || "mock-model",
+      model: chosenModel || (isDecision ? defaultDecisionModel : "mock-model"),
       apiBase: chosenApiBase,
-      openaiBaseUrl: "http://mock-endpoint/v1",
+      openaiBaseUrl: isDecision ? defaultDecisionBase : "http://mock-endpoint/v1",
       openaiApiKey: "mock-key",
       totalTrials: defaultTotal,
       warmupTrials: defaultWarmup,
@@ -348,8 +470,14 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       isDebug,
       persona: chosenPersona,
       thinking: chosenThinking,
+      samplingProfile: resolvedSampling.profileId,
+      samplingParams: resolvedSampling.params,
       locale: chosenLang,
       timeoutSeconds: chosenTimeout,
+      noLog: isNoLog,
+      isDecisionModel: isDecision,
+      stream: chosenStream,
+      contextLimit: chosenContextLimit,
     };
   }
 
@@ -362,7 +490,11 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       api_base: chosenApiBase,
       ...(chosenPersona ? { persona: chosenPersona } : {}),
       thinking: chosenThinking,
+      sampling_profile: resolvedSampling.profileId,
+      sampling_params: resolvedSampling.params,
       locale: chosenLang,
+      is_decision_model: isDecision,
+      context_limit: chosenContextLimit,
       ...(chosenTimeout !== undefined ? { timeout: chosenTimeout } : {}),
     });
     return {
@@ -376,37 +508,60 @@ async function resolveConfiguration(): Promise<EvalConfig> {
       isDebug,
       persona: chosenPersona,
       thinking: chosenThinking,
+      samplingProfile: resolvedSampling.profileId,
+      samplingParams: resolvedSampling.params,
       locale: chosenLang,
       timeoutSeconds: chosenTimeout,
+      noLog: isNoLog,
+      isDecisionModel: isDecision,
+      stream: chosenStream,
+      contextLimit: chosenContextLimit,
     };
   }
 
-  // 4. 现代化交互式方向键向导 (选择服务商 -> 自动获取远程模型列表 -> 确认启动)
+  // 4. 现代化交互式方向键向导 (选择服务商 -> 自动获取远程模型列表 -> 采样配置 -> 确认启动)
   const wizardRes = await runInteractiveWizard({
     lastModel: saved.model,
     lastBaseUrl: saved.openai_base_url,
     lastThinking: saved.thinking,
+    lastSamplingProfile: saved.sampling_profile,
+    lastSamplingParams: saved.sampling_params,
     presetTrials: cliTrials,
     presetWarmup: cliWarmup,
     presetThinking: rawThinking,
+    presetSamplingProfile: rawProfile,
+    presetSamplingParams: Object.keys(cliSamplingOverrides).length > 0 ? cliSamplingOverrides : undefined,
     locale: chosenLang,
   });
 
+  const finalIsDecision = Boolean(
+    wizardRes.isDecisionModel ||
+    isDecisionModelIdentifier(wizardRes.model, wizardRes.baseUrl)
+  );
+
+  const effectiveWizardBase = finalIsDecision
+    ? normalizeDecisionBaseUrl(wizardRes.baseUrl)
+    : wizardRes.baseUrl.replace(/\/+$/, "");
+
   saveConfig({
-    openai_base_url: wizardRes.baseUrl,
+    openai_base_url: effectiveWizardBase,
     openai_api_key: wizardRes.apiKey,
     model: wizardRes.model,
     api_base: chosenApiBase,
     ...(chosenPersona ? { persona: chosenPersona } : {}),
     thinking: wizardRes.thinking,
+    sampling_profile: wizardRes.samplingProfileId,
+    samplingParams: wizardRes.samplingParams,
     locale: chosenLang,
+    is_decision_model: finalIsDecision,
+    context_limit: chosenContextLimit,
     ...(chosenTimeout !== undefined ? { timeout: chosenTimeout } : {}),
   });
 
   return {
     model: wizardRes.model,
     apiBase: chosenApiBase,
-    openaiBaseUrl: wizardRes.baseUrl.replace(/\/+$/, ""),
+    openaiBaseUrl: effectiveWizardBase,
     openaiApiKey: wizardRes.apiKey,
     totalTrials: wizardRes.totalTrials,
     warmupTrials: wizardRes.warmupTrials,
@@ -414,8 +569,14 @@ async function resolveConfiguration(): Promise<EvalConfig> {
     isDebug,
     persona: chosenPersona,
     thinking: wizardRes.thinking,
+    samplingProfile: wizardRes.samplingProfileId,
+    samplingParams: wizardRes.samplingParams,
     locale: chosenLang,
     timeoutSeconds: chosenTimeout,
+    noLog: isNoLog,
+    isDecisionModel: finalIsDecision,
+    stream: chosenStream,
+    contextLimit: chosenContextLimit,
   };
 }
 
@@ -427,6 +588,7 @@ interface StepTrialResult {
   hintsCost: number;
   trialDurationMs: number;
   trialTokenUsage: TokenUsageStats;
+  trialTps?: number;
   operations: TrialOperation[];
 }
 
@@ -438,11 +600,16 @@ function buildTrialConversation(
   payload: Pick<TrialPayload, "prompt" | "options">,
   firstInstructionPrompt: string,
   persona?: string,
-  locale: SupportedLocale = "zh-CN"
+  locale: SupportedLocale = "zh-CN",
+  instructionRole: "user" | "system" = "user"
 ): any[] {
   const prompts = getPrompts(locale);
+  const systemContent = instructionRole === "system"
+    ? `${prompts.gameRulesSystemPrompt}\n\n${firstInstructionPrompt}`
+    : prompts.gameRulesSystemPrompt;
+
   const conversation: any[] = [
-    { role: "system", content: prompts.gameRulesSystemPrompt },
+    { role: "system", content: systemContent },
   ];
 
   if (persona && persona.trim()) {
@@ -459,7 +626,9 @@ function buildTrialConversation(
   const firstUserMessage = `${header}\n${payload.prompt}\n\n${listHeader}\n${optionsText}`;
 
   conversation.push({ role: "user", content: firstUserMessage });
-  conversation.push({ role: "user", content: firstInstructionPrompt });
+  if (instructionRole === "user") {
+    conversation.push({ role: "user", content: firstInstructionPrompt });
+  }
   return conversation;
 }
 
@@ -499,7 +668,8 @@ function finalizeTrialDecision(
   tokenUsageBefore: TokenUsage,
   llmClient: LLMClient,
   hintsUnlocked: number,
-  hintsCost: number
+  hintsCost: number,
+  queryDurationMs?: number
 ): StepTrialResult {
   const rawChoice = rawChoiceVal ? String(rawChoiceVal).toUpperCase() : "";
   const choice = ["A", "B", "C", "D"].includes(rawChoice) ? rawChoice : "A";
@@ -523,13 +693,19 @@ function finalizeTrialDecision(
 
   const trialDurationMs = Date.now() - trialStartTime;
   const tokenUsageAfter = llmClient.getSessionTokenUsage();
+  const completionTokens = Math.max(0, tokenUsageAfter.completionTokens - tokenUsageBefore.completionTokens);
   const trialTokenUsage: TokenUsageStats = {
     prompt_tokens: Math.max(0, tokenUsageAfter.promptTokens - tokenUsageBefore.promptTokens),
-    completion_tokens: Math.max(0, tokenUsageAfter.completionTokens - tokenUsageBefore.completionTokens),
+    completion_tokens: completionTokens,
     cached_tokens: Math.max(0, tokenUsageAfter.cachedTokens - tokenUsageBefore.cachedTokens),
     reasoning_tokens: Math.max(0, tokenUsageAfter.reasoningTokens - tokenUsageBefore.reasoningTokens),
     total_tokens: Math.max(0, tokenUsageAfter.totalTokens - tokenUsageBefore.totalTokens),
   };
+
+  const effectiveDurationMs = (queryDurationMs && queryDurationMs > 0) ? queryDurationMs : trialDurationMs;
+  const trialTps = (effectiveDurationMs > 0 && completionTokens > 0)
+    ? Math.round((completionTokens / (effectiveDurationMs / 1000)) * 10) / 10
+    : undefined;
 
   return {
     choice,
@@ -539,6 +715,7 @@ function finalizeTrialDecision(
     hintsCost,
     trialDurationMs,
     trialTokenUsage,
+    trialTps,
     operations,
   };
 }
@@ -623,6 +800,14 @@ export async function executeStepByStepTrial(
     });
 
     const trialDurationMs = Math.floor(200 + Math.random() * 300);
+    llmClient.recordUsage({
+      promptTokens: mockPromptTokens,
+      cachedTokens: mockCachedTokens,
+      completionTokens: mockCompletionTokens,
+      totalTokens: mockTotalTokens,
+      reasoningTokens: mockReasoningTokens,
+    }, trialDurationMs);
+
     const trialTokenUsage: TokenUsageStats = {
       prompt_tokens: mockPromptTokens,
       completion_tokens: mockCompletionTokens,
@@ -630,6 +815,7 @@ export async function executeStepByStepTrial(
       reasoning_tokens: mockReasoningTokens,
       total_tokens: mockTotalTokens,
     };
+    const trialTps = Math.round((mockCompletionTokens / (trialDurationMs / 1000)) * 10) / 10;
 
     return {
       choice,
@@ -639,6 +825,7 @@ export async function executeStepByStepTrial(
       hintsCost,
       trialDurationMs,
       trialTokenUsage,
+      trialTps,
       operations,
     };
   }
@@ -667,6 +854,7 @@ export async function executeStepByStepTrial(
   // =========================================================================
   const step1Res = await llmClient.query(conversation, schemas.HINT_STEP1_SCHEMA, `#${trialIndex}/${config.totalTrials}  step 1`);
   appendAssistant(step1Res);
+  let queryDurationMs = step1Res.durationMs;
 
   const step1Strategy = step1Res.parsed.strategy === "BUY_HINT" ? "BUY_HINT" : "DECIDE";
   let hintsUnlocked = 0;
@@ -707,6 +895,7 @@ Output your choice in JSON format, e.g.: {"strategy": "BUY_HINT_TIER2"} or {"str
 
     const step1bRes = await llmClient.query(conversation, schemas.HINT_STEP1B_SCHEMA, `#${trialIndex}/${config.totalTrials}  step 1b`);
     appendAssistant(step1bRes);
+    queryDurationMs += step1bRes.durationMs;
 
     const step1bStrategy = step1bRes.parsed.strategy === "BUY_HINT_TIER2" ? "BUY_HINT_TIER2" : "DECIDE";
     operations.push({
@@ -742,6 +931,7 @@ Output your choice in JSON format, e.g.: {"strategy": "BUY_HINT_TIER2"} or {"str
 
   const choiceRes = await llmClient.query(conversation, schemas.CHOICE_STEP2_SCHEMA, `#${trialIndex}/${config.totalTrials}  step 2`);
   appendAssistant(choiceRes);
+  queryDurationMs += choiceRes.durationMs;
 
   const rawChoice = choiceRes.parsed.choice ? String(choiceRes.parsed.choice).toUpperCase() : "";
   const choice = ["A", "B", "C", "D"].includes(rawChoice) ? rawChoice : "A";
@@ -768,6 +958,7 @@ Output your wagering action and confidence (0.0~1.0) in JSON format, e.g.: {"act
 
   const betRes = await llmClient.query(conversation, schemas.BET_STEP3_SCHEMA, `#${trialIndex}/${config.totalTrials}  step 3`);
   appendAssistant(betRes);
+  queryDurationMs += betRes.durationMs;
 
   return finalizeTrialDecision(
     choiceRes.parsed.choice,
@@ -777,7 +968,8 @@ Output your wagering action and confidence (0.0~1.0) in JSON format, e.g.: {"act
     tokenUsageBefore,
     llmClient,
     hintsUnlocked,
-    hintsCost
+    hintsCost,
+    queryDurationMs
   );
 }
 
@@ -803,54 +995,52 @@ export async function executeThinkingToolTrial(
 
   const prompts = getPrompts(config.locale);
   const schemas = getSchemas(config.locale);
-  const buyHintTool = getBuyHintTool(config.locale);
+  const tier1Tool = getTier1HintTool(config.locale);
+  const tier2Tool = getTier2HintTool(config.locale);
 
   const conversation = buildTrialConversation(
     trialIndex,
     payload,
     prompts.thinkingSinglePassUserPrompt,
     config.persona,
-    config.locale
+    config.locale,
+    "system"
   );
 
-  // Pass 1：开启思考 + 挂载 buy_hint 工具
+  // ---------------------------------------------------------------------------
+  // Pass 1：首轮未调阅过线索，仅提供 buy_hint_tier1 工具 (消耗 1 积分，无需参数)
+  // ---------------------------------------------------------------------------
   const pass1Res = await llmClient.query(
     conversation,
     schemas.SINGLE_PASS_DECISION_SCHEMA,
     `#${trialIndex}/${config.totalTrials}  thinking pass 1`,
     0.1,
-    { tools: [buyHintTool] }
+    {
+      tools: [tier1Tool],
+      stream: config.stream,
+      contextLimit: config.contextLimit,
+    }
   );
 
+  let queryDurationMs = pass1Res.durationMs;
   let hintsUnlocked = 0;
   let hintsCost = 0;
   let finalParsed = pass1Res.parsed;
+  let pass2Res: any = null;
+  let pass3Res: any = null;
 
-  const toolCall = pass1Res.tool_calls?.find((tc) => tc.function?.name === "buy_hint");
-  const fallbackBuyStrategy = !toolCall && (
+  const toolCall1 = pass1Res.tool_calls?.find(
+    (tc) => tc.function?.name === "buy_hint_tier1" || tc.function?.name === "buy_hint"
+  );
+  const fallbackBuy1 = !toolCall1 && (
     pass1Res.parsed?.strategy === "BUY_HINT" ||
+    pass1Res.parsed?.strategy === "BUY_HINT_TIER1" ||
     pass1Res.parsed?.strategy === "BUY_HINT_TIER2"
   );
 
-  if (toolCall || fallbackBuyStrategy) {
-    let requestedTier = 1;
-    let analysisSoFar = "";
-
-    if (toolCall) {
-      try {
-        const argsObj = JSON.parse(toolCall.function.arguments || "{}");
-        requestedTier = argsObj.tier === 2 ? 2 : 1;
-        analysisSoFar = typeof argsObj.analysis_so_far === "string" ? argsObj.analysis_so_far : "";
-      } catch {
-        requestedTier = 1;
-      }
-    } else {
-      requestedTier = pass1Res.parsed.strategy === "BUY_HINT_TIER2" || pass1Res.parsed.tier === 2 ? 2 : 1;
-      analysisSoFar = typeof pass1Res.parsed.analysis_so_far === "string" ? pass1Res.parsed.analysis_so_far : "";
-    }
-
-    // 调取第 1 级线索
-    const fallbackHint1 = config.locale === "en-US" ? "Clue acquired successfully" : "线索获取成功";
+  if (toolCall1 || fallbackBuy1) {
+    // 调阅第 1 级线索
+    const fallbackHint1 = config.locale === "en-US" ? "Tier 1 clue acquired successfully" : "第 1 级线索获取成功";
     const hint1 = await fetchSessionHint(config.apiBase, sessionId, fallbackHint1, config.locale);
     hintsUnlocked = 1;
     hintsCost = 1;
@@ -858,39 +1048,20 @@ export async function executeThinkingToolTrial(
     operations.push({
       step: "HINT_TIER1",
       action: "BUY_HINT",
-      details: { cost: 1, ...(analysisSoFar ? { analysis_so_far: analysisSoFar } : {}) },
+      details: { cost: 1 },
     });
 
-    const collectedHints: string[] = [hint1];
-
-    // 若直接请求了第 2 级线索，一并解锁
-    if (requestedTier === 2) {
-      const fallbackHint2 = config.locale === "en-US" ? "Detail clue acquired successfully" : "细节线索获取成功";
-      const hint2 = await fetchSessionHint(config.apiBase, sessionId, fallbackHint2, config.locale);
-      hintsUnlocked = 2;
-      hintsCost = 3;
-      collectedHints.push(hint2);
-
-      operations.push({
-        step: "HINT_TIER2",
-        action: "BUY_HINT_TIER2",
-        details: { cost: 2 },
-      });
-    }
-
-    const combinedHintsText = collectedHints.join("\n\n");
-
-    if (toolCall) {
+    if (toolCall1) {
       conversation.push({
         role: "assistant",
-        content: pass1Res.content || "",
+        content: pass1Res.content || null,
         tool_calls: pass1Res.tool_calls,
         ...(pass1Res.reasoning_content ? { reasoning_content: pass1Res.reasoning_content } : {}),
       });
       conversation.push({
         role: "tool",
-        tool_call_id: toolCall.id,
-        content: combinedHintsText,
+        tool_call_id: toolCall1.id,
+        content: hint1,
       });
     } else {
       conversation.push({
@@ -900,43 +1071,38 @@ export async function executeThinkingToolTrial(
       });
       conversation.push({
         role: "user",
-        content: combinedHintsText,
+        content: hint1,
       });
     }
 
-    const pass2Prompt = config.locale === "en-US"
-      ? `Integrating the inspected clues and preliminary deductions${analysisSoFar ? ` (${analysisSoFar})` : ""}, output your final decision in JSON format directly:
-{"choice": "A", "action": "HIGH_BET", "confidence": 0.9}${requestedTier === 1 ? "\n(If uncertainty remains after Tier 1, you may call buy_hint(tier=2))" : ""}`
-      : `结合已调阅的线索与前序分析${analysisSoFar ? `（${analysisSoFar}）` : ""}，请直接以 JSON 格式输出最终决策：
-{"choice": "A", "action": "HIGH_BET", "confidence": 0.9}${requestedTier === 1 ? "\n（若第 1 级线索后仍需第 2 级细节线索，可继续调用 buy_hint(tier=2)）" : ""}`;
-
-    conversation.push({
-      role: "user",
-      content: pass2Prompt,
-    });
-
-    // Pass 2：已获得线索与阶段推导结论，显式关闭思考合成决策（若仅解锁了 Tier 1 仍允许按需请求 Tier 2）
-    const pass2Res = await llmClient.query(
+    // -------------------------------------------------------------------------
+    // Pass 2：Tier 1 已调阅，此轮仅提供 buy_hint_tier2 工具 (再消耗 2 积分，无需参数)
+    // 物理层彻底杜绝模型重复调用 Tier 1
+    // -------------------------------------------------------------------------
+    pass2Res = await llmClient.query(
       conversation,
       schemas.SINGLE_PASS_DECISION_SCHEMA,
-      `#${trialIndex}/${config.totalTrials}  post-hint synthesis`,
+      `#${trialIndex}/${config.totalTrials}  tier1 post-hint thinking`,
       0.1,
       {
-        thinkingOverride: "none",
-        ...(requestedTier === 1 ? { tools: [buyHintTool] } : {}),
+        tools: [tier2Tool],
+        stream: config.stream,
+        contextLimit: config.contextLimit,
       }
     );
+    queryDurationMs += pass2Res.durationMs;
 
-    const tier2ToolCall = requestedTier === 1
-      ? pass2Res.tool_calls?.find((tc) => tc.function?.name === "buy_hint")
-      : undefined;
-    const fallbackTier2Buy = requestedTier === 1 && !tier2ToolCall && (
+    const toolCall2 = pass2Res.tool_calls?.find(
+      (tc) => tc.function?.name === "buy_hint_tier2" || tc.function?.name === "buy_hint"
+    );
+    const fallbackBuy2 = !toolCall2 && (
       pass2Res.parsed?.strategy === "BUY_HINT_TIER2" ||
       pass2Res.parsed?.strategy === "BUY_HINT"
     );
 
-    if (tier2ToolCall || fallbackTier2Buy) {
-      const fallbackHint2 = config.locale === "en-US" ? "Detail clue acquired successfully" : "细节线索获取成功";
+    if (toolCall2 || fallbackBuy2) {
+      // 调阅第 2 级线索
+      const fallbackHint2 = config.locale === "en-US" ? "Tier 2 detail clue acquired successfully" : "第 2 级细节线索获取成功";
       const hint2 = await fetchSessionHint(config.apiBase, sessionId, fallbackHint2, config.locale);
       hintsUnlocked = 2;
       hintsCost = 3;
@@ -947,21 +1113,23 @@ export async function executeThinkingToolTrial(
         details: { cost: 2 },
       });
 
-      if (tier2ToolCall) {
+      if (toolCall2) {
         conversation.push({
           role: "assistant",
-          content: pass2Res.content || "",
+          content: pass2Res.content || null,
           tool_calls: pass2Res.tool_calls,
+          ...(pass2Res.reasoning_content ? { reasoning_content: pass2Res.reasoning_content } : {}),
         });
         conversation.push({
           role: "tool",
-          tool_call_id: tier2ToolCall.id,
+          tool_call_id: toolCall2.id,
           content: hint2,
         });
       } else {
         conversation.push({
           role: "assistant",
           content: pass2Res.content || "",
+          ...(pass2Res.reasoning_content ? { reasoning_content: pass2Res.reasoning_content } : {}),
         });
         conversation.push({
           role: "user",
@@ -969,34 +1137,238 @@ export async function executeThinkingToolTrial(
         });
       }
 
-      const pass3Prompt = config.locale === "en-US"
-        ? `Both clue tiers have been inspected. Please directly output your final decision in JSON format:
-{"choice": "A", "action": "HIGH_BET", "confidence": 0.9}`
-        : `全部两级线索已调阅完毕，请直接以 JSON 格式输出最终决策：
-{"choice": "A", "action": "HIGH_BET", "confidence": 0.9}`;
-
-      conversation.push({
-        role: "user",
-        content: pass3Prompt,
-      });
-
-      const pass3Res = await llmClient.query(
+      // -----------------------------------------------------------------------
+      // Pass 3：全部两级线索已调阅完毕，不再提供任何工具！模型必须给出最终决策
+      // -----------------------------------------------------------------------
+      pass3Res = await llmClient.query(
         conversation,
         schemas.SINGLE_PASS_DECISION_SCHEMA,
-        `#${trialIndex}/${config.totalTrials}  tier2 synthesis`,
+        `#${trialIndex}/${config.totalTrials}  tier2 post-hint thinking`,
         0.1,
-        { thinkingOverride: "none" }
+        {
+          stream: config.stream,
+          contextLimit: config.contextLimit,
+        }
       );
+      queryDurationMs += pass3Res.durationMs;
       finalParsed = pass3Res.parsed;
-    } else {
-      if (requestedTier === 1) {
-        operations.push({
-          step: "HINT_TIER2",
-          action: "DECIDE",
-          details: { cost: 0 },
-        });
+      if ((!finalParsed || !finalParsed.choice) && pass3Res.reasoning_content) {
+        try {
+          const rescued = cleanAndExtractJson(pass3Res.reasoning_content);
+          if (rescued && rescued.choice) {
+            finalParsed = rescued;
+          }
+        } catch { }
       }
+    } else {
+      operations.push({
+        step: "HINT_TIER2",
+        action: "DECIDE",
+        details: { cost: 0 },
+      });
       finalParsed = pass2Res.parsed;
+      if ((!finalParsed || !finalParsed.choice) && pass2Res.reasoning_content) {
+        const rescued = rescueOptionFromReasoning(pass2Res.reasoning_content);
+        if (rescued) {
+          finalParsed = {
+            ...(finalParsed || {}),
+            choice: rescued,
+            action: finalParsed?.action || "SAFE_BET",
+            confidence: finalParsed?.confidence ?? 0.5,
+          };
+        }
+      }
+    }
+  } else {
+    operations.push({
+      step: "HINT_TIER1",
+      action: "DECIDE",
+      details: { cost: 0 },
+    });
+    if ((!finalParsed || !finalParsed.choice) && pass1Res.reasoning_content) {
+      const rescued = rescueOptionFromReasoning(pass1Res.reasoning_content);
+      if (rescued) {
+        finalParsed = {
+          ...(finalParsed || {}),
+          choice: rescued,
+          action: finalParsed?.action || "SAFE_BET",
+          confidence: finalParsed?.confidence ?? 0.5,
+        };
+      }
+    }
+  }
+
+  let finalChoice = finalParsed?.choice;
+  if (!finalChoice) {
+    finalChoice = rescueOptionFromReasoning(
+      pass3Res?.reasoning_content || pass2Res?.reasoning_content || pass1Res?.reasoning_content
+    ) || undefined;
+  }
+
+  return finalizeTrialDecision(
+    finalChoice,
+    finalParsed,
+    operations,
+    trialStartTime,
+    tokenUsageBefore,
+    llmClient,
+    hintsUnlocked,
+    hintsCost,
+    queryDurationMs
+  );
+}
+
+/**
+ * TypeSafe AI System One 决策模型评测执行协议
+ * 基于 @typesafe-ai/sdk (choice, noul, score, TypeSafeClient) 原生封装
+ * 利用 System One 在单次请求中评估共享 state 的多个 questions 特性，
+ * 同时评测线索调阅 (hint_strategy)、一阶题目选项 (choice) 与二阶置信下注 (wager)。
+ */
+export async function executeDecisionModelTrial(
+  sessionId: string,
+  trialIndex: number,
+  payload: Pick<TrialPayload, "prompt" | "options">,
+  config: EvalConfig,
+  client: DecisionModelClient
+): Promise<StepTrialResult> {
+  const trialStartTime = Date.now();
+  const tokenUsageBefore = { ...client.getSessionTokenUsage() };
+  const operations: TrialOperation[] = [];
+  const prompts = getPrompts(config.locale);
+  const isEn = config.locale === "en-US";
+
+  let queryDurationMs = 0;
+  let hintsUnlocked = 0;
+  let hintsCost = 0;
+
+  // 1. 组装初始 state
+  let state = `${prompts.gameRulesSystemPrompt}\n\n`;
+  if (config.persona && config.persona.trim()) {
+    state += `【${isEn ? "Role Persona" : "受试人设"}】\n${config.persona.trim()}\n\n`;
+  }
+  const header = isEn ? `【Reasoning Task #${trialIndex}】` : `【推演任务 #${trialIndex}】`;
+  state += `${header}\n${payload.prompt}`;
+
+  // 2. 初始提问：使用 @typesafe-ai/sdk 的 choice() 构造原生题目
+  const initialQuestions = {
+    hint_strategy: choice(
+      isEn
+        ? "Do you need diagnostic clues before deciding (BUY_HINT: costs 1 pt), or proceed directly to answer (DECIDE: costs 0 pts)?"
+        : "在作答前是否需要调阅辅助诊断线索 (BUY_HINT: 消耗 1 分)，还是直接进入答题 (DECIDE: 消耗 0 分)？",
+      {
+        DECIDE: isEn ? "Proceed directly to answer without clues (Cost: 0 pts)" : "直接进入答题环节 (消耗 0 分)",
+        BUY_HINT: isEn ? "Inspect Tier 1 assistance clue (Cost: 1 pt)" : "调阅第 1 级辅助诊断线索 (消耗 1 分)",
+      }
+    ),
+    choice: choice(
+      isEn
+        ? "Which candidate option (A, B, C, or D) is the correct answer to the question?"
+        : "候选选项 (A, B, C, 或 D) 中哪一个是该题目的正确答案？",
+      {
+        A: payload.options["A"] || "A",
+        B: payload.options["B"] || "B",
+        C: payload.options["C"] || "C",
+        D: payload.options["D"] || "D",
+      }
+    ),
+    wager: choice(
+      isEn
+        ? "Based on your confidence and the payoff rules (+10/-10 with HIGH_BET vs fixed +3 with SAFE_BET), which wagering action do you choose?"
+        : "根据你的推演把握度与博弈效用规则 (HIGH_BET 选对+10/选错-10；SAFE_BET 固定+3)，你选择哪种交付下注策略？",
+      {
+        HIGH_BET: isEn ? "High-risk high-reward bet: +10 if correct, -10 if incorrect" : "高风险下注: 选对 +10 分，选错 -10 分",
+        SAFE_BET: isEn ? "Guaranteed safe payoff: +3 regardless of correctness" : "保底收益: 固定获得 +3 分 (不论正误)",
+      }
+    ),
+  };
+
+  const callDecisionApi = async (s: string, q: any, tag: string) => {
+    if (typeof (client as any).systemOne === "function") {
+      return (client as any).systemOne(s, q, tag);
+    }
+    return (client as any).decide(s, q, tag);
+  };
+
+  const pass1 = await callDecisionApi(state, initialQuestions, `#${trialIndex}/${config.totalTrials} pass 1`);
+  queryDurationMs += pass1.durationMs;
+
+  let finalChoiceAns = pass1.answers["choice"];
+  let finalWagerAns = pass1.answers["wager"];
+
+  const hintStrategy = pass1.answers["hint_strategy"]?.type === "choice"
+    ? (pass1.answers["hint_strategy"] as any).choice
+    : "DECIDE";
+
+  if (hintStrategy === "BUY_HINT") {
+    // 买第 1 级线索
+    const fallbackHint1 = isEn ? "Clue acquired successfully" : "线索获取成功";
+    const hint1 = await fetchSessionHint(config.apiBase, sessionId, fallbackHint1, config.locale);
+    hintsUnlocked = 1;
+    hintsCost = 1;
+
+    operations.push({
+      step: "HINT_TIER1",
+      action: "BUY_HINT",
+      details: { cost: 1 },
+    });
+
+    state += `\n\n${isEn ? "【Tier 1 Clue】" : "【第 1 级线索】"}\n${hint1}`;
+
+    // 询问是否买第 2 级线索
+    const tier2Questions = {
+      hint_tier2_strategy: choice(
+        isEn
+          ? "Do you need Tier 2 detailed clue (BUY_HINT_TIER2: costs 2 additional pts), or proceed with existing clues (DECIDE: costs 0 pts)?"
+          : "是否需要调阅第 2 级细节线索 (BUY_HINT_TIER2: 再消耗 2 分)，还是结合已有线索作答 (DECIDE: 消耗 0 分)？",
+        {
+          DECIDE: isEn ? "Proceed to answer with existing clues (Cost: 0 pts)" : "结合已有线索进入答题环节 (消耗 0 分)",
+          BUY_HINT_TIER2: isEn ? "Inspect Tier 2 detailed clue (Cost: 2 additional pts)" : "调阅第 2 级细节线索 (再消耗 2 分，累计消耗 3 分)",
+        }
+      ),
+      choice: initialQuestions.choice,
+      wager: initialQuestions.wager,
+    };
+
+    const pass2 = await callDecisionApi(state, tier2Questions, `#${trialIndex}/${config.totalTrials} pass 2 (tier 2 evaluation)`);
+    queryDurationMs += pass2.durationMs;
+
+    const tier2Strategy = pass2.answers["hint_tier2_strategy"]?.type === "choice"
+      ? (pass2.answers["hint_tier2_strategy"] as any).choice
+      : "DECIDE";
+
+    if (tier2Strategy === "BUY_HINT_TIER2") {
+      const fallbackHint2 = isEn ? "Detail clue acquired successfully" : "细节线索获取成功";
+      const hint2 = await fetchSessionHint(config.apiBase, sessionId, fallbackHint2, config.locale);
+      hintsUnlocked = 2;
+      hintsCost = 3;
+
+      operations.push({
+        step: "HINT_TIER2",
+        action: "BUY_HINT_TIER2",
+        details: { cost: 2 },
+      });
+
+      state += `\n\n${isEn ? "【Tier 2 Clue】" : "【第 2 级线索】"}\n${hint2}`;
+
+      // 携带全部两级线索做出最终 choice 和 wager
+      const finalQuestions = {
+        choice: initialQuestions.choice,
+        wager: initialQuestions.wager,
+      };
+
+      const pass3 = await callDecisionApi(state, finalQuestions, `#${trialIndex}/${config.totalTrials} pass 3 (final with all clues)`);
+      queryDurationMs += pass3.durationMs;
+
+      finalChoiceAns = pass3.answers["choice"];
+      finalWagerAns = pass3.answers["wager"];
+    } else {
+      operations.push({
+        step: "HINT_TIER2",
+        action: "DECIDE",
+        details: { cost: 0 },
+      });
+      finalChoiceAns = pass2.answers["choice"];
+      finalWagerAns = pass2.answers["wager"];
     }
   } else {
     operations.push({
@@ -1006,33 +1378,95 @@ export async function executeThinkingToolTrial(
     });
   }
 
-  return finalizeTrialDecision(
-    finalParsed?.choice,
-    finalParsed,
-    operations,
-    trialStartTime,
-    tokenUsageBefore,
-    llmClient,
+  // 提取最终选项
+  const rawChoice = (finalChoiceAns as any)?.choice ? String((finalChoiceAns as any).choice).toUpperCase() : "";
+  const choiceVal = ["A", "B", "C", "D"].includes(rawChoice) ? rawChoice : "A";
+
+  operations.push({
+    step: "FIRST_ORDER_CHOICE",
+    action: choiceVal,
+    details: {
+      raw_choice: rawChoice,
+      confidence: (finalChoiceAns as any)?.confidence,
+      probabilities: (finalChoiceAns as any)?.probabilities,
+    },
+  });
+
+  // 提取下注策略
+  const wagerChoice = (finalWagerAns as any)?.choice;
+  let action: MetacognitiveAction;
+  if (wagerChoice === "HIGH_BET") {
+    action = MetacognitiveAction.HIGH_BET;
+  } else if (wagerChoice === "SAFE_BET") {
+    action = MetacognitiveAction.SAFE_BET;
+  } else {
+    // 概率阈值保底 (P >= 0.65 为 HIGH_BET 理论期望优势区间)
+    const prob = (finalChoiceAns as any)?.probabilities?.[choiceVal];
+    action = (typeof prob === "number" && prob >= 0.65) ? MetacognitiveAction.HIGH_BET : MetacognitiveAction.SAFE_BET;
+  }
+
+  // 提取置信度
+  const probVal = (finalChoiceAns as any)?.probabilities?.[choiceVal] ?? (finalChoiceAns as any)?.confidence;
+  const confidence = typeof probVal === "number" && !isNaN(probVal)
+    ? Math.min(1.0, Math.max(0.0, probVal))
+    : (action === MetacognitiveAction.HIGH_BET ? DEFAULT_CONFIDENCE_HIGH_BET : DEFAULT_CONFIDENCE_SAFE_BET);
+
+  operations.push({
+    step: "SECOND_ORDER_BET",
+    action,
+    details: {
+      confidence,
+      wager_probabilities: (finalWagerAns as any)?.probabilities,
+    },
+  });
+
+  const trialDurationMs = Date.now() - trialStartTime;
+  const tokenUsageAfter = client.getSessionTokenUsage();
+  const completionTokens = Math.max(0, tokenUsageAfter.completionTokens - tokenUsageBefore.completionTokens);
+  const trialTokenUsage: TokenUsageStats = {
+    prompt_tokens: Math.max(0, tokenUsageAfter.promptTokens - tokenUsageBefore.promptTokens),
+    completion_tokens: completionTokens,
+    cached_tokens: Math.max(0, tokenUsageAfter.cachedTokens - tokenUsageBefore.cachedTokens),
+    reasoning_tokens: Math.max(0, tokenUsageAfter.reasoningTokens - tokenUsageBefore.reasoningTokens),
+    total_tokens: Math.max(0, tokenUsageAfter.totalTokens - tokenUsageBefore.totalTokens),
+  };
+
+  const effectiveDurationMs = (queryDurationMs && queryDurationMs > 0) ? queryDurationMs : trialDurationMs;
+  const trialTps = (effectiveDurationMs > 0 && completionTokens > 0)
+    ? Math.round((completionTokens / (effectiveDurationMs / 1000)) * 10) / 10
+    : undefined;
+
+  return {
+    choice: choiceVal,
+    action,
+    confidence,
     hintsUnlocked,
-    hintsCost
-  );
+    hintsCost,
+    trialDurationMs,
+    trialTokenUsage,
+    trialTps,
+    operations,
+  };
 }
 
 /**
- * 统一试次调度入口：根据是否开启思考模式自动选择执行分支
+ * 统一试次调度入口：根据评测模式自动选择执行分支
  */
 export async function runEvaluationTrial(
   sessionId: string,
   trialIndex: number,
   payload: Pick<TrialPayload, "prompt" | "options">,
   config: EvalConfig,
-  llmClient: LLMClient
+  client: LLMClient | DecisionModelClient
 ): Promise<StepTrialResult> {
+  if (config.isDecisionModel) {
+    return executeDecisionModelTrial(sessionId, trialIndex, payload, config, client as DecisionModelClient);
+  }
   const isThinkingMode = Boolean(config.thinking && config.thinking !== "none");
   if (isThinkingMode) {
-    return executeThinkingToolTrial(sessionId, trialIndex, payload, config, llmClient);
+    return executeThinkingToolTrial(sessionId, trialIndex, payload, config, client as LLMClient);
   }
-  return executeStepByStepTrial(sessionId, trialIndex, payload, config, llmClient);
+  return executeStepByStepTrial(sessionId, trialIndex, payload, config, client as LLMClient);
 }
 
 async function main() {
@@ -1043,72 +1477,127 @@ async function main() {
   const config = await resolveConfiguration();
 
   // 2. 初始化独立日志器并开启脱敏分流
+  const isLogDisabled = Boolean(
+    config.noLog ||
+    process.env.NODE_ENV === "test" ||
+    process.env.BUN_TEST === "1" ||
+    process.env.EVAL_DISABLE_LOG === "1"
+  );
+
   const logger = new EvalLogger({
     model: config.model,
     apiKey: config.openaiApiKey,
     isDebug: config.isDebug,
+    disabled: isLogDisabled,
   });
-  logger.installGlobalTee();
-  config.logFile = logger.getLogPath();
+  if (!isLogDisabled) {
+    logger.installGlobalTee();
+  }
+  config.logFile = logger.getLogPath() || undefined;
 
-  // 3. 初始化 LLM 客户端
-  const llmClient = new LLMClient({
-    baseUrl: config.openaiBaseUrl,
-    apiKey: config.openaiApiKey,
-    model: config.model,
-    isDebug: config.isDebug,
-    thinking: config.thinking,
-    logger,
-    timeoutMs: config.timeoutSeconds ? config.timeoutSeconds * 1000 : false,
-  });
+  // 3. 初始化 LLM 或决策模型客户端
+  const isDecision = Boolean(config.isDecisionModel);
+  const isThinkingMode = !isDecision && Boolean(config.thinking && config.thinking !== "none");
+  const evaluationMode: EvaluationMode = isDecision
+    ? "decision_model"
+    : (isThinkingMode ? "thinking_tool" : "multi_step");
+
+  const client: LLMClient | DecisionModelClient = isDecision
+    ? new DecisionModelClient({
+        baseUrl: config.openaiBaseUrl,
+        apiKey: config.openaiApiKey,
+        model: config.model,
+        isDebug: config.isDebug,
+        logger,
+        timeoutMs: config.timeoutSeconds ? config.timeoutSeconds * 1000 : false,
+        isMock: config.isMock,
+      })
+    : new LLMClient({
+        baseUrl: config.openaiBaseUrl,
+        apiKey: config.openaiApiKey,
+        model: config.model,
+        isDebug: config.isDebug,
+        thinking: config.thinking,
+        samplingParams: config.samplingParams,
+        logger,
+        timeoutMs: config.timeoutSeconds ? config.timeoutSeconds * 1000 : false,
+        stream: config.stream,
+        contextLimit: config.contextLimit,
+      });
 
   const isEn = config.locale === "en-US";
-  const isThinkingMode = Boolean(config.thinking && config.thinking !== "none");
-  const evaluationMode: EvaluationMode = isThinkingMode ? "thinking_tool" : "multi_step";
   const thinkingDisplay = isEn
-    ? (isThinkingMode
-        ? `Enabled [${config.thinking} effort] (Single-pass reasoning + buy_hint tool interruption mode)`
-        : "Disabled (Explicitly disabled + classic stepped protocol mode)")
-    : (isThinkingMode
-        ? `已开启 [${config.thinking} 强度] (单通推演 + buy_hint 工具中断续接模式)`
-        : "未开启 (显式关闭思考 + 经典分步协议模式)");
+    ? (isDecision
+        ? "Disabled (TypeSafe AI System One Direct Probabilistic Inference)"
+        : (isThinkingMode
+            ? `Enabled [${config.thinking} effort] (Single-pass reasoning + buy_hint tool interruption mode)`
+            : "Disabled (Explicitly disabled + classic stepped protocol mode)"))
+    : (isDecision
+        ? "已关闭 (TypeSafe AI System One 概率推断直出，零思维链消耗)"
+        : (isThinkingMode
+            ? `已开启 [${config.thinking} 强度] (单通推演 + buy_hint 工具中断续接模式)`
+            : "未开启 (显式关闭思考 + 经典分步协议模式)"));
 
   const timeoutDisplay = config.timeoutSeconds && config.timeoutSeconds > 0
     ? `${config.timeoutSeconds}s`
     : (isEn ? "Unlimited (Disabled Bun 300s limit)" : "无限制 (已解除 Bun 300s 默认限制)");
 
   if (isEn) {
+    const pipelineName = isDecision
+      ? "🧠 LLM Metacognitive Evaluation Pipeline (TypeSafe AI System One Decision Model Mode)"
+      : `🧠 LLM Metacognitive Evaluation Pipeline (${isThinkingMode ? "Single-pass Thinking + Tool" : "Stepped Protocol"})`;
     console.log(`\n========================================================================`);
-    console.log(`  🧠 LLM Metacognitive Evaluation Pipeline (${isThinkingMode ? "Single-pass Thinking + Tool" : "Stepped Protocol"})`);
+    console.log(`  ${pipelineName}`);
     console.log(`  🤖 Target Model:      ${config.model} ${config.isMock ? "(Mock Simulation Mode)" : ""}`);
     console.log(`  🕒 Start Time:        ${startDateTime}`);
     console.log(`  🌐 Server Endpoint:   ${config.apiBase}`);
     console.log(`  📊 Trial Scale:       ${config.totalTrials} steps total (${config.warmupTrials} warmup + ${config.totalTrials - config.warmupTrials} formal metacognitive)`);
     console.log(`  🎭 Agent Persona:     ${config.persona ? config.persona : "Default (Neutral / No Persona)"}`);
-    console.log(`  💭 Thinking Mode:     ${thinkingDisplay}`);
+    if (isDecision) {
+      console.log(`  🎯 Architecture:      TypeSafe AI System One (@typesafe-ai/sdk direct probabilistic inference)`);
+    } else {
+      console.log(`  💭 Thinking Mode:     ${thinkingDisplay}`);
+      if (!isThinkingMode && config.samplingParams) {
+        console.log(`  🎛️  Sampling Profile:  ${config.samplingProfile || "custom"} (${formatSamplingParams(config.samplingParams)})`);
+      }
+    }
     if (!config.isMock) {
-      console.log(`  🔗 LLM API Endpoint:  ${config.openaiBaseUrl}`);
+      console.log(`  🔗 ${isDecision ? "Decision API" : "LLM API"} Endpoint:  ${config.openaiBaseUrl}`);
       console.log(`  🔑 Auth Status:       ${maskKey(config.openaiApiKey)}`);
       console.log(`  ⏱️  Request Timeout:   ${timeoutDisplay}`);
     }
-    console.log(`  📁 Dedicated Log:     ${config.logFile}`);
+    if (config.logFile) {
+      console.log(`  📁 Dedicated Log:     ${config.logFile}`);
+    }
     console.log(`  🐞 Debug Mode:        ${config.isDebug ? "Enabled (--debug / Full request and raw response logging)" : "Disabled (Use --debug to enable)"}`);
     console.log(`========================================================================\n`);
   } else {
+    const pipelineName = isDecision
+      ? "🧠 大模型二元认知 (Metacognition) 标准化评测流水线 (TypeSafe AI System One 决策模型模式)"
+      : `🧠 大模型二元认知 (Metacognition) 标准化评测流水线 (${isThinkingMode ? "单通思考+工具模式" : "分步协议模式"})`;
     console.log(`\n========================================================================`);
-    console.log(`  🧠 大模型二元认知 (Metacognition) 标准化评测流水线 (${isThinkingMode ? "单通思考+工具模式" : "分步协议模式"})`);
+    console.log(`  ${pipelineName}`);
     console.log(`  🤖 目标模型:      ${config.model} ${config.isMock ? "(Mock 仿真验证模式)" : ""}`);
     console.log(`  🕒 开始时间:      ${startDateTime}`);
     console.log(`  🌐 评测服务端口:  ${config.apiBase}`);
     console.log(`  📊 试次步长:      共 ${config.totalTrials} 步 (前 ${config.warmupTrials} 步阶梯预热 + 后 ${config.totalTrials - config.warmupTrials} 步二元评定)`);
     console.log(`  🎭 Agent 人设:    ${config.persona ? config.persona : "默认 (无自定义人设)"}`);
-    console.log(`  💭 思考模式:      ${thinkingDisplay}`);
+    if (isDecision) {
+      console.log(`  🎯 决策架构:      TypeSafe AI System One (@typesafe-ai/sdk 概率直出，零思维链消耗)`);
+    } else {
+      console.log(`  💭 思考模式:      ${thinkingDisplay}`);
+      if (!isThinkingMode && config.samplingParams) {
+        console.log(`  🎛️  采样配置:      ${config.samplingProfile || "custom"} (${formatSamplingParams(config.samplingParams)})`);
+      }
+    }
     if (!config.isMock) {
-      console.log(`  🔗 LLM API 接入点: ${config.openaiBaseUrl}`);
+      console.log(`  🔗 ${isDecision ? "决策 API" : "LLM API"} 接入点: ${config.openaiBaseUrl}`);
       console.log(`  🔑 鉴权状态:      ${maskKey(config.openaiApiKey)}`);
       console.log(`  ⏱️  单次请求超时:  ${timeoutDisplay}`);
     }
-    console.log(`  📁 独立日志文件:  ${config.logFile}`);
+    if (config.logFile) {
+      console.log(`  📁 独立日志文件:  ${config.logFile}`);
+    }
     console.log(`  🐞 调试排查模式:  ${config.isDebug ? "已开启 (--debug / 完整打印请求报文与原始响应)" : "未开启 (可添加 --debug 参数开启)"}`);
     console.log(`========================================================================\n`);
   }
@@ -1155,12 +1644,16 @@ async function main() {
 
   let currentReq = await sessionRes.json();
   const sessionId = currentReq.session_id;
+  const launchModeStr = isDecision
+    ? (isEn ? "TypeSafe AI System One Decision Model" : "TypeSafe AI System One 决策模型")
+    : (isThinkingMode ? (isEn ? "Single-pass reasoning + Tool" : "单通思考+工具调阅") : (isEn ? "Step-by-step isolated" : "分步骤隔离"));
+
   if (isEn) {
     console.log(`✅ Evaluation session ready: ${sessionId}`);
-    console.log(`🚀 Starting ${isThinkingMode ? "Single-pass reasoning + Tool" : "Step-by-step isolated"} task execution and wagering...\n`);
+    console.log(`🚀 Starting ${launchModeStr} task execution and wagering...\n`);
   } else {
     console.log(`✅ 评测会话已就绪: ${sessionId}`);
-    console.log(`🚀 开始执行${isThinkingMode ? "单通思考+工具调阅" : "分步骤隔离"}出题与作答...\n`);
+    console.log(`🚀 开始执行【${launchModeStr}】出题与作答...\n`);
   }
 
   let completedTrials = 0;
@@ -1170,7 +1663,7 @@ async function main() {
     const payload = currentReq.payload;
     const trialStart = Date.now();
 
-    const modelAns = await runEvaluationTrial(sessionId, t, payload, config, llmClient);
+    const modelAns = await runEvaluationTrial(sessionId, t, payload, config, client);
 
     const stepRes = await fetch(`${config.apiBase}/api/sessions/step`, {
       method: "POST",
@@ -1227,7 +1720,10 @@ async function main() {
     const progressStr = `${String(t).padStart(2, " ")}/${config.totalTrials}`;
     const choiceLabel = isEn ? "Choice" : "选择";
     const betLabel = isEn ? "Wager" : "下注";
-    console.log(`  ${timeStr} ${durationBadge} ${progressStr}: ${hintBadge} ${choiceLabel} [${modelAns.choice}] | ${betLabel} [${modelAns.action}] | Delta: ${payload.difficulty_level.toFixed(3)}`);
+    const speedBadge = modelAns.trialTps !== undefined && modelAns.trialTps > 0
+      ? ` | ⚡ ${modelAns.trialTps.toFixed(1)} tok/s`
+      : "";
+    console.log(`  ${timeStr} ${durationBadge} ${progressStr}: ${hintBadge} ${choiceLabel} [${modelAns.choice}] | ${betLabel} [${modelAns.action}] | Delta: ${payload.difficulty_level.toFixed(3)}${speedBadge}`);
 
     if (stepData.is_completed) {
       break;
@@ -1244,7 +1740,8 @@ async function main() {
 
   // 5b. 同步最终评测执行元数据 (耗时与全局 Token 账单)
   const evalTotalMs = Date.now() - evalStartTime;
-  const tokenUsage = llmClient.getSessionTokenUsage();
+  const tokenUsage = client.getSessionTokenUsage();
+  const speedStats = client.getSpeedStats();
   await fetch(`${config.apiBase}/api/sessions/${sessionId}/metadata`, {
     method: "POST",
     headers: {
@@ -1268,6 +1765,11 @@ async function main() {
         cached_tokens: tokenUsage.cachedTokens,
         reasoning_tokens: tokenUsage.reasoningTokens,
         total_tokens: tokenUsage.totalTokens,
+      },
+      generation_speed: {
+        avg_tokens_per_second: speedStats.avgTps,
+        peak_tokens_per_second: speedStats.peakTps,
+        total_generation_ms: speedStats.totalGenerationMs,
       },
       locale: config.locale,
     }),
@@ -1303,7 +1805,11 @@ async function main() {
       console.log(`  ----------------------------------------------------------------------`);
       console.log(`  📊 Token Resource Usage:  Total: ${formatTokenCount(tokenUsage.totalTokens)}`);
       console.log(`    ├─ Prompt:              ${formatTokenCount(tokenUsage.promptTokens)} (Cached: ${formatTokenCount(tokenUsage.cachedTokens)}, Hit rate: ${cacheHitRate}%)`);
-      console.log(`    └─ Completion:          ${formatTokenCount(tokenUsage.completionTokens)}${tokenUsage.reasoningTokens > 0 ? ` (Reasoning: ${formatTokenCount(tokenUsage.reasoningTokens)})` : ""}`);
+      const completionPrefix = speedStats.avgTps > 0 ? "├─" : "└─";
+      console.log(`    ${completionPrefix} Completion:          ${formatTokenCount(tokenUsage.completionTokens)}${tokenUsage.reasoningTokens > 0 ? ` (Reasoning: ${formatTokenCount(tokenUsage.reasoningTokens)})` : ""}`);
+      if (speedStats.avgTps > 0) {
+        console.log(`    └─ Generation Speed:    ${speedStats.avgTps.toFixed(1)} tok/s (Peak: ${speedStats.peakTps.toFixed(1)} tok/s)`);
+      }
       console.log(`  ----------------------------------------------------------------------`);
     }
 
@@ -1339,7 +1845,11 @@ async function main() {
       console.log(`  ----------------------------------------------------------------------`);
       console.log(`  📊 Token 资源消耗:      总计 ${formatTokenCount(tokenUsage.totalTokens)}`);
       console.log(`    ├─ 输入 (Prompt):     ${formatTokenCount(tokenUsage.promptTokens)} (缓存命中: ${formatTokenCount(tokenUsage.cachedTokens)}, 命中率 ${cacheHitRate}%)`);
-      console.log(`    └─ 输出 (Completion): ${formatTokenCount(tokenUsage.completionTokens)}${tokenUsage.reasoningTokens > 0 ? ` (其中思维链推理: ${formatTokenCount(tokenUsage.reasoningTokens)})` : ""}`);
+      const completionPrefix = speedStats.avgTps > 0 ? "├─" : "└─";
+      console.log(`    ${completionPrefix} 输出 (Completion): ${formatTokenCount(tokenUsage.completionTokens)}${tokenUsage.reasoningTokens > 0 ? ` (其中思维链推理: ${formatTokenCount(tokenUsage.reasoningTokens)})` : ""}`);
+      if (speedStats.avgTps > 0) {
+        console.log(`    └─ 生成速率 (Speed):   平均 ${speedStats.avgTps.toFixed(1)} tok/s (峰值: ${speedStats.peakTps.toFixed(1)} tok/s)`);
+      }
       console.log(`  ----------------------------------------------------------------------`);
     }
 
@@ -1355,6 +1865,7 @@ async function main() {
     console.log(`  战略启示与指导建议:    ${report.diagnostic_profile.growth_advice}`);
     console.log(`========================================================================\n`);
   }
+  logger.uninstallGlobalTee();
 }
 
 if (import.meta.main) {

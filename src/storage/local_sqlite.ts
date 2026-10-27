@@ -24,6 +24,25 @@ export const USERS_TABLE_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 `;
 
+/**
+ * 动态解析默认 SQLite 数据库文件路径：
+ * - 优先遵循 process.env.DB_PATH 或 process.env.DATABASE_PATH
+ * - 单元测试环境（process.env.NODE_ENV === "test" 或 process.env.BUN_TEST === "1"）自动重定向到 data/test_tmp/test_sessions.sqlite，绝不污染正式数据库
+ * - 常规运行与开发环境使用 data/sessions.sqlite
+ */
+export function getDefaultDatabasePath(): string {
+  if (process.env.DB_PATH) {
+    return process.env.DB_PATH;
+  }
+  if (process.env.DATABASE_PATH) {
+    return process.env.DATABASE_PATH;
+  }
+  if (process.env.NODE_ENV === "test" || process.env.BUN_TEST === "1") {
+    return path.join(process.cwd(), "data", "test_tmp", "test_sessions.sqlite");
+  }
+  return path.join(process.cwd(), "data", "sessions.sqlite");
+}
+
 export class LocalSqliteAdapter implements StorageAdapter {
   readonly engine = "local_sqlite";
   private db: Database;
@@ -33,7 +52,7 @@ export class LocalSqliteAdapter implements StorageAdapter {
     if (dbPathOrDb && typeof dbPathOrDb !== "string") {
       this.db = dbPathOrDb;
     } else {
-      const targetPath = dbPathOrDb || path.join(process.cwd(), "data", "sessions.sqlite");
+      const targetPath = dbPathOrDb || getDefaultDatabasePath();
       if (targetPath !== ":memory:") {
         const dir = path.dirname(targetPath);
         if (!fs.existsSync(dir)) {

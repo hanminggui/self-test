@@ -80,15 +80,20 @@
 
 ## 2. 阶梯引擎与常量标准规约
 
-### 2.1 阶梯自适应两阶段变步长引擎（Two-Stage Adaptive Staircase）
-在 [`src/backend/staircase.ts`](file:///Users/aduang/github/self-test/src/backend/staircase.ts) 中重构状态转移：
+### 2.1 阶梯自适应混合加速级联引擎（Leek 2001 Hybrid Accelerated Cascaded Staircase）
+在 [`src/backend/staircase.ts`](file:///Users/aduang/github/self-test/src/backend/staircase.ts) 中重构状态转移与平滑交接：
 
-1. **Stage 1: 热身寻峰期（Warmup Coarse Hunting, `trialCount <= warmupTrials`）**
-   - 步长：$\Delta_{\text{warmup}} = 0.18$；
-   - 规则：**1 升 1 降（One-Step Hunting）**，3~4 题内快速触达能力边界，得分彻底隔离不计入总分。
+1. **Stage 1: 预热加速与级联衰减期（Warmup Accelerated Cascade & Centroid Handoff, `trialCount <= warmupTrials`）**
+   - **首次反转前（盲试冲刺）**：采用 **1 升 1 降**，步长 $\Delta_{\text{warmup}} = 0.18$，以最大效率在 2~3 题内触碰能力边界；
+   - **首次反转后（精准定型）**：**立即永久切换为 2 升 1 降**（严格锁定 $70.71\%$ 临界目标相变点），步长随反转次数自适应级联衰减：
+     - 反转 1 次：$\Delta = 0.12$（初始折返）
+     - 反转 2 次：$\Delta = 0.08$（双向包夹）
+     - 反转 $\ge 3$ 次：$\Delta = 0.04$（进入最高精细微调）
+   - **预热交接（反转质心平滑交接）**：预热末题完成时，提取预热期内有效反转点计算算术均值（质心），并重置连胜计数与方向惯性，作为正式阶段起始起跑线，彻底杜绝单题偶发跳跃噪声。
+   - **计分隔离**：预热阶段得分与做题数据彻底隔离，不计入正式总分。
 2. **Stage 2: 正式精密锁定（Formal Precision Measurement, `trialCount > warmupTrials`）**
-   - 步长：$\Delta_{\text{formal}} = 0.08$（经历 $\ge 3$ 次反转后自动减半为 $0.04$）；
-   - 规则：**标准 Levitt 2-up-1-down 对称阶梯**，彻底移除 `heavyHintAssisted` 不对称单向陷阱。
+   - **步长**：若预热期反转已达标，**正式阶段第 21 题起 100% 运行在 $\Delta_{\text{formal}} = 0.04$ 最高稳态精细步长**，避免在正式阶段浪费样本爬坡；
+   - **规则**：标准 Levitt 2-up-1-down 对称阶梯，将客观准确率严格锁定在 $70.71\%$ 临界阈值。
 
 ### 2.2 显示偏好理论质心（Revealed Preference Centroids）
 在 [`src/backend/models.ts`](file:///Users/aduang/github/self-test/src/backend/models.ts) 中定义全局常量：

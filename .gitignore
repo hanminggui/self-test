@@ -39,8 +39,12 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Temporary scratch and local databases
 scratch
 *.sqlite
+*.sqlite*
 *.sqlite-journal
+*.backup*
 wrangler.tmp.toml
+data/test_tmp/
+data/test_migration/
 
 # Python remnants (if any)
 __pycache__/

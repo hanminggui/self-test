@@ -8,7 +8,7 @@
 import * as path from "path";
 import * as fs from "fs";
 
-import { StorageAdapter, LocalSqliteAdapter, USERS_TABLE_SCHEMA_SQL } from "../storage";
+import { StorageAdapter, LocalSqliteAdapter, USERS_TABLE_SCHEMA_SQL, getDefaultDatabasePath } from "../storage";
 import {
   PhaseType,
   MetacognitiveAction,
@@ -76,7 +76,7 @@ export class SessionManager {
         if (!fs.existsSync(dataDir)) {
           fs.mkdirSync(dataDir, { recursive: true });
         }
-        const resolvedDbPath = storageOrDbPath || path.join(dataDir, "sessions.sqlite");
+        const resolvedDbPath = storageOrDbPath || getDefaultDatabasePath();
         this.storage = new LocalSqliteAdapter(resolvedDbPath);
         created = true;
       } catch {
