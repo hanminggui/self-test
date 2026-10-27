@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import { useLocale } from "../../contexts/LocaleContext";
+import { useGameEffects } from "../../contexts/GameEffectsContext";
 import type { SessionVisibilityPreference, UserSocialLinks } from "../../../storage/user";
 import type { ConnectedProviderInfo } from "../../../backend/user_manager";
 
@@ -79,6 +80,15 @@ const PRESET_AVATARS = [
 export const ProfileSettings: React.FC = () => {
   const { user, refreshUser, enabledProviders } = useUser();
   const { t } = useLocale();
+  const {
+    motionMode,
+    setMotionMode,
+    soundMode,
+    setSoundMode,
+    performanceMode,
+    setPerformanceMode,
+    playSound,
+  } = useGameEffects();
 
   // Form states
   const [displayName, setDisplayName] = useState(user?.display_name || "");
@@ -674,6 +684,148 @@ export const ProfileSettings: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Section 5: Interactive Motion & Acoustics (Game Effects & Accessibility) */}
+        <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-6 sm:p-8 space-y-6 backdrop-blur-sm">
+          <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+            <Sparkles className="w-5 h-5 text-amber-400" />
+            <div>
+              <h2 className="text-base font-bold text-white tracking-wide">
+                {t.gameEffects?.settingsAudioMotionTitle || "交互动效与声学体验"}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {t.gameEffects?.settingsAudioMotionDesc || "自定义系统交互手感、粒子流光视觉与 Web Audio 过程音效偏好"}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Motion Mode */}
+            <div className="space-y-2 p-4 rounded-xl bg-white/[0.02] border border-white/10">
+              <div className="text-xs font-bold text-slate-200">
+                {t.gameEffects?.motionModeLabel || "过渡动效强度"}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMotionMode("full");
+                    playSound("tap");
+                  }}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    motionMode === "full"
+                      ? "bg-amber-500/20 border-amber-400 text-amber-200"
+                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {t.gameEffects?.motionModeFull || "全量流光"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMotionMode("reduced");
+                    playSound("tap");
+                  }}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    motionMode === "reduced"
+                      ? "bg-cyan-500/20 border-cyan-400 text-cyan-200"
+                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {t.gameEffects?.motionModeReduced || "极简减弱"}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                {motionMode === "full"
+                  ? t.gameEffects?.motionModeFullDesc || "启用星门穿梭、光幕流转、粒子消散与流形过渡"
+                  : t.gameEffects?.motionModeReducedDesc || "遵循减弱动效偏好，消除剧烈位移与旋转，平滑淡入"}
+              </p>
+            </div>
+
+            {/* Sound Mode */}
+            <div className="space-y-2 p-4 rounded-xl bg-white/[0.02] border border-white/10">
+              <div className="text-xs font-bold text-slate-200">
+                {t.gameEffects?.soundModeLabel || "交互音效 (Web Audio)"}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSoundMode("enabled");
+                    playSound("tap");
+                  }}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    soundMode === "enabled"
+                      ? "bg-amber-500/20 border-amber-400 text-amber-200"
+                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {t.gameEffects?.soundModeEnabled || "开启音效"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSoundMode("muted");
+                  }}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    soundMode === "muted"
+                      ? "bg-slate-700/60 border-slate-500 text-slate-300"
+                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {t.gameEffects?.soundModeMuted || "静音模式"}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                {soundMode === "enabled"
+                  ? "程序化合成晶体敲击与秘法和弦，零音频文件下载"
+                  : "所有作答选择、押注模式切换与推演过程静音进行"}
+              </p>
+            </div>
+
+            {/* Performance Mode */}
+            <div className="space-y-2 p-4 rounded-xl bg-white/[0.02] border border-white/10">
+              <div className="text-xs font-bold text-slate-200">
+                {t.gameEffects?.perfModeLabel || "渲染性能偏好"}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPerformanceMode("high");
+                    playSound("tap");
+                  }}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    performanceMode === "high"
+                      ? "bg-indigo-500/20 border-indigo-400 text-indigo-200"
+                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {t.gameEffects?.perfModeHigh || "高清全效"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPerformanceMode("eco");
+                    playSound("tap");
+                  }}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    performanceMode === "eco"
+                      ? "bg-emerald-500/20 border-emerald-400 text-emerald-200"
+                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {t.gameEffects?.perfModeEco || "节能降级"}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                {performanceMode === "high"
+                  ? t.gameEffects?.perfModeHighDesc || "完整启用粒子光晕与星云混合滤镜"
+                  : t.gameEffects?.perfModeEcoDesc || "关闭高算力粒子动画与复杂滤镜，保障移动端超高帧率"}
+              </p>
+            </div>
           </div>
         </div>
 

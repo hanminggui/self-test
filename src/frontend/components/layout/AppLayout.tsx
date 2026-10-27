@@ -21,6 +21,7 @@ import { useUser } from "../../contexts/UserContext";
 import { useLocale } from "../../contexts/LocaleContext";
 import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 import type { SubjectPoint } from "../../types/admin";
+import { GameQuickControls } from "../game/GameQuickControls";
 
 interface AppLayoutProps {
   currentPath: string;
@@ -489,6 +490,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                         EN
                       </button>
                     </div>
+                  </div>
+
+                  {/* Audio & Motion Quick Controls inside Avatar Popover */}
+                  <div className="px-3 py-1.5 flex items-center justify-between text-xs text-slate-300 border-b border-white/[0.06] pb-2 mb-1">
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{isEn ? "Effects" : "视听动效"}</span>
+                    </span>
+                    <GameQuickControls compact />
                   </div>
 
                   <button

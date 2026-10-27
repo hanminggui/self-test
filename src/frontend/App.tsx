@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import confetti from "canvas-confetti";
 import {
   Compass,
@@ -30,7 +30,10 @@ import { CognitiveArchetype } from "../backend/models";
 import { getArchetypeDefinition } from "../backend/archetype_matrix";
 import { useLocale } from "./contexts/LocaleContext";
 import { useUser } from "./contexts/UserContext";
+import { useGameEffects } from "./contexts/GameEffectsContext";
 import { LanguageToggle } from "./components/LanguageToggle";
+import { GameQuickControls } from "./components/game/GameQuickControls";
+import { GamifiedTransition } from "./components/game/GamifiedTransition";
 import { PosterModal } from "./components/share/PosterModal";
 import {
   extractSessionIdFromUrl,
@@ -242,6 +245,7 @@ interface AppProps {
 export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) {
   const { locale, t, formatMessage } = useLocale();
   const { user, openAuthModal, notifySessionChanged, sessionSyncVersion } = useUser();
+  const { playSound, triggerHaptic, isReducedMotion, isEcoMode } = useGameEffects();
   const isEn = locale === "en-US";
 
   const [stage, setStage] = useState<"WELCOME" | "TESTING" | "REPORT">("WELCOME");
@@ -257,6 +261,13 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
   const [unlockedHints, setUnlockedHints] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Gamified transitions state
+  const [portalStarting, setPortalStarting] = useState(false);
+  const [settlementState, setSettlementState] = useState<{
+    active: boolean;
+    stepIndex: number;
+  } | null>(null);
 
   // Report state
   const [report, setReport] = useState<ReportData | null>(null);
@@ -422,6 +433,56 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     }
   };
 
+  // 终结并展示测评报告卡片 (统一收敛报告落地与无障碍减弱动效适配)
+  const finalizeReport = useCallback(
+    (repData: ReportData, targetSessionId: string) => {
+      setReport(repData);
+      setStage("REPORT");
+      playSound("report_reveal");
+      if (!user) {
+        saveLastCompletedSession(targetSessionId);
+        setLastSessionRecord(getLastCompletedSession());
+      } else {
+        notifySessionChanged();
+      }
+      if (typeof window !== "undefined") {
+        const permalink = buildSessionReportUrl(targetSessionId);
+        window.history.pushState({ sessionId: targetSessionId }, "", permalink);
+      }
+      // 严格尊重无障碍减弱动效偏好：在 reduced 模式下严禁喷射粒子烟花
+      if (!isReducedMotion) {
+        triggerHaptic("heavy");
+        confetti({
+          particleCount: 150,
+          spread: 90,
+          origin: { y: 0.55 },
+          colors: ["#f59e0b", "#6366f1", "#a855f7", "#38bdf8"],
+        });
+      }
+    },
+    [user, notifySessionChanged, playSound, triggerHaptic, isReducedMotion]
+  );
+
+  const settlementTimeoutsRef = useRef<any[]>([]);
+  const [pendingReportData, setPendingReportData] = useState<{
+    repData: ReportData;
+    targetSessionId: string;
+  } | null>(null);
+
+  const clearSettlementTimeouts = useCallback(() => {
+    settlementTimeoutsRef.current.forEach((id) => clearTimeout(id));
+    settlementTimeoutsRef.current = [];
+  }, []);
+
+  const handleSkipSettlement = useCallback(() => {
+    clearSettlementTimeouts();
+    setSettlementState(null);
+    if (pendingReportData) {
+      finalizeReport(pendingReportData.repData, pendingReportData.targetSessionId);
+      setPendingReportData(null);
+    }
+  }, [clearSettlementTimeouts, pendingReportData, finalizeReport]);
+
   // Start a new exploration session
   const startSession = async () => {
     const currentUnclaimed = getLastCompletedSession();
@@ -432,6 +493,9 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     }
 
     setLoading(true);
+    setPortalStarting(true);
+    playSound("portal");
+    triggerHaptic("medium");
     setErrorMsg("");
     const finalName = subjectName.trim() || user?.display_name || placeholderCodename;
     try {
@@ -455,9 +519,15 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
       setInitialChoiceBeforeHint(null);
       setSelectedAction("HIGH_BET");
       setUnlockedHints(normalizeUnlockedHints(data.payload.unlocked_hints));
-      setStage("TESTING");
+
+      // Allow brief portal resonance transition before switching to testing view
+      setTimeout(() => {
+        setStage("TESTING");
+        setPortalStarting(false);
+      }, isReducedMotion ? 50 : 350);
     } catch (e: any) {
       setErrorMsg(e.message || t.app.networkErrorFallback);
+      setPortalStarting(false);
     } finally {
       setLoading(false);
     }
@@ -485,6 +555,8 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           ? normalizeUnlockedHints(data.unlocked_hints)
           : [...unlockedHints, data.hint]
       );
+      playSound("hint");
+      triggerHaptic("medium");
     } catch (e: any) {
       setErrorMsg(e.message);
     } finally {
@@ -503,6 +575,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     setErrorMsg("");
 
     try {
+      const currentDifficulty = trialData?.payload.difficulty_level ?? 1;
       const firstChoice = initialChoiceBeforeHint || selectedOption;
       // 1. Submit Phase 1 (first-order choice prior to hint revision if captured)
       const p1Res = await fetch(`/api/sessions/${sessionId}/phase1?lang=${encodeURIComponent(locale)}`, {
@@ -546,31 +619,58 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           if (!repRes.ok) throw new Error(t.app.generateReportError);
           repData = await repRes.json();
         }
-        setReport(repData);
-        setStage("REPORT");
-        if (!user) {
-          saveLastCompletedSession(sessionId);
-          setLastSessionRecord(getLastCompletedSession());
+
+        // Orchestrate 4-stage Metacognitive Manifold Deduction sequence
+        if (isReducedMotion) {
+          finalizeReport(repData, sessionId);
         } else {
-          notifySessionChanged();
+          setPendingReportData({ repData, targetSessionId: sessionId });
+          setSettlementState({ active: true, stepIndex: 0 });
+          playSound("settlement_pulse");
+          triggerHaptic("light");
+          clearSettlementTimeouts();
+
+          settlementTimeoutsRef.current.push(
+            setTimeout(() => {
+              setSettlementState({ active: true, stepIndex: 1 });
+              playSound("settlement_pulse");
+              triggerHaptic("light");
+            }, 750)
+          );
+
+          settlementTimeoutsRef.current.push(
+            setTimeout(() => {
+              setSettlementState({ active: true, stepIndex: 2 });
+              playSound("settlement_pulse");
+              triggerHaptic("medium");
+            }, 1500)
+          );
+
+          settlementTimeoutsRef.current.push(
+            setTimeout(() => {
+              setSettlementState({ active: true, stepIndex: 3 });
+              playSound("settlement_pulse");
+              triggerHaptic("heavy");
+            }, 2250)
+          );
+
+          settlementTimeoutsRef.current.push(
+            setTimeout(() => {
+              setSettlementState(null);
+              setPendingReportData(null);
+              finalizeReport(repData, sessionId);
+            }, 3000)
+          );
         }
-        if (typeof window !== "undefined") {
-          const permalink = buildSessionReportUrl(sessionId);
-          window.history.pushState({ sessionId }, "", permalink);
-        }
-        confetti({
-          particleCount: 150,
-          spread: 90,
-          origin: { y: 0.55 },
-          colors: ["#f59e0b", "#6366f1", "#a855f7", "#38bdf8"],
-        });
       } else {
-        // Fetch next trial
+        // Fetch next trial (隐蔽自适应阶梯，严禁向受测者暴露任何难度变动提示)
         const nextReqRes = await fetch(`/api/sessions/${sessionId}/trial?lang=${encodeURIComponent(locale)}`, {
           headers: { "Accept-Language": locale },
         });
         if (!nextReqRes.ok) throw new Error(t.app.fetchNextTrialError);
         const nextTrial: TrialRequest = await nextReqRes.json();
+        playSound("tap");
+
         setTrialData(nextTrial);
         setSelectedOption(null);
         setInitialChoiceBeforeHint(null);
@@ -582,7 +682,20 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     } finally {
       setLoading(false);
     }
-  }, [sessionId, selectedOption, initialChoiceBeforeHint, selectedAction, loading, locale, t]);
+  }, [
+    sessionId,
+    selectedOption,
+    initialChoiceBeforeHint,
+    selectedAction,
+    loading,
+    locale,
+    t,
+    trialData,
+    isReducedMotion,
+    playSound,
+    triggerHaptic,
+    finalizeReport,
+  ]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -595,11 +708,17 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
       if (["A", "B", "C", "D"].includes(key)) {
         if (trialData && trialData.payload.options[key]) {
           setSelectedOption(key);
+          playSound("select");
+          triggerHaptic("light");
         }
       } else if (key === "1") {
         setSelectedAction("HIGH_BET");
+        playSound("wager");
+        triggerHaptic("light");
       } else if (key === "2") {
         setSelectedAction("SAFE_BET");
+        playSound("wager");
+        triggerHaptic("light");
       } else if (key === "H") {
         handleBuyHint();
       } else if (key === "ENTER") {
@@ -665,6 +784,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               <span>{isEn ? "Official Home" : "返回官网首页"}</span>
             </a>
             <LanguageToggle />
+            <GameQuickControls />
             <UserNav />
           </div>
         </header>
@@ -672,17 +792,15 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
       {/* 主体区域 */}
       <main className="flex-1 flex flex-col justify-center">
-        {/* 专属报告加载中骨架态 */}
+        {/* 专属报告游戏化聚能加载态 */}
         {reportLoading && (
-          <div className="flex flex-col items-center justify-center p-12 text-center space-y-4 animate-in fade-in duration-300">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-xl shadow-amber-500/20">
-              <Compass className="w-8 h-8 text-amber-300 animate-spin" />
-            </div>
-            <div className="text-base font-bold text-white tracking-wide">{t.app.reportLoadingText}</div>
-            <p className="text-xs text-slate-400 font-mono">
-              SESSION: {extractSessionIdFromUrl() || sessionId || "..."}
-            </p>
-          </div>
+          <GamifiedTransition
+            active={true}
+            variant="charge"
+            title={t.app.reportLoadingText}
+            subtitle={`SESSION: ${extractSessionIdFromUrl() || sessionId || "..."}`}
+            fullScreen={false}
+          />
         )}
 
         {/* 会话未找到或已清理提示卡片 */}
@@ -980,7 +1098,11 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setSelectedOption(key)}
+                    onClick={() => {
+                      setSelectedOption(key);
+                      playSound("select");
+                      triggerHaptic("light");
+                    }}
                     className={`p-4 rounded-xl border text-left transition-all duration-200 flex items-start gap-3.5 cursor-pointer relative ${isSelected
                       ? "glass-card border-amber-400 bg-amber-500/15 ring-2 ring-amber-400/30"
                       : "glass-card border-white/5 hover:border-white/20 hover:bg-white/[0.03]"
@@ -1012,7 +1134,11 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setSelectedAction("HIGH_BET")}
+                  onClick={() => {
+                    setSelectedAction("HIGH_BET");
+                    playSound("wager");
+                    triggerHaptic("light");
+                  }}
                   className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${selectedAction === "HIGH_BET"
                     ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-400 text-amber-200 ring-2 ring-amber-400/25"
                     : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
@@ -1032,7 +1158,11 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
                 <button
                   type="button"
-                  onClick={() => setSelectedAction("SAFE_BET")}
+                  onClick={() => {
+                    setSelectedAction("SAFE_BET");
+                    playSound("wager");
+                    triggerHaptic("light");
+                  }}
                   className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${selectedAction === "SAFE_BET"
                     ? "bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-cyan-400 text-cyan-200 ring-2 ring-cyan-400/25"
                     : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
@@ -1304,6 +1434,30 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           onClose={() => setShowPosterModal(false)}
         />
       )}
+
+      {/* 游戏化开局传送门转场 */}
+      <GamifiedTransition
+        active={portalStarting}
+        variant="portal"
+        title={t.gameEffects?.portalStartingTitle || "开启认知试炼"}
+        subtitle={t.gameEffects?.portalStartingSubtitle || "正在锚定意识流形 · 构筑认知星阵..."}
+      />
+
+      {/* 认知流形算力推演结算转场 */}
+      <GamifiedTransition
+        active={Boolean(settlementState?.active)}
+        variant="settlement"
+        title={t.gameEffects?.reportDeductionTitle || "高维认知流形解算"}
+        subtitle={t.gameEffects?.reportDeductionSubtitle || "深度推演您的元认知置信矩阵与神级画像..."}
+        steps={[
+          t.gameEffects?.deductionStep1 || "一阶作答响应与难度梯度聚合",
+          t.gameEffects?.deductionStep2 || "二阶置信博弈流形推演 (Meta-d' & M-Ratio)",
+          t.gameEffects?.deductionStep3 || "对齐八大认知神级画像与内在特技谱系",
+          t.gameEffects?.deductionStep4 || "认知试炼圆满 · 神级画像铸成！",
+        ]}
+        currentStepIndex={settlementState?.stepIndex ?? 0}
+        onSkip={handleSkipSettlement}
+      />
 
       {/* 仅在未进入 App Layout 时展示底部极简脚注 */}
       {!inAppLayout && (
