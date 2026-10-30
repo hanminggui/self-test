@@ -86,7 +86,7 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
 
   if (!userLoading && !user) {
     return (
-      <div className="min-h-screen bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex items-center justify-center p-6">
+      <div className="min-h-screen min-h-dvh bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex items-center justify-center p-6 pb-[env(safe-area-inset-bottom)]">
         <div className="w-full max-w-lg p-8 sm:p-10 rounded-[28px] bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] text-center space-y-5 animate-in fade-in duration-300">
           <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center mx-auto text-stone-900 dark:text-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]">
             <Crown className="w-8 h-8" />
@@ -114,7 +114,7 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 space-y-8">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 space-y-8 min-h-dvh pb-[env(safe-area-inset-bottom)]">
       {/* Filter Tabs Bar (全部 / 已解锁 / 待探索) & Actions */}
       <div className="flex items-center justify-between gap-3 flex-wrap border-b-2 border-stone-900/10 dark:border-white/10 pb-5">
         <div className="flex items-center gap-2 p-1 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none">

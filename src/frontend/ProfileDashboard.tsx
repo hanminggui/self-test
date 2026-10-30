@@ -226,7 +226,7 @@ export const ProfileDashboard: React.FC = () => {
   };
 
   return (
-    <div className="w-full text-stone-900 dark:text-slate-100 flex flex-col selection:bg-amber-200 selection:text-stone-950 dark:selection:bg-indigo-500/30 dark:selection:text-indigo-200">
+    <div className="w-full min-h-dvh text-stone-900 dark:text-slate-100 flex flex-col selection:bg-amber-200 selection:text-stone-950 dark:selection:bg-indigo-500/30 dark:selection:text-indigo-200 pb-[env(safe-area-inset-bottom)]">
       {/* Main Content Area (No Top Fixed Bar, No History/Settings Tab Bar) */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 lg:px-8 py-8 space-y-8">
         {/* State 1: Guest / Unauthenticated */}

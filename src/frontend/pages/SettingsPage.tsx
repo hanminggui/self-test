@@ -11,7 +11,7 @@ export const SettingsPage: React.FC = () => {
 
   if (!userLoading && !user) {
     return (
-      <div className="min-h-screen bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex items-center justify-center p-6">
+      <div className="min-h-screen min-h-dvh bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex items-center justify-center p-6 pb-[env(safe-area-inset-bottom)]">
         <div className="w-full max-w-lg p-8 sm:p-10 rounded-[28px] bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] text-center space-y-5 animate-in fade-in duration-300">
           <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center mx-auto text-stone-900 dark:text-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]">
             <Settings className="w-8 h-8" />
@@ -39,7 +39,7 @@ export const SettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-8">
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-8 min-h-dvh pb-[env(safe-area-inset-bottom)]">
       {userLoading ? (
         <div className="p-12 text-center flex flex-col items-center justify-center space-y-3">
           <Compass className="w-8 h-8 text-stone-950 dark:text-[#CCFF00] animate-spin" />

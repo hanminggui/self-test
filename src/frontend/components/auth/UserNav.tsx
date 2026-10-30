@@ -2,10 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { User as UserIcon, LogOut, ChevronDown, Compass, Shield, Activity, Settings } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import { useLocale } from "../../contexts/LocaleContext";
-import { AuthModal } from "./AuthModal";
 
 export const UserNav: React.FC = () => {
-  const { user, login, logout, openAuthModal, closeAuthModal, isAuthModalOpen, hasAnyProvider } = useUser();
+  const { user, logout, openAuthModal, hasAnyProvider } = useUser();
   const { t } = useLocale();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -142,15 +141,6 @@ export const UserNav: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={closeAuthModal}
-        onSelectProvider={(p) => {
-          login(p);
-        }}
-      />
     </>
   );
 };

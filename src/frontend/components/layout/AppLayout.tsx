@@ -16,6 +16,7 @@ import {
   X,
   FileText,
   Layers,
+  LogIn,
 } from "lucide-react";
 import { useUser } from "../../contexts/UserContext";
 import { useLocale } from "../../contexts/LocaleContext";
@@ -23,6 +24,7 @@ import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 import type { SubjectPoint } from "../../types/admin";
 import { GameQuickControls } from "../game/GameQuickControls";
 import { ThemeToggle } from "../ThemeToggle";
+import { LanguageToggle } from "../LanguageToggle";
 
 interface AppLayoutProps {
   currentPath: string;
@@ -37,7 +39,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   onNavigate,
   children,
 }) => {
-  const { user, logout, sessionSyncVersion } = useUser();
+  const { user, logout, openAuthModal, sessionSyncVersion } = useUser();
   const { locale, setLocale, t } = useLocale();
   const isEn = String(locale).toLowerCase().startsWith("en");
 
@@ -53,6 +55,20 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Touch gesture to swipe-left to close mobile sidebar
+  const touchStartX = useRef<number | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    if (deltaX < -50) {
+      setMobileMenuOpen(false);
+    }
+    touchStartX.current = null;
+  };
 
   const [recentSessions, setRecentSessions] = useState<SubjectPoint[]>([]);
   const [unlockedCount, setUnlockedCount] = useState<number>(0);
@@ -161,7 +177,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const badge = user?.metadata?.badge;
 
   return (
-    <div className="h-screen w-full overflow-hidden bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] font-sans">
+    <div className="h-screen h-dvh min-h-dvh w-full overflow-hidden bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] font-sans">
       {/* Mobile Drawer Backdrop */}
       {mobileMenuOpen && (
         <div
@@ -173,8 +189,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       {/* Left Collapsible Sidebar */}
       <aside
         aria-label={isEn ? "Primary Sidebar Navigation" : "应用主导航侧边栏"}
-        className={`fixed md:static inset-y-0 left-0 z-50 flex flex-col justify-between bg-[#FFFBEB] dark:bg-[#08080C] border-r-2 border-stone-900 dark:border-white/20 transition-[width,transform] duration-200 ease-out select-none ${
-          mobileMenuOpen ? "translate-x-0 w-72" : "-translate-x-full md:translate-x-0"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className={`fixed md:static inset-y-0 left-0 z-50 flex flex-col justify-between bg-[#FFFBEB] dark:bg-[#08080C] border-r-2 border-stone-900 dark:border-white/20 transition-[width,transform] duration-200 ease-out select-none pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-0 ${
+          mobileMenuOpen ? "translate-x-0 w-72 shadow-2xl" : "-translate-x-full md:translate-x-0"
         } ${isCollapsed ? "md:w-[68px]" : "md:w-[272px]"}`}
       >
         {/* 1. TOP: Brand Logo & Collapse/Expand Button */}
@@ -574,17 +592,41 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               )}
             </>
           )}
+
+          {!user && (
+            <div className="space-y-2">
+              {(!isCollapsed || mobileMenuOpen) && (
+                <div className="space-y-2 p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      openAuthModal();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] text-xs font-black border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-pointer"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>{t.auth?.signIn || (isEn ? "Sign In" : "探索者登录")}</span>
+                  </button>
+                  <div className="flex items-center justify-between px-1">
+                    <ThemeToggle />
+                    <LanguageToggle />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-w-0 h-screen overflow-y-auto relative bg-[#FFFDF8] dark:bg-[#08080C]">
-        {/* Mobile-only floating sidebar drawer button */}
+      <div className="flex-1 min-w-0 h-screen h-dvh min-h-dvh overflow-y-auto relative bg-[#FFFDF8] dark:bg-[#08080C] pb-[env(safe-area-inset-bottom)]">
+        {/* Mobile-only floating sidebar drawer button with safe-area padding */}
         <button
           type="button"
           onClick={() => setMobileMenuOpen(true)}
           aria-label="Open navigation menu"
-          className="md:hidden fixed top-3 left-3 z-30 w-9 h-9 rounded-xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-pointer"
+          className="md:hidden fixed top-[max(0.75rem,env(safe-area-inset-top))] left-[max(0.75rem,env(safe-area-inset-left))] z-30 w-9 h-9 rounded-xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-pointer"
         >
           <Menu className="w-4 h-4" />
         </button>

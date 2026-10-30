@@ -14,13 +14,14 @@ import { UserProvider, useUser } from "./contexts/UserContext";
 import { GameEffectsProvider } from "./contexts/GameEffectsContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { resolveRouteView } from "./utils/sessionRoute";
+import { AuthModal } from "./components/auth/AuthModal";
 import "./index.css";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Root element not found");
 
 const AppRouter: React.FC = () => {
-  const { user, loading } = useUser();
+  const { user, loading, isAuthModalOpen, closeAuthModal, login } = useUser();
 
   const [locationState, setLocationState] = useState(() => ({
     pathname: typeof window !== "undefined" ? window.location.pathname : "/",
@@ -74,59 +75,46 @@ const AppRouter: React.FC = () => {
   }, [resolved.redirectTo, syncLocation]);
 
   // 1. Standalone Public & Admin Surfaces (Always outside AppLayout)
+  let content: React.ReactNode;
   if (resolved.view === "admin") {
-    return <Admin />;
-  }
-  if (resolved.view === "privacy") {
-    return <LegalPage type="privacy" />;
-  }
-  if (resolved.view === "terms") {
-    return <LegalPage type="terms" />;
-  }
-  if (resolved.view === "share") {
-    return <SharePage />;
-  }
-
-  // Avoid flashing Guest Landing Page while checking initial auth cookie on "/"
-  if (loading && locationState.pathname === "/") {
-    return (
+    content = <Admin />;
+  } else if (resolved.view === "privacy") {
+    content = <LegalPage type="privacy" />;
+  } else if (resolved.view === "terms") {
+    content = <LegalPage type="terms" />;
+  } else if (resolved.view === "share") {
+    content = <SharePage />;
+  } else if (loading && locationState.pathname === "/") {
+    // Avoid flashing Guest Landing Page while checking initial auth cookie on "/"
+    content = (
       <div className="min-h-screen bg-[#06080f] text-slate-200 flex items-center justify-center">
         <div className="w-8 h-8 rounded-xl border-2 border-amber-400/40 border-t-amber-400 animate-spin" />
       </div>
     );
-  }
-
-  // 2. Guest Official Landing Page (Unauthenticated "/")
-  if (resolved.view === "landing") {
-    return <GuestLandingPage onNavigate={navigate} />;
-  }
-
-  // 3. Render target page view
-  const renderViewContent = () => {
-    switch (resolved.view) {
-      case "history":
-        return <ProfileDashboard />;
-      case "settings":
-        return <SettingsPage />;
-      case "assets":
-        return <AssetsPage onNavigate={navigate} />;
-      case "test":
-      case "report":
-      default:
-        return <App inAppLayout={resolved.inAppLayout} onNavigate={navigate} />;
-    }
-  };
-
-  // 4. Unified App Layout Criterion: (isAuthenticated && route supports AppLayout)
-  if (resolved.inAppLayout) {
-    return (
+  } else if (resolved.view === "landing") {
+    // 2. Guest Official Landing Page (Unauthenticated "/")
+    content = <GuestLandingPage onNavigate={navigate} />;
+  } else if (resolved.inAppLayout) {
+    // 4. Unified App Layout Criterion: (isAuthenticated && route supports AppLayout)
+    content = (
       <AppLayout currentPath={locationState.pathname} onNavigate={navigate}>
         {renderViewContent()}
       </AppLayout>
     );
+  } else {
+    content = renderViewContent();
   }
 
-  return renderViewContent();
+  return (
+    <>
+      {content}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={closeAuthModal}
+        onSelectProvider={login}
+      />
+    </>
+  );
 };
 
 const Root: React.FC = () => {

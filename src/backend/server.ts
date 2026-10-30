@@ -993,10 +993,10 @@ async function getIndexHtmlTemplate(c: any): Promise<string> {
 <html lang="zh-CN" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Self-Test · 思维星图</title>
   </head>
-  <body class="bg-[#0b0d13] text-[#e2e8f0] font-sans antialiased min-h-screen">
+  <body class="bg-[#0b0d13] text-[#e2e8f0] font-sans antialiased min-h-screen min-h-dvh">
     <div id="root"></div>
   </body>
 </html>`;
