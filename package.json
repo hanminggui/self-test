@@ -12,6 +12,7 @@
     "start": "bun src/backend/server.ts",
     "test": "NODE_ENV=test bun test",
     "test:mobile": "bun run scripts/verify-mobile-overflow.ts",
+    "test:mobile-landing": "bun run scripts/verify-mobile-guest-landing.ts",
     "provider:config": "bun run src/cli/wizard.ts",
     "eval": "bun run src/cli/eval.ts",
     "eval:debug": "bun run src/cli/eval.ts --debug",

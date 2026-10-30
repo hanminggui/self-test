@@ -42,6 +42,27 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
   const activeStep =
     GUEST_MOCK_TRAJECTORY_STEPS[activeRunIdx] || GUEST_MOCK_TRAJECTORY_STEPS[4];
 
+  // 移动端手势轻扫切换历程节点
+  const touchStartXRef = React.useRef(0);
+  const touchStartYRef = React.useRef(0);
+
+  const handleTrajectoryTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleTrajectoryTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartXRef.current;
+    const dy = e.changedTouches[0].clientY - touchStartYRef.current;
+    if (Math.abs(dx) > 32 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) {
+        setActiveRunIdx((prev) => Math.min(GUEST_MOCK_TRAJECTORY_STEPS.length - 1, prev + 1));
+      } else {
+        setActiveRunIdx((prev) => Math.max(0, prev - 1));
+      }
+    }
+  };
+
   // SVG 坐标系转换: 宽 520, 高 280
   const padL = 48;
   const padR = 28;
@@ -110,8 +131,12 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
               </span>
             </div>
 
-            {/* SVG 轨迹互动图 */}
-            <div className="relative w-full aspect-[520/280] select-none bg-[#FAF7F0] dark:bg-[#08080C] rounded-2xl border-2 border-stone-900/15 dark:border-white/20 p-2 overflow-hidden">
+            {/* SVG 轨迹互动图 (支持水平轻扫手势与安全触控) */}
+            <div
+              onTouchStart={handleTrajectoryTouchStart}
+              onTouchEnd={handleTrajectoryTouchEnd}
+              className="relative w-full aspect-[520/280] select-none bg-[#FAF7F0] dark:bg-[#08080C] rounded-2xl border-2 border-stone-900/15 dark:border-white/20 p-2 overflow-hidden touch-pan-y"
+            >
               <svg viewBox="0 0 520 280" className="w-full h-full overflow-visible">
                 <defs>
                   <linearGradient id="traj-line-grad" x1="0%" y1="100%" x2="100%" y2="0%">
@@ -238,7 +263,8 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
                       onClick={() => setActiveRunIdx(idx)}
                       onMouseEnter={() => setActiveRunIdx(idx)}
                     >
-                      <circle cx={cx} cy={cy} r={18} fill="transparent" />
+                      {/* 增大触控命中热区 (>=44x44px) */}
+                      <circle cx={cx} cy={cy} r={22} fill="transparent" />
 
                       {isActive && (
                         <circle
@@ -321,14 +347,15 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
                 </p>
               </div>
 
-              {/* 5 个场次快捷切换按钮 */}
-              <div className="flex items-center gap-1.5 shrink-0">
+              {/* 5 个场次快捷切换按钮 (>=44x44px touch target) */}
+              <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto no-scrollbar py-0.5">
                 {GUEST_MOCK_TRAJECTORY_STEPS.map((step, idx) => (
                   <button
                     key={step.runIndex}
                     type="button"
                     onClick={() => setActiveRunIdx(idx)}
-                    className={`w-7 h-7 rounded-lg text-xs font-black transition-all cursor-pointer border ${
+                    aria-label={`Step #${step.runIndex}`}
+                    className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl text-xs font-black transition-all cursor-pointer border flex items-center justify-center shrink-0 ${
                       idx === activeRunIdx
                         ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-[#CCFF00] shadow-[0_1.5px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                         : "bg-white dark:bg-[#0E0E16] text-stone-700 dark:text-slate-300 border-stone-300 dark:border-white/20 hover:text-stone-950 dark:hover:text-white"
@@ -344,7 +371,7 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
           {/* 右栏 (5 Cols): 八大化身收集图鉴 + 专属泥金分享名片实景预览 */}
           <div className="lg:col-span-5 flex flex-col justify-between gap-6">
             {/* 上半卡：八大化身收集进度图鉴 */}
-            <div className="rounded-3xl p-6 bg-white dark:bg-[#0E0E16] border-[2.5px] dark:border-2 border-stone-900 dark:border-[#38BDF8] shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#38BDF8] space-y-4">
+            <div className="rounded-3xl p-4 sm:p-6 bg-white dark:bg-[#0E0E16] border-[2.5px] dark:border-2 border-stone-900 dark:border-[#38BDF8] shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#38BDF8] space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400 dark:text-[#38BDF8] dark:fill-[#38BDF8]" />
@@ -357,20 +384,20 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
                 </span>
               </div>
 
-              <div className="grid grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-4 gap-2 sm:gap-2.5">
                 {SHOWCASE_CODES.map((item) => {
                   const mythic = getMythicArchetype(item.code);
                   const arcane = getArcaneArchetype(item.code);
                   return (
                     <div
                       key={item.code}
-                      className={`p-2.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                      className={`p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 ${
                         item.unlocked
                           ? "bg-[#FFFBEB] dark:bg-[#12121C] border-stone-900 dark:border-[#38BDF8] shadow-sm dark:shadow-[2px_2px_0px_#38BDF8]"
                           : "bg-stone-50 dark:bg-white/5 border-stone-200 dark:border-white/10 opacity-70"
                       }`}
                     >
-                      <div className="text-lg">
+                      <div className="text-base sm:text-lg">
                         {item.unlocked ? (
                           <span style={{ color: mythic.colorScheme.secondaryGold }}>
                             {isEn ? arcane.crestSymbol : mythic.baguaSymbol}
@@ -379,12 +406,12 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
                           <Lock className="w-4 h-4 text-stone-400 dark:text-slate-400 mx-auto" />
                         )}
                       </div>
-                      <div className="text-[11px] font-black text-stone-900 dark:text-white truncate w-full">
+                      <div className="text-[10px] sm:text-[11px] font-black text-stone-900 dark:text-white truncate w-full">
                         {isEn
                           ? arcane.roleTitle.replace("The ", "")
                           : mythic.roleTitle}
                       </div>
-                      <div className="text-[9px] text-amber-700 dark:text-[#38BDF8] font-bold flex items-center gap-0.5">
+                      <div className="text-[9px] text-amber-700 dark:text-[#38BDF8] font-bold flex items-center justify-center gap-0.5">
                         {item.unlocked ? (
                           <>
                             <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-[#38BDF8]" />
@@ -403,7 +430,7 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
             </div>
 
             {/* 下半卡：多巴胺解压分享名片与一键登录 CTA */}
-            <div className="flex-1 rounded-[28px] p-6 bg-white dark:bg-[#0E0E16] border-[2.5px] dark:border-2 border-stone-900 dark:border-white/20 shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col justify-between space-y-5 relative overflow-hidden">
+            <div className="flex-1 rounded-[28px] p-5 sm:p-6 bg-white dark:bg-[#0E0E16] border-[2.5px] dark:border-2 border-stone-900 dark:border-white/20 shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col justify-between space-y-4 sm:space-y-5 relative overflow-hidden">
               <div className="space-y-2 relative z-10">
                 <div className="flex items-center gap-2 text-xs font-black text-stone-900 dark:text-[#CCFF00]">
                   <Share2 className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" />
@@ -413,7 +440,7 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
                       : "生成专属多巴胺解压分享名片"}
                   </span>
                 </div>
-                <h4 className="text-lg font-black text-stone-900 dark:text-white">
+                <h4 className="text-base sm:text-lg font-black text-stone-900 dark:text-white">
                   {isEn
                     ? "Auto-Claim Guest Record & Unlock Unlimited Tests"
                     : "本机游客记录自动认领，解锁无限次挑战"}
@@ -425,11 +452,11 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 pt-1 relative z-10">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1 relative z-10">
                 <button
                   type="button"
                   onClick={onSignIn}
-                  className="flex-1 py-3.5 px-5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="w-full sm:flex-1 min-h-[48px] py-3.5 px-5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>
@@ -440,7 +467,7 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
                 <button
                   type="button"
                   onClick={onStartTest}
-                  className="py-3.5 px-4 rounded-2xl bg-white hover:bg-amber-50 dark:bg-[#12121C] dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white font-bold text-xs sm:text-sm shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  className="w-full sm:w-auto min-h-[48px] py-3.5 px-5 rounded-2xl bg-white hover:bg-amber-50 dark:bg-[#12121C] dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white font-bold text-xs sm:text-sm shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                 >
                   <Compass className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" />
                   <span>{isEn ? "Try Now" : "先测一次"}</span>

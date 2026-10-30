@@ -378,7 +378,7 @@ export const GuestGalaxyHero: React.FC<GuestGalaxyHeroProps> = ({
       ref={containerRef}
       onPointerDown={handlePointerDown}
       onPointerLeave={handlePointerLeaveContainer}
-      className={`w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing select-none overflow-hidden ${className}`}
+      className={`w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing select-none overflow-hidden touch-pan-y ${className}`}
     >
       <svg
         viewBox="0 0 1000 620"
@@ -582,9 +582,9 @@ export const GuestGalaxyHero: React.FC<GuestGalaxyHeroProps> = ({
               >
                 <rect
                   x={-46 * pOctant.scale}
-                  y={-14 * pOctant.scale}
+                  y={-Math.max(22, 14 * pOctant.scale)}
                   width={92 * pOctant.scale}
-                  height={28 * pOctant.scale}
+                  height={Math.max(44, 28 * pOctant.scale)}
                   fill="transparent"
                   pointerEvents="all"
                 />
@@ -659,8 +659,8 @@ export const GuestGalaxyHero: React.FC<GuestGalaxyHeroProps> = ({
                   setAnchorPos(null);
                 }}
               >
-                {/* 增大命中触控区域 */}
-                <circle cx={proj.x} cy={proj.y} r={18 * proj.scale} fill="transparent" />
+                {/* 增大命中触控区域 (>=44x44px) */}
+                <circle cx={proj.x} cy={proj.y} r={Math.max(22, 18 * proj.scale)} fill="transparent" />
 
                 {/* 悬停高亮光环 */}
                 {isHovered && (

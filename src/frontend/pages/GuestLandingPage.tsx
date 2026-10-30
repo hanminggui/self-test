@@ -81,7 +81,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
               e.preventDefault();
               onNavigate("/");
             }}
-            className="flex items-center gap-3 group cursor-pointer"
+            className="flex items-center gap-3 group cursor-pointer min-h-[44px]"
           >
             <div className="w-10 h-10 rounded-2xl bg-[#FBBF24] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] group-hover:-translate-y-0.5 active:translate-y-0.5 transition-all">
               <Compass className="w-5 h-5 text-stone-950 dark:text-[#CCFF00]" />
@@ -138,20 +138,20 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
               type="button"
               onClick={openAuthModal}
               data-testid="header-signin-btn"
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] text-xs sm:text-sm font-black border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2.5px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 min-h-[44px] rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] text-xs sm:text-sm font-black border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2.5px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
             >
-              <LogIn className="w-3.5 h-3.5" />
+              <LogIn className="w-4 h-4" />
               <span>{t.auth?.signIn || (isEn ? "Sign In" : "探索者登录")}</span>
             </button>
 
-            {/* Mobile Hamburger Drawer Menu Button */}
+            {/* Mobile Hamburger Drawer Menu Button (>=44x44px touch target) */}
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
               aria-label={isEn ? "Open navigation drawer" : "展开导航菜单"}
-              className="sm:hidden w-9 h-9 rounded-xl bg-white dark:bg-[#0E0E16] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer shrink-0"
+              className="sm:hidden w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-white dark:bg-[#0E0E16] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer shrink-0"
             >
-              <Menu className="w-4 h-4" />
+              <Menu className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -192,21 +192,23 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
         {/* ================================================================= */}
         {/* 第 1 屏：HERO 首屏 (星盘作为全景动态背景全屏铺满，双主题自适应实体舱体) */}
         {/* ================================================================= */}
-        <section className="relative min-h-[calc(100vh-65px)] flex items-center overflow-hidden bg-[#FFFDF8] dark:bg-[#08080C]">
-          {/* 1. 星盘全景动态背景：全屏铺满视口，消除任何区域截断与底色不一致 */}
-          <div className="absolute inset-0 w-full h-full pointer-events-auto z-0 overflow-hidden flex items-center justify-center opacity-85 dark:opacity-100">
+        <section className="relative min-h-[calc(100vh-65px)] min-h-[calc(100dvh-60px)] flex items-center overflow-hidden bg-[#FFFDF8] dark:bg-[#08080C]">
+          {/* 1. 星盘全景动态背景：移动端彻底隐藏避免消耗大量 GPU/CPU 性能，仅在桌面端 (>=md) 显示 */}
+          <div className="hidden md:flex absolute inset-0 w-full h-full pointer-events-auto z-0 overflow-hidden items-center justify-center opacity-85 dark:opacity-100">
             <div className="w-full h-full">
               <GuestGalaxyHero onSelectArchetype={handleSelectArchetypeFromHero} />
             </div>
           </div>
+          {/* 移动端轻量级极简光晕背景，0 性能开销 */}
+          <div className="md:hidden absolute inset-0 w-full h-full pointer-events-none z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-200/30 via-transparent to-transparent dark:from-[#CCFF00]/10" />
 
-          <div className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-8 py-12 lg:py-16 pointer-events-none">
+          <div className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-8 py-4 sm:py-8 lg:py-16 pointer-events-none">
             {/* Unclaimed Guest Session Alert Banner */}
             {!canStartGuestTest && unclaimedRecord && (
-              <div className="pointer-events-auto max-w-2xl mb-8 p-4 sm:p-5 rounded-2xl bg-[#FEF3C7] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-start sm:items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-white dark:bg-black/60 border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center shrink-0">
-                    <Bookmark className="w-5 h-5 text-stone-900 dark:text-[#CCFF00]" />
+              <div className="pointer-events-auto max-w-2xl mb-4 sm:mb-8 p-3.5 sm:p-5 rounded-2xl bg-[#FEF3C7] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-black/60 border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center shrink-0">
+                    <Bookmark className="w-4 h-4 sm:w-5 sm:h-5 text-stone-900 dark:text-[#CCFF00]" />
                   </div>
                   <div className="space-y-0.5">
                     <div className="text-xs sm:text-sm font-bold text-stone-900 dark:text-[#CCFF00] flex items-center gap-2">
@@ -216,7 +218,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                           : "检测到本机有一份待认领的专属心智画像"}
                       </span>
                     </div>
-                    <p className="text-xs text-stone-700 dark:text-slate-300 leading-relaxed font-medium">
+                    <p className="text-[11px] sm:text-xs text-stone-700 dark:text-slate-300 leading-relaxed font-medium">
                       {isEn
                         ? "Sign in to save this archetype to your codex and unlock unlimited tests!"
                         : "立即登录即可将此画像自动归入您的个人资产图鉴！"}
@@ -224,18 +226,18 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+                <div className="flex items-center gap-2 self-stretch sm:self-center shrink-0">
                   <button
                     type="button"
                     onClick={() => onNavigate(`/report/${unclaimedRecord.sessionId}`)}
-                    className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-100 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-900 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all cursor-pointer"
+                    className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-100 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-900 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all cursor-pointer flex items-center justify-center"
                   >
                     {isEn ? "View Result" : "查看报告"}
                   </button>
                   <button
                     type="button"
                     onClick={openAuthModal}
-                    className="px-4 py-2 rounded-xl bg-[#FBBF24] dark:bg-[#CCFF00] hover:brightness-110 text-stone-950 dark:text-[#08080C] text-xs font-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] border-2 border-stone-900 dark:border-[#CCFF00] transition-all cursor-pointer flex items-center gap-1"
+                    className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2.5 rounded-xl bg-[#FBBF24] dark:bg-[#CCFF00] hover:brightness-110 text-stone-950 dark:text-[#08080C] text-xs font-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] border-2 border-stone-900 dark:border-[#CCFF00] transition-all cursor-pointer flex items-center justify-center gap-1"
                   >
                     <span>{isEn ? "Sign In" : "登录认领"}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -246,11 +248,11 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
 
             {/* 左侧文字区域：双主题自适应实体大卡片 */}
             <div
-              className="relative pointer-events-auto max-w-xl lg:max-w-2xl rounded-[32px] border-[2.5px] dark:border-2 border-stone-900 dark:border-white/20 bg-white dark:bg-[#0E0E16] p-7 sm:p-10 shadow-[0_8px_0_#1c1917] dark:shadow-[6px_6px_0px_#CCFF00] space-y-6 text-left z-10 transition-all duration-300"
+              className="relative pointer-events-auto max-w-xl lg:max-w-2xl rounded-2xl sm:rounded-[32px] border-[2.5px] dark:border-2 border-stone-900 dark:border-white/20 bg-white dark:bg-[#0E0E16] p-4 sm:p-7 lg:p-10 shadow-[0_6px_0_#1c1917] sm:shadow-[0_8px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] sm:dark:shadow-[6px_6px_0px_#CCFF00] space-y-3 sm:space-y-6 text-left z-10 transition-all duration-300"
             >
               {/* 顶部微标：糖果胶囊 */}
-              <div className="relative z-10 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none text-xs font-black text-stone-900 dark:text-[#08080C]">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-400 dark:text-[#08080C] dark:fill-[#08080C]" />
+              <div className="relative z-10 inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none text-[11px] sm:text-xs font-black text-stone-900 dark:text-[#08080C]">
+                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-600 fill-amber-400 dark:text-[#08080C] dark:fill-[#08080C]" />
                 <span>
                   {isEn
                     ? "No Subjective Questionnaires · 5-Min Intuitive Mind Game"
@@ -259,18 +261,18 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
               </div>
 
               {/* 主标题 */}
-              <h1 className="relative z-10 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.2] text-stone-900 dark:text-white uppercase">
+              <h1 className="relative z-10 text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.2] text-stone-900 dark:text-white uppercase">
                 {isEn ? (
                   <>
                     How Sharp Are You, and{" "}
-                    <span className="inline-block mt-1 px-3 py-0.5 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] text-stone-900 dark:text-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]">
+                    <span className="inline-block mt-1 px-2.5 sm:px-3 py-0.5 rounded-xl sm:rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] text-stone-900 dark:text-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]">
                       How Well Do You Know Yourself?
                     </span>
                   </>
                 ) : (
                   <>
                     你有多聪明，
-                    <span className="inline-block mt-2 px-3.5 py-1 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] text-stone-900 dark:text-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00]">
+                    <span className="inline-block mt-1 sm:mt-2 px-2.5 sm:px-3.5 py-0.5 sm:py-1 rounded-xl sm:rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] text-stone-900 dark:text-[#CCFF00] shadow-[0_2px_0_#1c1917] sm:shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] sm:dark:shadow-[4px_4px_0px_#CCFF00]">
                       又有多了解自己？
                     </span>
                   </>
@@ -278,19 +280,20 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
               </h1>
 
               {/* 副文本描述 */}
-              <p className="relative z-10 text-sm sm:text-base text-stone-700 dark:text-slate-300 leading-relaxed font-medium">
+              <p className="relative z-10 text-xs sm:text-sm lg:text-base text-stone-700 dark:text-slate-300 leading-relaxed font-medium line-clamp-3 sm:line-clamp-none">
                 {isEn
                   ? "True mastery isn't just solving hard puzzles—it's knowing exactly when you're right, when you're guessing, and when to ask for a clue. Through a dynamic visual game, we map your mind across 4 intuitive dimensions and awaken your innate Mythic or Arcane Persona."
                   : "真正的高手不仅能看穿复杂迷局，更清楚自己何时胜券在握、何时身处盲区。在这里，没有容易伪装的性格套路题——通过一场难度随你实力呼吸的直觉闯关，看清你的「解题硬实力」与「清醒自知力」，唤醒潜藏在你思维深处的东方神兽与奥术化身。"}
               </p>
 
-              {/* 行动按钮区 */}
-              <div className="relative z-10 flex flex-col sm:flex-row items-start gap-4 pt-1">
+              {/* 行动按钮区 (>=44x44px) */}
+              <div className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-start gap-3 sm:gap-4 pt-0.5 sm:pt-1">
                 {canStartGuestTest ? (
                   <button
                     type="button"
                     onClick={() => onNavigate("/test")}
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-sm sm:text-base shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] border-[2.5px] border-stone-900 dark:border-[#CCFF00] flex items-center justify-center gap-2.5 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+                    data-testid="hero-start-test-btn"
+                    className="w-full sm:w-auto min-h-[48px] px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-sm sm:text-base shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] border-[2.5px] border-stone-900 dark:border-[#CCFF00] flex items-center justify-center gap-2.5 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
                   >
                     <Sparkles className="w-5 h-5 text-stone-950" />
                     <span>
@@ -308,7 +311,8 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                         ? onNavigate(`/report/${unclaimedRecord.sessionId}`)
                         : openAuthModal()
                     }
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] text-stone-950 font-black text-sm sm:text-base shadow-[0_4px_0_#1c1917] border-[2.5px] border-stone-900 flex items-center justify-center gap-2.5 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+                    data-testid="hero-unclaimed-btn"
+                    className="w-full sm:w-auto min-h-[48px] px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] text-stone-950 font-black text-sm sm:text-base shadow-[0_4px_0_#1c1917] border-[2.5px] border-stone-900 flex items-center justify-center gap-2.5 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
                   >
                     <Lock className="w-4 h-4 text-stone-950" />
                     <span>
@@ -322,28 +326,28 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
               </div>
 
               {/* 底部三大亮点微标 */}
-              <div className="relative z-10 pt-4 grid grid-cols-3 gap-4 border-t-2 border-stone-900/10 dark:border-white/15 text-left">
+              <div className="relative z-10 pt-3 sm:pt-4 grid grid-cols-3 gap-2 sm:gap-4 border-t-2 border-stone-900/10 dark:border-white/15 text-left">
                 <div>
-                  <div className="text-sm sm:text-base font-black text-stone-950 dark:text-[#CCFF00]">
+                  <div className="text-xs sm:text-base font-black text-stone-950 dark:text-[#CCFF00]">
                     {isEn ? "5 Mins" : "5 分钟沉浸"}
                   </div>
-                  <div className="text-[11px] sm:text-xs text-stone-700 dark:text-slate-300 font-bold mt-0.5">
+                  <div className="text-[10px] sm:text-xs text-stone-700 dark:text-slate-300 font-bold mt-0.5">
                     {isEn ? "Dynamic Puzzles" : "难度随实力呼吸"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm sm:text-base font-black text-stone-950 dark:text-[#CCFF00]">
+                  <div className="text-xs sm:text-base font-black text-stone-950 dark:text-[#CCFF00]">
                     {isEn ? "4 Dimensions" : "四大直觉维度"}
                   </div>
-                  <div className="text-[11px] sm:text-xs text-stone-700 dark:text-slate-300 font-bold mt-0.5">
+                  <div className="text-[10px] sm:text-xs text-stone-700 dark:text-slate-300 font-bold mt-0.5">
                     {isEn ? "Power & Clarity" : "硬实力 · 自知 · 果敢 · 借力"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm sm:text-base font-black text-stone-950 dark:text-[#CCFF00]">
+                  <div className="text-xs sm:text-base font-black text-stone-950 dark:text-[#CCFF00]">
                     {isEn ? "8 Totems" : "八大本命化身"}
                   </div>
-                  <div className="text-[11px] sm:text-xs text-stone-700 dark:text-slate-300 font-bold mt-0.5">
+                  <div className="text-[10px] sm:text-xs text-stone-700 dark:text-slate-300 font-bold mt-0.5">
                     {isEn ? "Collectible Cards" : "神兽图鉴与性格名片"}
                   </div>
                 </div>
@@ -463,7 +467,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                     <button
                       type="button"
                       onClick={() => setDemoWagerMode("BOLD")}
-                      className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border-2 transition-all cursor-pointer ${
+                      className={`min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border-2 transition-all cursor-pointer ${
                         demoWagerMode === "BOLD"
                           ? "bg-[#FFE4E6] dark:bg-[#FF3366] border-stone-900 dark:border-[#FF3366] text-stone-950 dark:text-white shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]"
                           : "bg-white dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:border-stone-900 hover:text-stone-950 dark:hover:text-white"
@@ -475,7 +479,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                     <button
                       type="button"
                       onClick={() => setDemoWagerMode("SAFE")}
-                      className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border-2 transition-all cursor-pointer ${
+                      className={`min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border-2 transition-all cursor-pointer ${
                         demoWagerMode === "SAFE"
                           ? "bg-[#E0F2FE] dark:bg-[#38BDF8] border-stone-900 dark:border-[#38BDF8] text-stone-950 dark:text-[#08080C] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]"
                           : "bg-white dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:border-stone-900 hover:text-stone-950 dark:hover:text-white"
@@ -531,7 +535,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                   <button
                     type="button"
                     onClick={() => setDemoHintRevealed((prev) => !prev)}
-                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
+                    className={`w-full min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
                       demoHintRevealed
                         ? "bg-[#EDE9FE] dark:bg-purple-500/25 border-stone-900 dark:border-purple-400 text-purple-950 dark:text-purple-200 shadow-[0_3px_0_#1c1917] active:translate-y-0.5 active:shadow-none"
                         : "bg-white dark:bg-white/5 hover:bg-amber-50 dark:hover:bg-white/10 border-stone-300 dark:border-white/10 text-stone-800 dark:text-slate-200 hover:border-stone-900"
@@ -588,14 +592,14 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
             <span>Self-Test · {isEn ? "Mind Star Map" : "思维星图"}</span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-5 text-stone-600 dark:text-slate-400 font-bold">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5 text-stone-600 dark:text-slate-400 font-bold">
             <a
               href="/privacy"
               onClick={(e) => {
                 e.preventDefault();
                 onNavigate("/privacy");
               }}
-              className="hover:text-amber-800 dark:hover:text-[#CCFF00] transition-colors"
+              className="min-h-[44px] min-w-[44px] px-2 inline-flex items-center justify-center hover:text-amber-800 dark:hover:text-[#CCFF00] transition-colors"
             >
               {t.legal?.privacyPolicy || (isEn ? "Privacy Policy" : "隐私政策")}
             </a>
@@ -605,14 +609,14 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                 e.preventDefault();
                 onNavigate("/terms");
               }}
-              className="hover:text-amber-800 dark:hover:text-[#CCFF00] transition-colors"
+              className="min-h-[44px] min-w-[44px] px-2 inline-flex items-center justify-center hover:text-amber-800 dark:hover:text-[#CCFF00] transition-colors"
             >
               {t.legal?.termsOfService || (isEn ? "Terms of Service" : "服务条款")}
             </a>
             <button
               type="button"
               onClick={openAuthModal}
-              className="hover:text-amber-800 dark:hover:text-[#CCFF00] transition-colors cursor-pointer"
+              className="min-h-[44px] min-w-[44px] px-2.5 inline-flex items-center justify-center hover:text-amber-800 dark:hover:text-[#CCFF00] transition-colors cursor-pointer"
             >
               {t.auth?.signIn || (isEn ? "Explorer Sign In" : "探索者登录")}
             </button>
