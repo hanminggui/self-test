@@ -68,12 +68,8 @@ export const PosterModal: React.FC<PosterModalProps> = ({
       <div className="relative w-full max-w-xl my-auto py-4">
         {/* 顶部弹窗控制栏 */}
         <div className="flex items-center justify-between pb-3 px-2">
-          <div
-            className={`flex items-center gap-2 font-bold text-sm ${
-              isEn ? "text-purple-300 font-sans" : "text-amber-300 font-serif"
-            }`}
-          >
-            <Sparkles className={`w-4 h-4 ${isEn ? "text-purple-400" : "text-amber-400"}`} />
+          <div className="flex items-center gap-2 font-black text-sm text-white">
+            <Sparkles className="w-4 h-4 text-[#FBBF24] fill-[#FBBF24]" />
             <span>
               {isEn
                 ? "Arcane Order · Cognitive Archetype Seal"
@@ -84,10 +80,10 @@ export const PosterModal: React.FC<PosterModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center border border-white/10 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-white dark:bg-[#0E0E16] hover:bg-amber-100 dark:hover:bg-white/10 text-stone-900 dark:text-white flex items-center justify-center border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
             aria-label={isEn ? "Close" : "关闭"}
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 text-stone-900 dark:text-white stroke-[2.5]" />
           </button>
         </div>
 

@@ -17,8 +17,8 @@ export const PortalTransition: React.FC<PortalTransitionProps> = ({
     size === "sm"
       ? "w-16 h-16"
       : size === "lg"
-      ? "w-48 h-48 sm:w-60 sm:h-60"
-      : "w-32 h-32 sm:w-40 sm:h-40";
+      ? "w-44 h-44 sm:w-52 sm:h-52"
+      : "w-28 h-28 sm:w-36 sm:h-36";
 
   const spinClass = isReducedMotion
     ? ""
@@ -26,60 +26,54 @@ export const PortalTransition: React.FC<PortalTransitionProps> = ({
   const reverseSpinClass = isReducedMotion
     ? ""
     : "animate-spin [animation-duration:12s] [animation-direction:reverse]";
-  const pulseClass = isReducedMotion ? "" : "animate-pulse";
 
   return (
     <div
       className={`relative flex items-center justify-center select-none ${dimensions} ${className}`}
     >
-      {/* Outer Glow Halo (suppressed or toned down in eco mode) */}
+      {/* Outer Halo */}
       {!isEcoMode && (
         <div
-          className={`absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500/20 via-indigo-600/25 to-cyan-500/20 blur-xl ${pulseClass}`}
+          className="absolute inset-0 rounded-full bg-[#FBBF24]/20 dark:bg-[#CCFF00]/15 blur-xl"
         />
       )}
 
-      {/* Outer Portal Ring: Celestial Runic Ring */}
+      {/* Outer Portal Ring: Playful dashed Dopamine Ring (Light) / Cyber Acid Ring (Dark) */}
       <div
-        className={`portal-ring absolute inset-0 rounded-full border-2 border-dashed border-amber-400/35 ${spinClass}`}
-        style={{
-          boxShadow: isEcoMode
-            ? "none"
-            : "0 0 25px rgba(245, 158, 11, 0.25), inset 0 0 20px rgba(99, 102, 241, 0.2)",
-        }}
+        className={`portal-ring absolute inset-0 rounded-full border-[2.5px] border-dashed border-stone-900 dark:border-[#CCFF00]/60 ${spinClass}`}
       >
-        {/* Runic Cardinal Markers */}
-        <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-amber-400 shadow-sm" />
-        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-indigo-400 shadow-sm" />
-        <span className="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 rounded-full bg-cyan-400 shadow-sm" />
-        <span className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 rounded-full bg-purple-400 shadow-sm" />
+        {/* Cardinal Markers */}
+        <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-[#FB7185] dark:bg-[#FF3366] border-2 border-stone-900 dark:border-black shadow-sm" />
+        <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-[#10B981] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black shadow-sm" />
+        <span className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 rounded-full bg-[#38BDF8] dark:bg-[#38BDF8] border-2 border-stone-900 dark:border-black shadow-sm" />
+        <span className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 rounded-full bg-[#FBBF24] dark:bg-[#FFFFFF] border-2 border-stone-900 dark:border-black shadow-sm" />
       </div>
 
       {/* Middle Concentric Orbit */}
       <div
-        className={`absolute inset-3 sm:inset-4 rounded-full border border-indigo-400/30 ${reverseSpinClass}`}
+        className={`absolute inset-3 sm:inset-4 rounded-full border-2 border-stone-900/40 dark:border-white/20 ${reverseSpinClass}`}
       >
-        <span className="absolute top-1/4 right-0 w-1.5 h-1.5 rounded-full bg-amber-300" />
-        <span className="absolute bottom-1/4 left-0 w-1.5 h-1.5 rounded-full bg-cyan-300" />
+        <span className="absolute top-1/4 right-0 w-2.5 h-2.5 rounded-full bg-[#FBBF24] dark:bg-[#CCFF00] border border-stone-900 dark:border-black" />
+        <span className="absolute bottom-1/4 left-0 w-2.5 h-2.5 rounded-full bg-[#38BDF8] dark:bg-[#38BDF8] border border-stone-900 dark:border-black" />
       </div>
 
       {/* Portal Singularity Core */}
       <div
-        className={`portal-core relative z-10 rounded-full bg-gradient-to-tr from-indigo-950 via-slate-900 to-amber-950 border border-amber-400/60 flex items-center justify-center shadow-xl shadow-indigo-950/60 ${
+        className={`portal-core relative z-10 rounded-full bg-[#FFFBEB] dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-[#CCFF00] flex items-center justify-center shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] ${
           size === "sm"
             ? "w-8 h-8"
             : size === "lg"
-            ? "w-24 h-24 sm:w-28 sm:h-28"
-            : "w-16 h-16 sm:w-20 sm:h-20"
+            ? "w-20 h-20 sm:w-24 sm:h-24"
+            : "w-14 h-14 sm:w-16 sm:h-16"
         }`}
       >
         <Compass
-          className={`text-amber-300 ${
-            size === "sm" ? "w-4 h-4" : size === "lg" ? "w-12 h-12" : "w-8 h-8"
-          } ${isReducedMotion ? "" : "animate-pulse"}`}
+          className={`text-stone-900 dark:text-[#CCFF00] ${
+            size === "sm" ? "w-4 h-4" : size === "lg" ? "w-10 h-10" : "w-7 h-7"
+          }`}
         />
         {!isEcoMode && !isReducedMotion && (
-          <Sparkles className="absolute -top-1 -right-1 w-3.5 h-3.5 text-amber-300 animate-ping [animation-duration:2s]" />
+          <span className="absolute -top-1 -right-1 text-sm">✨</span>
         )}
       </div>
     </div>

@@ -65,7 +65,7 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
 
   if (!active) return null;
 
-  // 1. Level Shift Variant (Lightweight floating HUD badge)
+  // 1. Level Shift Variant (Playful Neo-brutalist Floating Badge)
   if (variant === "level_shift") {
     const isUp = direction === "up";
     return (
@@ -77,21 +77,23 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
         } ${className}`}
       >
         <div
-          className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl border shadow-2xl backdrop-blur-xl ${
+          className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] ${
             isUp
-              ? "bg-amber-950/85 border-amber-400/50 text-amber-200 shadow-amber-500/25"
-              : "bg-cyan-950/85 border-cyan-400/50 text-cyan-200 shadow-cyan-500/25"
+              ? "bg-[#FEF3C7] dark:bg-[#0E0E16] text-stone-900 dark:text-white"
+              : "bg-[#E0F2FE] dark:bg-[#0E0E16] text-stone-900 dark:text-white"
           }`}
         >
           <div
-            className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-              isUp ? "bg-amber-500/20 text-amber-300" : "bg-cyan-500/20 text-cyan-300"
+            className={`w-8 h-8 rounded-xl border-2 border-stone-900 dark:border-black flex items-center justify-center shrink-0 shadow-[0_2px_0_#1c1917] dark:shadow-none ${
+              isUp
+                ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-900 dark:text-[#08080C]"
+                : "bg-[#38BDF8] dark:bg-[#38BDF8] text-stone-900 dark:text-[#08080C]"
             }`}
           >
             {isUp ? (
-              <TrendingUp className="w-4 h-4" />
+              <TrendingUp className="w-4 h-4 stroke-[2.5]" />
             ) : (
-              <TrendingDown className="w-4 h-4" />
+              <TrendingDown className="w-4 h-4 stroke-[2.5]" />
             )}
           </div>
           <div className="text-left">
@@ -101,11 +103,11 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
                   ? t.gameEffects?.levelShiftUpTitle || "难度跃迁"
                   : t.gameEffects?.levelShiftDownTitle || "阶梯自适应校准"}
               </span>
-              <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-black/40 border border-white/10">
+              <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-white dark:bg-[#12121C] border border-stone-900 dark:border-[#CCFF00] text-stone-900 dark:text-[#CCFF00]">
                 Lv.{level}
               </span>
             </div>
-            <p className="text-[10px] opacity-80">
+            <p className="text-[11px] text-stone-700 dark:text-slate-300 font-medium">
               {isUp
                 ? t.gameEffects?.levelShiftUpDesc || "根据一阶高准度表现，系统已自动提升认知难度梯度"
                 : t.gameEffects?.levelShiftDownDesc || "正在调整探测步长，持续定位您的认知敏锐边界"}
@@ -116,10 +118,10 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
     );
   }
 
-  // 2. Fullscreen or Inline Overlay Containers for Portal / Charge / Settlement / Warp
+  // 2. Fullscreen or Inline Overlay Containers: Scheme C (Light) & Scheme B (Dark)
   const containerClasses = fullScreen
-    ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070912]/92 backdrop-blur-2xl px-6 select-none"
-    : "relative w-full py-12 flex flex-col items-center justify-center bg-[#070912]/80 backdrop-blur-lg rounded-3xl border border-white/10 px-6 select-none";
+    ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#FFFDF8]/95 dark:bg-[#08080C]/96 backdrop-blur-md px-6 select-none"
+    : "relative w-full py-12 flex flex-col items-center justify-center bg-white dark:bg-[#0E0E16] rounded-3xl border-2 border-stone-900 dark:border-white/20 shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] px-6 select-none";
 
   return (
     <div
@@ -129,45 +131,32 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
         isReducedMotion ? "" : "animate-in fade-in duration-300"
       }`}
     >
-      {/* Background Ambient Cosmic Fog */}
+      {/* Background Dopamine Floating Dots / Cyber Neon Glow */}
       {!isEcoMode && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-32 left-1/3 w-96 h-96 bg-amber-500/10 rounded-full blur-[100px]" />
-          <div className="absolute -bottom-32 right-1/3 w-96 h-96 bg-indigo-500/15 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30 dark:opacity-20">
+          <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-[#FBBF24] dark:bg-[#CCFF00] blur-2xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-32 h-32 rounded-full bg-[#FB7185] dark:bg-[#FF3366] blur-2xl" />
+          <div className="absolute top-1/2 right-1/3 w-32 h-32 rounded-full bg-[#34D399] dark:bg-[#38BDF8] blur-2xl" />
         </div>
       )}
 
-      {/* Main Core Visual */}
-      <div className="relative z-10 flex flex-col items-center text-center max-w-md w-full space-y-6">
+      {/* Main Tactile Card Container */}
+      <div className="relative z-10 flex flex-col items-center text-center max-w-md w-full bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 rounded-[28px] shadow-[0_8px_0_#1c1917] dark:shadow-[6px_6px_0px_#CCFF00] p-8 space-y-6">
         {variant === "portal" && <PortalTransition size={fullScreen ? "lg" : "md"} />}
 
         {variant === "charge" && (
-          <div className="relative flex items-center justify-center w-28 h-28 sm:w-36 sm:h-36">
-            {!isEcoMode && (
-              <div className="absolute inset-0 rounded-full bg-amber-500/20 blur-xl animate-pulse" />
-            )}
-            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-slate-900 to-indigo-500/20 border border-amber-400/40 flex items-center justify-center shadow-2xl">
-              <Zap
-                className={`w-10 h-10 text-amber-300 ${
-                  isReducedMotion ? "" : "animate-bounce"
-                }`}
-              />
+          <div className="relative flex items-center justify-center w-24 h-24">
+            <div className="w-20 h-20 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] flex items-center justify-center">
+              <Zap className="w-10 h-10 text-stone-900 dark:text-[#CCFF00] fill-[#FBBF24] dark:fill-[#CCFF00]" />
             </div>
           </div>
         )}
 
         {variant === "settlement" && (
-          <div className="relative flex items-center justify-center w-28 h-28 sm:w-36 sm:h-36">
-            {!isEcoMode && (
-              <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl animate-pulse" />
-            )}
-            <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 border border-indigo-400/50 flex items-center justify-center shadow-2xl shadow-indigo-950/60">
-              <Cpu
-                className={`w-12 h-12 text-indigo-300 ${
-                  isReducedMotion ? "" : "animate-pulse"
-                }`}
-              />
-              <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-amber-300 animate-spin [animation-duration:6s]" />
+          <div className="relative flex items-center justify-center w-24 h-24">
+            <div className="w-20 h-20 rounded-2xl bg-[#E0F2FE] dark:bg-[#12121C] border-[2.5px] border-stone-900 dark:border-[#38BDF8] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#38BDF8] flex items-center justify-center relative">
+              <Cpu className="w-10 h-10 text-stone-900 dark:text-[#38BDF8]" />
+              <span className="absolute -top-2 -right-2 text-xl">✨</span>
             </div>
           </div>
         )}
@@ -175,12 +164,12 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
         {/* Text Area */}
         <div className="space-y-2">
           {title && (
-            <h3 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-300 to-white tracking-wide">
+            <h3 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white tracking-tight">
               {title}
             </h3>
           )}
           {subtitle && (
-            <p className="text-xs sm:text-sm text-slate-300 font-medium max-w-sm mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm text-stone-600 dark:text-slate-300 font-medium max-w-sm mx-auto leading-relaxed">
               {subtitle}
             </p>
           )}
@@ -188,37 +177,37 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
 
         {/* Stepped Deduction Checklist for Settlement */}
         {variant === "settlement" && steps && steps.length > 0 && (
-          <div className="w-full space-y-2.5 pt-2 text-left">
+          <div className="w-full space-y-2.5 pt-1 text-left">
             {steps.map((stepText, idx) => {
               const isDone = idx < currentStepIndex;
               const isCurrent = idx === currentStepIndex;
               return (
                 <div
                   key={idx}
-                  className={`flex items-center gap-3 p-2.5 sm:p-3 rounded-xl border transition-all ${
+                  className={`flex items-center gap-3 p-3 rounded-2xl border-2 transition-all ${
                     isCurrent
-                      ? "bg-amber-500/15 border-amber-400/50 text-amber-200 shadow-md shadow-amber-950/40"
+                      ? "bg-[#FEF3C7] dark:bg-[#CCFF00] text-stone-900 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_3px_0_#1c1917] dark:shadow-none scale-[1.02]"
                       : isDone
-                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 opacity-90"
-                      : "bg-slate-900/40 border-white/5 text-slate-500 opacity-50"
+                      ? "bg-[#D1FAE5] dark:bg-[#12121C] text-stone-900 dark:text-[#CCFF00] border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-none"
+                      : "bg-[#FFFDF8] dark:bg-[#12121C]/50 text-stone-400 dark:text-slate-500 border-stone-300 dark:border-white/10 opacity-60"
                   }`}
                 >
                   <div className="shrink-0">
                     {isDone ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-[#CCFF00] fill-emerald-100 dark:fill-transparent" />
                     ) : isCurrent ? (
                       <Compass
-                        className={`w-4 h-4 text-amber-400 ${
+                        className={`w-5 h-5 text-amber-600 dark:text-[#08080C] ${
                           isReducedMotion ? "" : "animate-spin"
                         }`}
                       />
                     ) : (
-                      <span className="w-4 h-4 rounded-full border border-slate-600 block text-[9px] text-center leading-3.5">
+                      <span className="w-5 h-5 rounded-full border border-stone-400 dark:border-white/20 font-bold block text-[10px] text-center leading-4 text-stone-500 dark:text-slate-500">
                         {idx + 1}
                       </span>
                     )}
                   </div>
-                  <span className="text-xs font-semibold tracking-wide flex-1 truncate">
+                  <span className="text-xs font-bold tracking-wide flex-1 truncate">
                     {stepText}
                   </span>
                 </div>
@@ -230,7 +219,7 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
                 <button
                   type="button"
                   onClick={onSkip}
-                  className="px-4 py-1.5 rounded-full text-xs text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                  className="px-5 py-2 rounded-full text-xs font-bold text-stone-800 dark:text-white bg-[#FFFBEB] dark:bg-[#12121C] hover:bg-[#FEF3C7] dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
                 >
                   {isEn ? "Skip deduction · View report →" : "跳过推演 · 直接查看报告 →"}
                 </button>
@@ -239,16 +228,16 @@ export const GamifiedTransition: React.FC<GamifiedTransitionProps> = ({
           </div>
         )}
 
-        {/* Dynamic Progress Bar (if provided or charging) */}
+        {/* Dynamic Progress Bar */}
         {typeof progress === "number" && (
           <div className="w-full space-y-1.5 pt-2">
-            <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden border border-white/5">
+            <div className="w-full h-3 bg-amber-100 dark:bg-[#12121C] rounded-full overflow-hidden border-2 border-stone-900 dark:border-white/20">
               <div
-                className="h-full bg-gradient-to-r from-amber-400 via-indigo-500 to-cyan-400 rounded-full transition-all duration-300"
+                className="h-full bg-[#10B981] dark:bg-[#CCFF00] rounded-full transition-all duration-300"
                 style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
               />
             </div>
-            <div className="text-[10px] font-mono text-slate-400 text-right">
+            <div className="text-[11px] font-mono font-bold text-stone-700 dark:text-[#CCFF00] text-right">
               {Math.round(progress)}%
             </div>
           </div>

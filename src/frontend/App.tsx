@@ -32,6 +32,7 @@ import { useLocale } from "./contexts/LocaleContext";
 import { useUser } from "./contexts/UserContext";
 import { useGameEffects } from "./contexts/GameEffectsContext";
 import { LanguageToggle } from "./components/LanguageToggle";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { GameQuickControls } from "./components/game/GameQuickControls";
 import { GamifiedTransition } from "./components/game/GamifiedTransition";
 import { PosterModal } from "./components/share/PosterModal";
@@ -119,8 +120,8 @@ const renderSymbolGrid = (matrix: string[][], isOption: boolean = false) => {
     ? (isLarge ? "gap-1" : "gap-0.5")
     : (isLarge ? "gap-1.5" : "gap-1");
   const containerPad = isOption
-    ? "p-2 rounded-lg bg-slate-950/60 border border-white/5"
-    : "p-3 sm:p-3.5 rounded-xl bg-slate-950/80 border border-indigo-500/30 shadow-inner";
+    ? "p-2 rounded-xl bg-amber-50/80 dark:bg-[#12121C] border border-stone-900/40 dark:border-white/20"
+    : "p-3 sm:p-4 rounded-2xl bg-[#FFFBEB] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]";
 
   return (
     <div className={`inline-flex flex-col ${gap} ${containerPad} select-none`}>
@@ -131,14 +132,14 @@ const renderSymbolGrid = (matrix: string[][], isOption: boolean = false) => {
             return (
               <div
                 key={cIdx}
-                className={`${cellSize} flex items-center justify-center rounded-md transition-all ${
+                className={`${cellSize} flex items-center justify-center rounded-lg transition-all font-bold ${
                   isEmpty
-                    ? "bg-slate-900/50 border border-white/5 text-slate-600"
-                    : "bg-indigo-950/70 text-amber-300 font-bold border border-indigo-500/40 shadow-sm shadow-indigo-500/20"
+                    ? "bg-amber-100/50 dark:bg-white/5 border border-stone-300 dark:border-white/10 text-stone-400 dark:text-stone-500"
+                    : "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-900 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
                 }`}
               >
                 {isEmpty ? (
-                  <span className={`${dotSize} rounded-full bg-slate-500/70 inline-block`} />
+                  <span className={`${dotSize} rounded-full bg-stone-400 dark:bg-stone-600 inline-block`} />
                 ) : (
                   <span>{cell}</span>
                 )}
@@ -167,7 +168,7 @@ const renderOption = (rawVal: string) => {
   }
 
   return (
-    <span className="text-xs md:text-sm text-slate-200 leading-relaxed font-mono whitespace-pre-line pt-0.5 inline-block">
+    <span className="text-xs md:text-sm text-stone-900 dark:text-stone-100 leading-relaxed font-mono font-medium whitespace-pre-line pt-0.5 inline-block">
       {val}
     </span>
   );
@@ -215,10 +216,10 @@ const renderPrompt = (rawPrompt: string) => {
           return (
             <div
               key={idx}
-              className="my-3 p-3.5 sm:p-4 rounded-xl bg-slate-950/80 border border-indigo-500/25 space-y-2 inline-block min-w-[220px]"
+              className="my-3 p-3.5 sm:p-4 rounded-2xl bg-[#FFFBEB] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#38BDF8] shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_#38BDF8] space-y-2 inline-block min-w-[220px]"
             >
               {cleanLines.map((line, lIdx) => (
-                <div key={lIdx} className="font-mono text-sm md:text-base text-indigo-200 leading-relaxed tracking-wider">
+                <div key={lIdx} className="font-mono text-sm md:text-base text-stone-900 dark:text-cyan-300 font-bold leading-relaxed tracking-wider">
                   {line}
                 </div>
               ))}
@@ -228,7 +229,7 @@ const renderPrompt = (rawPrompt: string) => {
 
         // 3. Standard text paragraph
         return (
-          <p key={idx} className="text-sm md:text-base text-slate-200 leading-relaxed font-sans font-medium whitespace-pre-line">
+          <p key={idx} className="text-sm md:text-base text-stone-900 dark:text-stone-100 leading-relaxed font-sans font-bold whitespace-pre-line">
             {cleanLines.join("\n")}
           </p>
         );
@@ -456,7 +457,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           particleCount: 150,
           spread: 90,
           origin: { y: 0.55 },
-          colors: ["#f59e0b", "#6366f1", "#a855f7", "#38bdf8"],
+          colors: ["#FBBF24", "#10B981", "#FB7185", "#38BDF8"],
         });
       }
     },
@@ -738,10 +739,10 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
   );
 
   return (
-    <div className="min-h-screen flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto selection:bg-amber-500/20 selection:text-amber-200">
-      {/* 仅在未进入 App Layout 时展示游客模式顶部导航栏 */}
+    <div className="min-h-screen flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] text-stone-900 dark:text-white font-sans">
+      {/* 仅在未进入 App Layout 时展示顶部萌趣导航栏 */}
       {!inAppLayout && (
-        <header className="flex items-center justify-between py-4 border-b border-white/5 mb-6">
+        <header className="flex items-center justify-between py-4 border-b-2 border-stone-900/10 dark:border-white/15 mb-6">
           <div className="flex items-center gap-3">
             <a
               href="/"
@@ -751,23 +752,23 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               }}
               className="flex items-center gap-2.5 group cursor-pointer"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500/30 via-indigo-500/30 to-purple-500/30 border border-white/10 flex items-center justify-center shadow-lg shadow-indigo-950/40">
-                <Compass className="w-5 h-5 text-amber-300" />
+              <div className="w-10 h-10 rounded-2xl bg-[#FBBF24] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] group-hover:-translate-y-0.5 active:translate-y-0.5 transition-all">
+                <Compass className="w-5 h-5 text-stone-950 dark:text-[#CCFF00]" />
               </div>
               <div>
-                <h1 className="text-sm md:text-base font-bold tracking-wide text-white flex items-center gap-2 group-hover:text-amber-300 transition-colors">
+                <h1 className="text-sm md:text-base font-black tracking-tight text-stone-900 dark:text-white flex items-center gap-2">
                   {t.app.appTitle}
                 </h1>
-                <p className="text-[11px] text-slate-400">{t.app.appSubtitle}</p>
+                <p className="text-[11px] font-bold text-stone-500 dark:text-[#CCFF00] font-mono uppercase">{t.app.appSubtitle}</p>
               </div>
             </a>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {stage === "TESTING" && trialData && (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-slate-400">{t.app.voyageProgress}</span>
-                <span className="font-mono text-amber-300 font-bold text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                <span className="text-[11px] font-bold text-stone-700 dark:text-[#08080C] uppercase">{t.app.voyageProgress}</span>
+                <span className="font-mono text-stone-950 dark:text-[#08080C] font-black text-xs">
                   {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
                 </span>
               </div>
@@ -778,11 +779,12 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 e.preventDefault();
                 navigateTo("/");
               }}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-300 hover:text-white transition-all cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#0E0E16] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-800 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5 text-amber-400" />
+              <ArrowLeft className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
               <span>{isEn ? "Official Home" : "返回官网首页"}</span>
             </a>
+            <ThemeToggle />
             <LanguageToggle />
             <GameQuickControls />
             <UserNav />
@@ -805,13 +807,13 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
         {/* 会话未找到或已清理提示卡片 */}
         {!reportLoading && reportNotFound && (
-          <div className="glass-panel rounded-3xl p-8 md:p-12 text-center max-w-lg mx-auto w-full shadow-2xl border border-rose-500/30 space-y-5 animate-in fade-in duration-300">
-            <div className="w-14 h-14 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 flex items-center justify-center mx-auto shadow-lg shadow-rose-950/40">
-              <AlertCircle className="w-7 h-7" />
+          <div className="bg-white dark:bg-[#0E0E16] rounded-[28px] p-8 md:p-12 text-center max-w-lg mx-auto w-full border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] space-y-5 animate-in fade-in duration-300">
+            <div className="w-14 h-14 rounded-2xl bg-[#FFE4E6] dark:bg-rose-950/40 border-2 border-stone-900 dark:border-rose-500/40 text-stone-900 dark:text-rose-300 flex items-center justify-center mx-auto shadow-[0_3px_0_#1c1917] dark:shadow-none">
+              <AlertCircle className="w-7 h-7 text-[#F43F5E]" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">{t.app.reportNotFoundTitle}</h2>
-              <p className="text-xs md:text-sm text-slate-300 leading-relaxed font-sans">
+              <h2 className="text-xl font-black text-stone-900 dark:text-white mb-2">{t.app.reportNotFoundTitle}</h2>
+              <p className="text-xs md:text-sm text-stone-600 dark:text-slate-400 leading-relaxed font-sans font-medium">
                 {t.app.reportNotFoundDesc}
               </p>
             </div>
@@ -822,37 +824,36 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 setStage("WELCOME");
                 navigateTo("/");
               }}
-              className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs inline-flex items-center gap-2 cursor-pointer transition-colors border border-white/10 mx-auto"
+              className="px-6 py-2.5 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black text-xs inline-flex items-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-black shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none mx-auto"
             >
               <RotateCcw className="w-4 h-4" /> {t.app.backToHomeBtn}
             </button>
           </div>
         )}
 
-        {/* 1A. 游客单画像未认领门禁卡片：未登录且本地已有未认领画像时禁止开启新测试 */}
+        {/* 1A. 游客单画像未认领门禁卡片 */}
         {!reportLoading && !reportNotFound && stage === "WELCOME" && isGuestBlockedByUnclaimed && lastSessionRecord && (
-          <div className="glass-panel rounded-3xl p-8 md:p-12 text-center max-w-xl mx-auto w-full shadow-2xl relative overflow-hidden border border-amber-500/35 space-y-6">
-            <div className="absolute -top-24 -left-24 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center mx-auto text-amber-300 shadow-lg shadow-amber-950/30">
+          <div className="bg-white dark:bg-[#0E0E16] rounded-[28px] p-8 md:p-12 text-center max-w-xl mx-auto w-full border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_8px_0_#1c1917] dark:shadow-[6px_6px_0px_#CCFF00] relative space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center mx-auto text-stone-900 dark:text-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]">
               <Lock className="w-8 h-8" />
             </div>
 
-            <div className="space-y-2.5">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-xs font-bold text-amber-300">
-                <Crown className="w-3.5 h-3.5" />
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black text-xs font-black text-stone-900 dark:text-[#08080C] shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                <Crown className="w-3.5 h-3.5 text-stone-900 dark:text-[#08080C]" />
                 <span>{isEn ? "1 / 1 Guest Archetype Quota Reached" : "游客单次画像额度已满 (1 / 1)"}</span>
               </div>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+              <h2 className="text-2xl md:text-3xl font-black text-stone-900 dark:text-white uppercase tracking-tight">
                 {isEn
                   ? "Sign In to Claim Your Unclaimed Archetype First"
                   : "请先登录认领您本机的专属认知画像"}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+              <p className="text-xs sm:text-sm text-stone-600 dark:text-slate-300 leading-relaxed max-w-md mx-auto font-medium">
                 {isEn
                   ? "Guests can hold only one unclaimed cognitive archetype locally. Sign in now to automatically claim your completed result into your Cognitive Assets and unlock unlimited new assessments!"
                   : "游客状态下仅可保有一份本地未认领画像。登录后系统将自动把您的未认领评测记录关联至个人账号并点亮认知资产图鉴，随后即可开启全新测试！"}
               </p>
-              <div className="text-[11px] font-mono text-slate-400 bg-black/40 px-3 py-1.5 rounded-xl border border-white/10 inline-block">
+              <div className="text-[11px] font-mono font-bold text-stone-700 dark:text-[#CCFF00] bg-amber-50 dark:bg-black/60 px-3.5 py-1.5 rounded-xl border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none inline-block">
                 UNCLAIMED SESSION: {lastSessionRecord.sessionId}
               </div>
             </div>
@@ -861,7 +862,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               <button
                 type="button"
                 onClick={openAuthModal}
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 hover:brightness-110 text-white font-extrabold text-xs sm:text-sm shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
                 <LogIn className="w-4 h-4" />
                 <span>{isEn ? "Sign In & Auto-Claim Archetype" : "立即登录 · 自动认领画像"}</span>
@@ -870,37 +871,34 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               <button
                 type="button"
                 onClick={() => loadReportById(lastSessionRecord.sessionId, true)}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-slate-200 hover:text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white font-extrabold text-xs sm:text-sm shadow-[0_3px_0_#1c1917] dark:shadow-none active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
-                <Bookmark className="w-4 h-4 text-amber-400" />
+                <Bookmark className="w-4 h-4 text-stone-900 dark:text-white" />
                 <span>{isEn ? "View Unclaimed Report" : "查看未认领画像报告"}</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* 1B. 欢迎探索阶段：极致温暖、毫无防备、尊崇体验 */}
+        {/* 1B. 欢迎探索阶段：多巴胺轻萌解压 vs 赛博先锋酸性 */}
         {!reportLoading && !reportNotFound && stage === "WELCOME" && !isGuestBlockedByUnclaimed && (
-          <div className="glass-panel rounded-3xl p-8 md:p-12 text-center max-w-2xl mx-auto w-full shadow-2xl relative overflow-hidden border border-white/10">
-            <div className="absolute -top-32 -left-32 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
+          <div className="bg-white dark:bg-[#0E0E16] rounded-[28px] p-8 md:p-12 text-center max-w-2xl mx-auto w-full border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_8px_0_#1c1917] dark:shadow-[6px_6px_0px_#CCFF00] relative">
             {/* 快速找回上次已完成的会话结果 */}
             {lastSessionRecord && (
-              <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-slate-900/60 to-indigo-500/15 border border-amber-500/30 flex items-center justify-between gap-3 text-left shadow-lg shadow-amber-950/20">
+              <div className="mb-6 p-4 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] flex items-center justify-between gap-3 text-left">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
-                    <Bookmark className="w-4 h-4 text-amber-300" />
+                  <div className="w-10 h-10 rounded-xl bg-[#FBBF24] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black flex items-center justify-center shrink-0 shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                    <Bookmark className="w-4 h-4 text-stone-950 dark:text-[#08080C]" />
                   </div>
                   <div className="overflow-hidden">
-                    <div className="text-xs font-bold text-amber-200 truncate">{t.app.resumeLastReportBtn}</div>
-                    <div className="text-[10px] text-slate-400 font-mono truncate">{lastSessionRecord.sessionId}</div>
+                    <div className="text-xs font-black text-stone-900 dark:text-white truncate">{t.app.resumeLastReportBtn}</div>
+                    <div className="text-[10px] text-stone-600 dark:text-[#CCFF00] font-mono truncate">{lastSessionRecord.sessionId}</div>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => loadReportById(lastSessionRecord.sessionId, true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shrink-0 cursor-pointer transition-all shadow-md active:scale-95 flex items-center gap-1"
+                  className="px-4 py-2 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black text-xs shrink-0 cursor-pointer transition-all border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none flex items-center gap-1"
                 >
                   <span>查看</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -908,24 +906,24 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               </div>
             )}
 
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 mb-6 font-medium">
-              <Stars className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black text-xs text-stone-900 dark:text-[#08080C] mb-6 font-black shadow-[0_2px_0_#1c1917] dark:shadow-none">
+              <Stars className="w-4 h-4 text-amber-500 fill-amber-400 dark:text-[#08080C] dark:fill-[#08080C]" />
               {t.app.welcomeBadge}
             </div>
 
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
+            <h2 className="text-3xl md:text-4xl font-black text-stone-900 dark:text-white tracking-tight mb-3">
               {t.app.welcomeTitle}
             </h2>
 
-            <p className="text-slate-300 text-sm md:text-base leading-relaxed mb-8 max-w-lg mx-auto font-normal">
+            <p className="text-stone-600 dark:text-slate-300 text-sm md:text-base leading-relaxed mb-8 max-w-lg mx-auto font-medium">
               {t.app.welcomeDesc}
             </p>
 
-            <div className="space-y-4 max-w-sm mx-auto text-left mb-8">
+            <div className="space-y-5 max-w-sm mx-auto text-left mb-8">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center justify-between">
+                <label className="block text-xs font-extrabold text-stone-800 dark:text-slate-200 mb-1.5 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Feather className="w-3.5 h-3.5 text-amber-400" /> {t.app.explorerNameLabel}
+                    <Feather className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" /> {t.app.explorerNameLabel}
                   </span>
                   <button
                     type="button"
@@ -934,7 +932,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                       setPlaceholderCodename(next);
                       setSubjectName(next);
                     }}
-                    className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition-colors"
+                    className="text-[11px] text-amber-700 dark:text-[#CCFF00] hover:underline font-bold flex items-center gap-1 cursor-pointer transition-colors"
                     title={t.app.randomCodenameBtn}
                   >
                     <Dices className="w-3.5 h-3.5" /> {t.app.randomCodenameBtn}
@@ -946,7 +944,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     placeholder={formatMessage(t.app.placeholderCodename, { name: placeholderCodename })}
                     value={subjectName}
                     onChange={(e) => setSubjectName(e.target.value)}
-                    className="w-full pl-4 pr-10 py-3 rounded-xl bg-slate-900/80 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/50 text-sm transition-colors"
+                    className="w-full pl-4 pr-10 py-3 rounded-2xl bg-[#FFFDF8] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 dark:focus:ring-[#CCFF00] text-sm font-semibold shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all"
                   />
                   <button
                     type="button"
@@ -955,7 +953,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                       setPlaceholderCodename(next);
                       setSubjectName(next);
                     }}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-amber-300 cursor-pointer transition-colors"
+                    className="absolute right-3 top-3 text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white cursor-pointer transition-colors"
                     title={t.app.randomCodenameBtn}
                   >
                     <Dices className="w-4 h-4" />
@@ -964,8 +962,8 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">{t.app.voyageScaleLabel}</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="block text-xs font-extrabold text-stone-800 dark:text-slate-200 mb-1.5">{t.app.voyageScaleLabel}</label>
+                <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: t.app.scale30, val: 30 },
                     { label: t.app.scale16, val: 16 },
@@ -974,10 +972,11 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                       key={opt.val}
                       type="button"
                       onClick={() => setTotalTrials(opt.val)}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${totalTrials === opt.val
-                        ? "bg-amber-500/20 border-amber-400 text-amber-200 ring-1 ring-amber-400/30"
-                        : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/20"
-                        }`}
+                      className={`px-3 py-2.5 rounded-2xl text-xs font-black border-2 border-stone-900 dark:border-white/20 text-center transition-all cursor-pointer ${
+                        totalTrials === opt.val
+                          ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] scale-[1.02]"
+                          : "bg-[#FFFDF8] dark:bg-[#12121C] text-stone-600 dark:text-slate-300 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-amber-50 dark:hover:bg-white/10"
+                      }`}
                     >
                       {opt.label}
                     </button>
@@ -987,7 +986,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
             </div>
 
             {errorMsg && (
-              <div className="p-3 mb-6 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs text-center">
+              <div className="p-3 mb-6 rounded-2xl bg-[#FFE4E6] dark:bg-rose-950/50 border-2 border-stone-900 dark:border-rose-500/50 text-rose-700 dark:text-rose-300 font-bold text-xs text-center shadow-[0_2px_0_#1c1917] dark:shadow-none">
                 {errorMsg}
               </div>
             )}
@@ -995,38 +994,38 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
             <button
               onClick={startSession}
               disabled={loading}
-              className="w-full max-w-sm px-6 py-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 text-white font-semibold text-sm shadow-xl shadow-amber-500/20 hover:shadow-amber-500/35 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer mx-auto"
+              className="w-full max-w-sm px-6 py-4 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-base border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#FFFFFF] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer mx-auto"
             >
               {loading ? t.app.startingVoyage : t.app.startVoyageBtn}
             </button>
           </div>
         )}
 
-        {/* 2. 答题进行阶段：无对错焦虑、无分数扣罚压迫 */}
+        {/* 2. 答题进行阶段：双模式自适应 (多巴胺轻萌 vs 赛博先锋酸性) */}
         {stage === "TESTING" && trialData && (
           <div className="w-full max-w-3xl mx-auto space-y-6">
             {/* 在 App Layout 内无顶部固定栏时展示内联进度计数器 */}
             {inAppLayout && (
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span className="flex items-center gap-2 font-medium text-slate-300">
-                  <Compass className="w-4 h-4 text-amber-400" />
+              <div className="flex items-center justify-between text-xs text-stone-600 dark:text-slate-400">
+                <span className="flex items-center gap-2 font-black text-stone-800 dark:text-white">
+                  <Compass className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" />
                   <span>{t.app.voyageProgress}</span>
                 </span>
-                <span className="font-mono text-amber-300 font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                <span className="font-mono text-stone-950 dark:text-[#08080C] font-black px-3 py-1 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none">
                   {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
                 </span>
               </div>
             )}
-            {/* 顶部长条柔和流光进度 */}
-            <div className="w-full h-1 bg-slate-800/80 rounded-full overflow-hidden">
+            {/* 顶部长条进度条 */}
+            <div className="w-full h-3.5 bg-[#FEF3C7] dark:bg-[#12121C] rounded-full border-2 border-stone-900 dark:border-white/20 overflow-hidden shadow-[0_2px_0_#1c1917] dark:shadow-none">
               <div
-                className="h-full bg-gradient-to-r from-amber-400 via-indigo-500 to-purple-500 transition-all duration-300 rounded-full"
+                className="h-full bg-[#10B981] dark:bg-[#CCFF00] transition-all duration-300 rounded-full"
                 style={{ width: `${(trialData.trial_index / totalTrials) * 100}%` }}
               />
             </div>
 
             {/* 核心图形与规律卡片 */}
-            <div className="glass-panel rounded-2xl p-6 md:p-8 space-y-4 border border-white/10">
+            <div className="bg-white dark:bg-[#0E0E16] rounded-[24px] p-6 md:p-8 space-y-4 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00]">
               {renderPrompt(trialData.payload.prompt)}
 
               {/* 灵感启示抽屉 (多级线索) */}
@@ -1035,18 +1034,18 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   {unlockedHints.map((hint, idx) => (
                     <div
                       key={idx}
-                      className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs md:text-sm leading-relaxed animate-in fade-in slide-in-from-top-2 duration-300"
+                      className="p-3.5 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white text-xs md:text-sm leading-relaxed shadow-[0_2px_0_#1c1917] dark:shadow-none animate-in fade-in slide-in-from-top-2 duration-300"
                     >
-                      <div className="font-semibold text-amber-300 flex items-center justify-between mb-1">
+                      <div className="font-black text-stone-900 dark:text-[#CCFF00] flex items-center justify-between mb-1">
                         <span className="flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-amber-400" />
+                          <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400 dark:text-[#CCFF00] dark:fill-[#CCFF00]/20" />
                           {idx === 0 ? t.app.clue1Title : t.app.clue2Title}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white dark:bg-black/60 border border-stone-900 dark:border-white/20 text-stone-900 dark:text-[#CCFF00] font-mono">
                           {idx === 0 ? t.app.cost1Pt : t.app.cost2Pt}
                         </span>
                       </div>
-                      {hint}
+                      <div className="font-medium text-stone-800 dark:text-slate-300">{hint}</div>
                     </div>
                   ))}
                 </div>
@@ -1054,7 +1053,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
               {/* 线索购买操作栏 */}
               <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] font-bold text-stone-500 dark:text-slate-400">
                   {unlockedHints.length === 0
                     ? t.app.hintHint0
                     : formatMessage(t.app.hintHintN, { count: unlockedHints.length, cost: hintsCost })}
@@ -1065,25 +1064,25 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     type="button"
                     onClick={handleBuyHint}
                     disabled={loading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-stone-900 dark:text-white bg-white dark:bg-[#12121C] hover:bg-amber-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     {t.app.buyClue1Btn}
-                    <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">H</kbd>
+                    <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-black/60 border border-stone-900 dark:border-white/20 font-mono">H</kbd>
                   </button>
                 ) : unlockedHints.length === 1 ? (
                   <button
                     type="button"
                     onClick={handleBuyHint}
                     disabled={loading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-orange-300 hover:text-orange-200 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-stone-900 dark:text-white bg-white dark:bg-[#12121C] hover:bg-amber-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     {t.app.buyClue2Btn}
-                    <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">H</kbd>
+                    <kbd className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-black/60 border border-stone-900 dark:border-white/20 font-mono">H</kbd>
                   </button>
                 ) : (
-                  <span className="text-[11px] text-amber-400/80 font-mono flex items-center gap-1">
+                  <span className="text-[11px] font-black text-stone-700 dark:text-[#CCFF00] bg-amber-100 dark:bg-black/60 px-2.5 py-1 rounded-full border border-stone-900 dark:border-white/20 flex items-center gap-1">
                     {t.app.cluesAllUnlocked}
                   </span>
                 )}
@@ -1094,6 +1093,15 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {Object.entries(trialData.payload.options).map(([key, rawVal]) => {
                 const isSelected = selectedOption === key;
+                const badgeColor =
+                  key === "A"
+                    ? "bg-[#FBBF24]"
+                    : key === "B"
+                    ? "bg-[#FB7185]"
+                    : key === "C"
+                    ? "bg-[#34D399]"
+                    : "bg-[#38BDF8]";
+
                 return (
                   <button
                     key={key}
@@ -1103,20 +1111,18 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                       playSound("select");
                       triggerHaptic("light");
                     }}
-                    className={`p-4 rounded-xl border text-left transition-all duration-200 flex items-start gap-3.5 cursor-pointer relative ${isSelected
-                      ? "glass-card border-amber-400 bg-amber-500/15 ring-2 ring-amber-400/30"
-                      : "glass-card border-white/5 hover:border-white/20 hover:bg-white/[0.03]"
-                      }`}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all duration-150 flex items-start gap-3.5 cursor-pointer relative ${
+                      isSelected
+                        ? "bg-[#D1FAE5] dark:bg-[#0E0E16] border-stone-900 dark:border-[#CCFF00] ring-2 ring-emerald-500 dark:ring-0 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.01]"
+                        : "bg-white dark:bg-[#12121C] border-stone-900 dark:border-white/15 text-stone-900 dark:text-white hover:bg-[#FFFBEB] dark:hover:border-[#CCFF00] hover:-translate-y-0.5 shadow-[0_3px_0_#1c1917] dark:shadow-none active:translate-y-1 active:shadow-none"
+                    }`}
                   >
                     <span
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs font-mono shrink-0 transition-colors ${isSelected
-                        ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/40"
-                        : "bg-slate-800 text-slate-400 border border-white/10"
-                        }`}
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs font-mono shrink-0 transition-colors border-2 border-stone-900 dark:border-white/20 shadow-[0_1.5px_0_#1c1917] dark:shadow-none ${badgeColor} dark:bg-black/60 dark:text-[#CCFF00] text-stone-950`}
                     >
                       {key}
                     </span>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 text-stone-900 dark:text-white">
                       {renderOption(rawVal)}
                     </div>
                   </button>
@@ -1125,10 +1131,10 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
             </div>
 
             {/* 决断本能选择面板 */}
-            <div className="glass-panel rounded-2xl p-5 space-y-4 border border-white/10">
+            <div className="bg-white dark:bg-[#0E0E16] rounded-[24px] p-5 space-y-4 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)]">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300">{t.app.instinctPrompt}</span>
-                <span className="text-[11px] text-slate-500 font-mono">{t.app.instinctShortcuts}</span>
+                <span className="font-extrabold text-stone-800 dark:text-white">{t.app.instinctPrompt}</span>
+                <span className="text-[11px] font-bold text-stone-500 dark:text-slate-400 font-mono">{t.app.instinctShortcuts}</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1139,19 +1145,20 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     playSound("wager");
                     triggerHaptic("light");
                   }}
-                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${selectedAction === "HIGH_BET"
-                    ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-400 text-amber-200 ring-2 ring-amber-400/25"
-                    : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
-                    }`}
+                  className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
+                    selectedAction === "HIGH_BET"
+                      ? "bg-[#FFE4E6] dark:bg-[#FF3366] text-stone-950 dark:text-white border-stone-900 dark:border-[#FF3366] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.01]"
+                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-700 dark:text-slate-300 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-rose-50 dark:hover:border-[#FF3366]"
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-xs md:text-sm flex items-center gap-1.5 text-amber-300">
-                      <Flame className="w-4 h-4 text-amber-400" />
+                    <span className="font-black text-xs md:text-sm flex items-center gap-1.5 text-rose-700 dark:text-[#FF3366]">
+                      <Flame className="w-4 h-4 text-rose-600 fill-rose-500 dark:text-[#FF3366]" />
                       {formatMessage(t.app.highBetTitle, { pos: 10 - hintsCost, neg: 10 + hintsCost })}
                     </span>
-                    <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">1</kbd>
+                    <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-black/60 border border-stone-900 dark:border-white/20 font-mono font-bold">1</kbd>
                   </div>
-                  <div className="text-[11px] text-slate-400">
+                  <div className="text-[11px] text-stone-600 dark:text-slate-400 font-medium">
                     {t.app.highBetDesc}
                   </div>
                 </button>
@@ -1163,19 +1170,20 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     playSound("wager");
                     triggerHaptic("light");
                   }}
-                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${selectedAction === "SAFE_BET"
-                    ? "bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-cyan-400 text-cyan-200 ring-2 ring-cyan-400/25"
-                    : "bg-slate-900/40 border-white/5 text-slate-400 hover:border-white/15"
-                    }`}
+                  className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
+                    selectedAction === "SAFE_BET"
+                      ? "bg-[#E0F2FE] dark:bg-[#38BDF8] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-[#38BDF8] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.01]"
+                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-700 dark:text-slate-300 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-sky-50 dark:hover:border-[#38BDF8]"
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-xs md:text-sm flex items-center gap-1.5 text-cyan-300">
-                      <Shield className="w-4 h-4 text-cyan-400" />
+                    <span className="font-black text-xs md:text-sm flex items-center gap-1.5 text-sky-700 dark:text-[#38BDF8]">
+                      <Shield className="w-4 h-4 text-sky-600 fill-sky-400 dark:text-[#38BDF8]" />
                       {formatMessage(t.app.safeBetTitle, { pos: 3 - hintsCost })}
                     </span>
-                    <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 font-mono">2</kbd>
+                    <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-black/60 border border-stone-900 dark:border-white/20 font-mono font-bold">2</kbd>
                   </div>
-                  <div className="text-[11px] text-slate-400">
+                  <div className="text-[11px] text-stone-600 dark:text-slate-400 font-medium">
                     {t.app.safeBetDesc}
                   </div>
                 </button>
@@ -1183,7 +1191,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
               {/* 异常提示横幅 */}
               {errorMsg && (
-                <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs text-center animate-in fade-in">
+                <div className="p-3 rounded-2xl bg-[#FFE4E6] dark:bg-[#FF3366]/20 border-2 border-stone-900 dark:border-[#FF3366] text-rose-700 dark:text-[#FF3366] font-bold text-xs text-center shadow-[0_2px_0_#1c1917] dark:shadow-none">
                   {errorMsg}
                 </div>
               )}
@@ -1193,12 +1201,10 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 type="button"
                 onClick={handleSubmitTrial}
                 disabled={loading}
-                className={`w-full py-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer border-[2.5px] border-stone-900 dark:border-[#CCFF00] ${
                   selectedOption && !loading
-                    ? trialData.trial_index >= totalTrials
-                      ? "bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 hover:brightness-110 text-white shadow-xl shadow-amber-500/30 ring-2 ring-amber-400/40 hover:scale-[1.01] active:scale-[0.99]"
-                      : "bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white shadow-lg shadow-amber-500/20 active:scale-[0.99]"
-                    : "bg-slate-800/80 text-slate-400 border border-white/5 hover:border-white/10"
+                    ? "bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#FFFFFF] active:translate-y-1 active:shadow-none"
+                    : "bg-[#E7E5E4] dark:bg-[#12121C] text-stone-400 dark:text-slate-600 shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-not-allowed"
                 }`}
               >
                 {loading ? (
@@ -1214,31 +1220,31 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
             </div>
 
             {/* 键盘盲打指引 */}
-            <div className="flex items-center justify-center gap-4 text-[11px] text-slate-500">
+            <div className="flex items-center justify-center gap-4 text-[11px] font-bold text-stone-500 dark:text-slate-400">
               {t.app.shortcutsGuide}
             </div>
           </div>
         )}
 
-        {/* 3. 最终结果展示页面：零量化数据、神级名片、放下一切防备 */}
+        {/* 3. 最终结果展示页面：双主题自适应 (多巴胺轻萌 vs 赛博先锋酸性) */}
         {stage === "REPORT" && (localizedReport || report) && (() => {
           const displayReport = localizedReport || report!;
           const profile = displayReport.diagnostic_profile;
           return (
-            <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-700 pb-12">
+            <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
               {/* 游客答题完成后的强引导登录收集结果画像卡片 */}
               {!user && (
-                <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-amber-500/20 via-indigo-950/80 to-purple-500/20 border border-amber-400/40 shadow-2xl shadow-amber-950/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="p-6 rounded-[24px] bg-[#FEF3C7] dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="space-y-1 text-left">
-                    <div className="inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-300">
-                      <Sparkles className="w-4 h-4 text-amber-400" />
+                    <div className="inline-flex items-center gap-1.5 text-xs font-black text-stone-900 dark:text-[#CCFF00]">
+                      <Sparkles className="w-4 h-4 text-amber-600 fill-amber-500 dark:text-[#CCFF00] dark:fill-[#CCFF00]/20" />
                       <span>
                         {isEn
                           ? "Unclaimed Cognitive Archetype Unlocked!"
                           : "恭喜解锁专属认知画像！当前处于未认领游客状态"}
                       </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-stone-700 dark:text-slate-300 leading-relaxed font-medium">
                       {isEn
                         ? `Sign in now to claim "${profile.role_title}" into your personal Cognitive Assets codex and unlock unlimited future assessments.`
                         : `立即登录即可将【${profile.role_title}】自动认领并永久收入您的认知资产图鉴，同时解锁无限次新一轮评测与 4D 流形轨迹追踪！`}
@@ -1248,7 +1254,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   <button
                     type="button"
                     onClick={openAuthModal}
-                    className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:brightness-110 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg shadow-amber-500/25 flex items-center gap-2 shrink-0 cursor-pointer transition-all"
+                    className="px-5 py-3 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none flex items-center gap-2 shrink-0 cursor-pointer transition-all"
                   >
                     <LogIn className="w-4 h-4" />
                     <span>{isEn ? "Sign In to Collect Archetype" : "登录收集此结果画像"}</span>
@@ -1256,46 +1262,55 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 </div>
               )}
 
-              {/* 专属本命神级名片卡 */}
-              <div className="glass-panel rounded-3xl p-8 md:p-12 relative overflow-hidden text-center shadow-2xl border border-amber-500/30 glow-gold bg-gradient-to-b from-amber-950/20 via-slate-900/80 to-[#0b0d13]">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 mb-4 font-medium shadow-inner">
-                  <Crown className="w-4 h-4 text-amber-400" /> {t.app.archetypeCardHeader}
+              {/* 专属性格解压/先锋名片大卡片 */}
+              <div className="bg-white dark:bg-[#0E0E16] rounded-[28px] p-8 md:p-12 relative overflow-hidden text-center shadow-[0_8px_0_#1c1917] dark:shadow-[6px_6px_0px_#CCFF00] border-[2.5px] border-stone-900 dark:border-white/20">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black text-xs text-stone-900 dark:text-[#08080C] mb-4 font-black shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                  <Crown className="w-4 h-4 text-amber-600 fill-amber-400 dark:text-[#08080C] dark:fill-[#08080C]" /> {t.app.archetypeCardHeader}
                 </div>
 
-                <div className="text-xs text-slate-400 mb-3 tracking-widest uppercase">
+                <div className="text-xs text-stone-500 dark:text-[#CCFF00] mb-3 tracking-widest uppercase font-bold font-mono">
                   {formatMessage(t.app.explorerPrefix, { name: displayReport.subject_name })}
                 </div>
 
-                {/* 5大专属称号 */}
-                <h2 className="text-4xl md:text-6xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-amber-300 to-orange-400 mb-3 drop-shadow-md">
+                {/* 角色称号：纯色大标题（彻底告别假精致 gradient-text） */}
+                <h2 className="text-4xl md:text-6xl font-black tracking-tight text-stone-900 dark:text-white uppercase mb-3">
                   {profile.role_title}
                 </h2>
 
                 {/* 专属灵魂 Tagline */}
-                <p className="text-lg md:text-xl text-amber-100 font-semibold tracking-wide mb-6">
-                  “{profile.praise_tagline}”
-                </p>
-
-                {/* 高光标签 */}
-                <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mx-auto mb-8">
-                  {profile.strength_tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-200 border border-amber-500/30 shadow-sm"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
+                <div className="my-5">
+                  <span className="text-base md:text-xl text-stone-900 dark:text-[#CCFF00] font-black tracking-wide bg-[#FFFBEB] dark:bg-[#12121C] px-5 py-2 rounded-2xl border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2.5px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] inline-block">
+                    “{profile.praise_tagline}”
+                  </span>
                 </div>
 
-                {/* 深度赋能评语（极高情绪价值） */}
-                <div className="text-sm md:text-base text-slate-200 leading-relaxed max-w-2xl mx-auto text-left bg-black/40 p-6 rounded-2xl border border-white/10 shadow-inner space-y-2">
-                  <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5 mb-2">
-                    <Sparkles className="w-4 h-4" /> {t.app.soulResonance}
+                {/* 高光标签 */}
+                <div className="flex flex-wrap items-center justify-center gap-2.5 max-w-lg mx-auto mb-8">
+                  {profile.strength_tags.map((tag, idx) => {
+                    const tagColors = [
+                      "bg-[#D1FAE5] text-stone-900", // 开心果绿
+                      "bg-[#FEF3C7] text-stone-900", // 芝士黄
+                      "bg-[#FFE4E6] text-stone-900", // 蜜桃橘粉
+                      "bg-[#E0F2FE] text-stone-900", // 苏打湖蓝
+                    ];
+                    const colorClass = tagColors[idx % tagColors.length];
+                    return (
+                      <span
+                        key={idx}
+                        className={`px-4 py-1.5 rounded-full text-xs font-black border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] ${colorClass} dark:bg-[#0E0E16] dark:text-[#CCFF00]`}
+                      >
+                        #{tag}
+                      </span>
+                    );
+                  })}
+                </div>
+
+                {/* 深度赋能评语 */}
+                <div className="text-sm md:text-base text-stone-800 dark:text-slate-200 leading-relaxed max-w-2xl mx-auto text-left bg-[#FFFBEB] dark:bg-[#12121C] p-6 rounded-2xl border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] space-y-2">
+                  <div className="text-xs font-black text-amber-800 dark:text-[#CCFF00] flex items-center gap-1.5 mb-2">
+                    <Sparkles className="w-4 h-4 text-amber-600 fill-amber-400 dark:text-[#CCFF00] dark:fill-[#CCFF00]" /> {t.app.soulResonance}
                   </div>
-                  <p className="text-slate-300 text-sm md:text-base leading-relaxed">
+                  <p className="text-stone-700 dark:text-slate-300 text-sm md:text-base leading-relaxed font-medium">
                     {profile.empowering_feedback}
                   </p>
                 </div>
@@ -1304,50 +1319,59 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               {/* 专属特技谱系 */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" /> {t.app.innateSkills}
+                  <h3 className="text-base font-black text-stone-900 dark:text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400 dark:text-[#CCFF00] dark:fill-[#CCFF00]/20" /> {t.app.innateSkills}
                   </h3>
-                  <span className="text-xs text-slate-500">{t.app.arsenalSubtitle}</span>
+                  <span className="text-xs text-stone-500 dark:text-slate-400 font-bold">{t.app.arsenalSubtitle}</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {profile.skills.map((skill, idx) => (
-                    <div
-                      key={idx}
-                      className="glass-card rounded-2xl p-5 border border-white/5 space-y-2 hover:border-amber-500/30 transition-all"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">{skill.icon}</span>
-                          <span className="font-bold text-sm text-amber-200">{skill.name}</span>
+                  {profile.skills.map((skill, idx) => {
+                    const cardBgColors = [
+                      "bg-[#ECFDF5]", // 开心果绿
+                      "bg-[#FFFBEB]", // 芝士黄
+                      "bg-[#FFF1F2]", // 蜜桃橘粉
+                      "bg-[#F0F9FF]", // 苏打湖蓝
+                    ];
+                    const cardBg = cardBgColors[idx % cardBgColors.length];
+                    return (
+                      <div
+                        key={idx}
+                        className={`${cardBg} dark:bg-[#12121C] rounded-2xl p-5 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-2 hover:-translate-y-0.5 transition-all`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{skill.icon}</span>
+                            <span className="font-black text-sm text-stone-900 dark:text-white">{skill.name}</span>
+                          </div>
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white dark:bg-[#0E0E16] text-stone-900 dark:text-[#CCFF00] border border-stone-900 dark:border-white/20 font-black shadow-sm">
+                            {skill.type}
+                          </span>
                         </div>
-                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
-                          {skill.type}
-                        </span>
+                        <p className="text-xs text-stone-700 dark:text-slate-300 leading-relaxed pt-1 font-medium">{skill.desc}</p>
                       </div>
-                      <p className="text-xs text-slate-300 leading-relaxed pt-1">{skill.desc}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               {/* 战略建议 */}
-              <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/20 text-xs md:text-sm text-amber-100 leading-relaxed space-y-1">
-                <div className="font-bold text-amber-300 flex items-center gap-1.5">
-                  <Compass className="w-4 h-4" /> {t.app.strategicAdvice}
+              <div className="p-6 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] text-xs md:text-sm text-stone-900 dark:text-white leading-relaxed space-y-1">
+                <div className="font-black text-stone-900 dark:text-[#CCFF00] flex items-center gap-1.5">
+                  <Compass className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" /> {t.app.strategicAdvice}
                 </div>
-                <p className="text-slate-300 text-xs md:text-sm pt-1">
+                <p className="text-stone-700 dark:text-slate-300 text-xs md:text-sm pt-1 font-medium">
                   {profile.growth_advice}
                 </p>
               </div>
 
-              {/* 专属永久报告链接卡片 (避免丢失后再也无法找回) */}
-              <div className="p-5 md:p-6 rounded-2xl bg-slate-900/90 border border-amber-500/25 space-y-2.5 text-left shadow-xl shadow-amber-950/20">
+              {/* 专属永久报告链接卡片 */}
+              <div className="p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-2.5 text-left">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs md:text-sm font-bold text-amber-300 flex items-center gap-1.5 font-serif">
-                    <Link2 className="w-4 h-4 text-amber-400" /> {t.app.permanentLinkTitle}
+                  <span className="text-xs md:text-sm font-black text-stone-900 dark:text-white flex items-center gap-1.5 font-sans">
+                    <Link2 className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" /> {t.app.permanentLinkTitle}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-mono bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                  <span className="text-[10px] text-stone-600 dark:text-[#08080C] font-mono font-bold bg-[#FEF3C7] dark:bg-[#CCFF00] px-2 py-0.5 rounded-full border border-stone-900 dark:border-black">
                     ID: {displayReport.session_id}
                   </span>
                 </div>
@@ -1356,16 +1380,16 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     type="text"
                     readOnly
                     value={buildSessionReportUrl(displayReport.session_id)}
-                    className="flex-1 bg-black/70 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-amber-200 selection:bg-amber-500/30 truncate select-all focus:outline-none focus:border-amber-400/50"
+                    className="flex-1 bg-[#FFFDF8] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white truncate select-all focus:outline-none shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
                   />
                   <button
                     type="button"
                     onClick={handleCopyReportLink}
-                    className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md shadow-amber-500/20 shrink-0"
+                    className="px-4 py-2.5 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition-all border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none shrink-0"
                   >
                     {copiedPermalink ? (
                       <>
-                        <Check className="w-4 h-4 text-emerald-950" />
+                        <Check className="w-4 h-4 text-emerald-950 dark:text-[#08080C]" />
                         <span>已复制！</span>
                       </>
                     ) : (
@@ -1376,7 +1400,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     )}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                <p className="text-[11px] text-stone-500 dark:text-slate-400 leading-relaxed font-sans font-medium">
                   {t.app.permanentLinkDesc}
                 </p>
               </div>
@@ -1393,7 +1417,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                       setSessionId("");
                       navigateTo("/");
                     }}
-                    className="px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-medium text-xs flex items-center gap-2 cursor-pointer transition-colors border border-white/10 shadow-lg"
+                    className="px-6 py-3.5 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs flex items-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-none active:translate-y-1 active:shadow-none"
                   >
                     <RotateCcw className="w-4 h-4" /> {t.app.restartVoyage}
                   </button>
@@ -1401,7 +1425,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   <button
                     type="button"
                     onClick={openAuthModal}
-                    className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors border border-indigo-400/30 shadow-lg shadow-indigo-600/25"
+                    className="px-6 py-3.5 rounded-2xl bg-[#38BDF8] hover:bg-[#0EA5E9] text-stone-950 font-black text-xs flex items-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-[#38BDF8] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] active:translate-y-1 active:shadow-none"
                   >
                     <LogIn className="w-4 h-4" />
                     <span>
@@ -1415,9 +1439,9 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 <button
                   type="button"
                   onClick={() => setShowPosterModal(true)}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-amber-500/30 active:scale-[0.98]"
+                  className="px-7 py-3.5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-sm flex items-center gap-2 cursor-pointer transition-all border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-1 active:shadow-none"
                 >
-                  <Share2 className="w-4 h-4 text-slate-950" /> {t.app.shareBtn}
+                  <Share2 className="w-4 h-4 text-stone-950 dark:text-[#08080C]" /> {t.app.shareBtn}
                 </button>
               </div>
             </div>
@@ -1461,16 +1485,16 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
       {/* 仅在未进入 App Layout 时展示底部极简脚注 */}
       {!inAppLayout && (
-        <footer className="py-4 text-center text-xs text-slate-500 border-t border-white/5 mt-8 space-y-1.5">
+        <footer className="py-4 text-center text-xs text-stone-500 dark:text-slate-400 border-t-2 border-stone-900/10 dark:border-white/10 mt-8 space-y-1.5 font-medium">
           <div>{t.app.footerText}</div>
-          <div className="flex items-center justify-center gap-3 text-[11px] text-slate-600">
+          <div className="flex items-center justify-center gap-3 text-[11px] text-stone-600 dark:text-slate-400">
             <a
               href="/privacy"
               onClick={(e) => {
                 e.preventDefault();
                 navigateTo("/privacy");
               }}
-              className="hover:text-amber-300 transition-colors"
+              className="hover:text-amber-800 dark:hover:text-[#CCFF00] transition-colors font-bold"
             >
               {t.legal?.privacyPolicy || "隐私政策"}
             </a>
@@ -1481,12 +1505,12 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 e.preventDefault();
                 navigateTo("/terms");
               }}
-              className="hover:text-amber-300 transition-colors"
+              className="hover:text-amber-800 dark:hover:text-[#CCFF00] transition-colors font-bold"
             >
               {t.legal?.termsOfService || "服务条款"}
             </a>
             <span>•</span>
-            <span className="font-mono">&copy; {new Date().getFullYear()} Self-Test</span>
+            <span className="font-mono font-bold">&copy; {new Date().getFullYear()} Self-Test</span>
           </div>
         </footer>
       )}

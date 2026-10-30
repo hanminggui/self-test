@@ -1,18 +1,47 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   interpolate-size: allow-keywords;
+  --bg-cream: #fffdf8;
+  --bg-warm: #fffbeb;
+  --ink-stone: #1c1917;
+  --ink-warm: #292524;
+  --color-pistachio: #10b981;
+  --color-pistachio-light: #34d399;
+  --color-cheese: #fbbf24;
+  --color-peach: #fb7185;
+  --color-soda: #38bdf8;
 }
 
 @layer base {
   body {
-    background-color: #090a0f;
+    /* 默认亮色模式：Scheme C 多巴胺轻萌解压 (Playful Dopamine) */
+    background-color: #fffdf8;
     background-image: 
-      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.06) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, rgba(20, 24, 38, 0.4) 0px, transparent 100%);
+      radial-gradient(#e7e5e4 1px, transparent 1px),
+      radial-gradient(circle at 10% 20%, rgba(251, 191, 36, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(251, 113, 133, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.06) 0%, transparent 60%);
+    background-size: 24px 24px, 100% 100%, 100% 100%, 100% 100%;
     background-attachment: fixed;
-    color: #f1f5f9;
+    color: #1c1917;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  .dark body,
+  :root.dark body {
+    /* 暗色模式：Scheme B 赛博先锋酸性 (Acid Cyber Editorial) */
+    background-color: #08080C;
+    background-image: 
+      radial-gradient(#1a1a24 1px, transparent 1px),
+      radial-gradient(#12121c 1px, #08080C 1px);
+    background-size: 32px 32px;
+    background-position: 0 0, 16px 16px;
+    background-attachment: fixed;
+    color: #FFFFFF;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
@@ -25,57 +54,267 @@
   }
 }
 
-/* Gamified Portal & Runic Keyframes */
-@keyframes portal-pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.85;
-  }
-  50% {
-    transform: scale(1.04);
-    opacity: 1;
-  }
-}
-
-.portal-pulse-glow {
-  animation: portal-pulse 3s ease-in-out infinite;
-}
-
-/* Glassmorphism custom utilities */
+/* ==========================================================================
+   Dual-Theme Universal Panels: Eliminating Low-Opacity Muddy Glass
+   ========================================================================== */
 .glass-panel {
-  background: rgba(18, 22, 34, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: #ffffff;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 2.5px solid #1c1917;
+  box-shadow: 0 6px 0 #1c1917;
+  border-radius: 28px;
+  color: #1c1917;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dark .glass-panel {
+  background-color: #0E0E16;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 4px 4px 0px #CCFF00;
+  border-radius: 24px;
+  color: #FFFFFF;
 }
 
 .glass-card {
-  background: rgba(22, 27, 42, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: #ffffff;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 2px solid #1c1917;
+  box-shadow: 0 4px 0 #1c1917;
+  border-radius: 20px;
+  color: #1c1917;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dark .glass-card {
+  background-color: #12121C;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.8);
+  border-radius: 16px;
+  color: #FFFFFF;
+}
+
+/* ==========================================================================
+   Light Mode (Scheme C): Tactile Neo-pop / Dopamine Utilities
+   ========================================================================== */
+.neo-box {
+  background-color: #ffffff;
+  border: 2.5px solid #1c1917;
+  box-shadow: 0 4px 0 #1c1917;
+  border-radius: 24px;
+}
+.dark .neo-box {
+  background-color: #0E0E16;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 4px 4px 0px #CCFF00;
+  border-radius: 20px;
+}
+
+.neo-box-lg {
+  background-color: #ffffff;
+  border: 2.5px solid #1c1917;
+  box-shadow: 0 6px 0 #1c1917;
+  border-radius: 28px;
+}
+.dark .neo-box-lg {
+  background-color: #0E0E16;
+  border: 2px solid #CCFF00;
+  box-shadow: 6px 6px 0px #CCFF00;
+  border-radius: 24px;
+}
+
+.neo-box-sm {
+  background-color: #ffffff;
+  border: 2px solid #1c1917;
+  box-shadow: 0 2.5px 0 #1c1917;
+  border-radius: 16px;
+}
+.dark .neo-box-sm {
+  background-color: #12121C;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
+  border-radius: 14px;
+}
+
+.neo-btn {
+  border: 2.5px solid #1c1917;
+  box-shadow: 0 4px 0 #1c1917;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+.neo-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #1c1917;
+}
+.neo-btn:active {
+  transform: translateY(3px) !important;
+  box-shadow: 0 1px 0 #1c1917 !important;
+}
+
+.dark .neo-btn {
+  border: 2px solid #CCFF00;
+  box-shadow: 3px 3px 0px #FFFFFF;
+}
+.dark .neo-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px #FFFFFF;
+}
+.dark .neo-btn:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 1px 1px 0px #FFFFFF !important;
+}
+
+/* ==========================================================================
+   Dark Mode (Scheme B): Neo-Brutalism & Acid Cyber Solid Utilities
+   ========================================================================== */
+.brutal-card-lime {
+  background: #0E0E16;
+  border: 2px solid #CCFF00;
+  box-shadow: 4px 4px 0px #CCFF00;
+}
+.brutal-card-rose {
+  background: #0E0E16;
+  border: 2px solid #FF3366;
+  box-shadow: 4px 4px 0px #FF3366;
+}
+.brutal-card-cyan {
+  background: #0E0E16;
+  border: 2px solid #38BDF8;
+  box-shadow: 4px 4px 0px #38BDF8;
+}
+
+.brutal-btn-lime {
+  background: #CCFF00;
+  color: #08080C;
+  font-weight: 900;
+  border: 2px solid #CCFF00;
+  box-shadow: 3px 3px 0px #FFFFFF;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.brutal-btn-lime:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px #FFFFFF;
+}
+.brutal-btn-lime:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #FFFFFF;
+}
+
+.brutal-btn-rose {
+  background: #FF3366;
+  color: #FFFFFF;
+  font-weight: 900;
+  border: 2px solid #FF3366;
+  box-shadow: 3px 3px 0px #CCFF00;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.brutal-btn-rose:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px #CCFF00;
+}
+.brutal-btn-rose:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #CCFF00;
+}
+
+.brutal-btn-cyan {
+  background: #38BDF8;
+  color: #08080C;
+  font-weight: 900;
+  border: 2px solid #38BDF8;
+  box-shadow: 3px 3px 0px #CCFF00;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.brutal-btn-cyan:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px #CCFF00;
+}
+.brutal-btn-cyan:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #CCFF00;
+}
+
+/* Editorial Slanted Badge */
+.acid-badge-lime {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: #CCFF00;
+  color: #08080C;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  padding: 0.25rem 0.625rem;
+  border: 1.5px solid #08080C;
+  box-shadow: 2px 2px 0px rgba(255, 255, 255, 0.4);
+  transform: rotate(-1deg);
 }
 
 .glow-border {
-  box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.25);
+  border-color: #CCFF00;
+  box-shadow: 0 0 20px -2px rgba(204, 255, 0, 0.3);
 }
 
 .glow-gold {
   box-shadow: 0 0 30px -5px rgba(245, 158, 11, 0.3);
 }
+.dark .glow-gold {
+  border-color: #CCFF00;
+  box-shadow: 4px 4px 0px #CCFF00;
+}
 
-/* Custom scrollbar */
+/* Animations */
+@keyframes portal-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+}
+
+.portal-pulse-glow {
+  animation: portal-pulse 2.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes jelly-pop {
+  0% { transform: scale(0.92); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+.jelly-pop {
+  animation: jelly-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Custom Scrollbar - Adaptive */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: #fef3c7;
+  border-radius: 4px;
 }
+.dark ::-webkit-scrollbar-track {
+  background: #08080C;
+}
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  background: #fbbf24;
+  border: 2px solid #1c1917;
+  border-radius: 6px;
 }
+.dark ::-webkit-scrollbar-thumb {
+  background: #262633;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: #f59e0b;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #CCFF00;
 }
