@@ -49,11 +49,13 @@ async function runMobileVerification() {
     await runCli(["set", "viewport", "390", "844"]);
 
     const routesToVerify = [
-      { path: "/", name: "Guest Official Landing Page" },
-      { path: "/test", name: "Assessment Interface" },
-      { path: "/history", name: "Profile & History Dashboard" },
-      { path: "/assets", name: "Cognitive Archetype Assets" },
-      { path: "/settings", name: "Preferences Settings" },
+      { path: "/", name: "Guest Official Landing Page", screenshot: ".scratch/mobile_landing_390x844.png" },
+      { path: "/test", name: "Assessment Interface", screenshot: ".scratch/mobile_assessment_390x844.png" },
+      { path: "/history", name: "Profile & History Dashboard", screenshot: ".scratch/mobile_profile_390x844.png" },
+      { path: "/assets", name: "Cognitive Archetype Assets", screenshot: ".scratch/mobile_assets_390x844.png" },
+      { path: "/settings", name: "Preferences Settings", screenshot: ".scratch/mobile_settings_390x844.png" },
+      { path: "/privacy", name: "Legal Privacy Policy", screenshot: ".scratch/mobile_legal_privacy_390x844.png" },
+      { path: "/terms", name: "Legal Terms of Service", screenshot: ".scratch/mobile_legal_terms_390x844.png" },
     ];
 
     const overflowCheckJs = `
@@ -118,6 +120,11 @@ async function runMobileVerification() {
         throw new Error(`Horizontal overflow detected on ${route.path}`);
       } else {
         console.log(`  ✓ Pass: docWidth=${data.docWidth}px, winWidth=${data.winWidth}px, zero horizontal overflow.`);
+      }
+
+      if (route.screenshot) {
+        await runCli(["screenshot", route.screenshot]);
+        console.log(`  ✓ Saved route screenshot: ${route.screenshot}`);
       }
     }
 
@@ -192,6 +199,55 @@ async function runMobileVerification() {
     // Close AuthModal
     await runCli(["press", "Escape"]);
     await runCli(["wait", "300"]);
+
+    // 6. Verify AssetsPage card click BottomSheet detail drawer
+    console.log("\n• Verifying AssetsPage card click BottomSheet detail drawer...");
+    await runCli(["open", `${BASE_URL}/assets`]);
+    await runCli(["wait", "600"]);
+
+    // Click the first archetype card
+    await runCli(["click", "[data-testid='archetype-card']"]);
+    await runCli(["wait", "600"]);
+
+    const assetDetailCheckJs = `
+      (() => {
+        const dialog = document.querySelector('[role="dialog"]');
+        const dragHandle = document.querySelector('.cursor-grab');
+        const hasSkills = document.body.textContent && (document.body.textContent.includes('专属认知特技') || document.body.textContent.includes('Skills'));
+        return JSON.stringify({
+          dialogFound: Boolean(dialog),
+          dragHandleFound: Boolean(dragHandle),
+          hasSkills: Boolean(hasSkills)
+        });
+      })()
+    `;
+    const assetDetailEval = await runCli(["eval", assetDetailCheckJs]);
+    console.log("  AssetsPage BottomSheet verification result:", assetDetailEval.stdout.trim());
+    await runCli(["screenshot", ".scratch/mobile_assets_detail_drawer_390x844.png"]);
+    console.log("  ✓ Captured AssetsPage detail drawer screenshot: .scratch/mobile_assets_detail_drawer_390x844.png");
+
+    await runCli(["press", "Escape"]);
+    await runCli(["wait", "300"]);
+
+    // 7. Verify LegalPage mobile navigation and bottom dock
+    console.log("\n• Verifying LegalPage mobile navigation and bottom dock...");
+    await runCli(["open", `${BASE_URL}/privacy`]);
+    await runCli(["wait", "600"]);
+
+    const legalCheckJs = `
+      (() => {
+        const bottomNav = document.querySelector('nav[aria-label="Legal navigation dock"]');
+        const buttons = bottomNav ? Array.from(bottomNav.querySelectorAll('button, a')) : [];
+        return JSON.stringify({
+          hasBottomNav: Boolean(bottomNav),
+          bottomControlsCount: buttons.length
+        });
+      })()
+    `;
+    const legalEval = await runCli(["eval", legalCheckJs]);
+    console.log("  LegalPage mobile navigation verification result:", legalEval.stdout.trim());
+    await runCli(["screenshot", ".scratch/mobile_legal_privacy_390x844.png"]);
+    console.log("  ✓ Captured LegalPage privacy screenshot: .scratch/mobile_legal_privacy_390x844.png");
 
     console.log("\n==================================================================");
     console.log("✅ All mobile headless verifications passed successfully!");

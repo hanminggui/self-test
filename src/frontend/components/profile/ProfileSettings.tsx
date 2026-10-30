@@ -336,7 +336,7 @@ export const ProfileSettings: React.FC = () => {
                         type="button"
                         onClick={() => setAvatarUrl(presetDataUrl)}
                         title={preset.name}
-                        className={`w-10 h-10 rounded-xl bg-gradient-to-br ${preset.gradient} flex items-center justify-center text-lg border-2 border-stone-900 transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
+                        className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-gradient-to-br ${preset.gradient} flex items-center justify-center text-lg border-2 border-stone-900 transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
                           isSelected ? "ring-2 ring-[#CCFF00] scale-105 shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]" : "opacity-85 hover:opacity-100"
                         }`}
                       >
@@ -348,7 +348,7 @@ export const ProfileSettings: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setAvatarUrl(user.avatar_url || "")}
-                      className="px-2.5 py-1 rounded-xl bg-white dark:bg-[#12121C] hover:bg-stone-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-[11px] font-bold text-stone-800 dark:text-slate-200 transition-colors cursor-pointer"
+                      className="min-h-[44px] px-3.5 py-2 rounded-xl bg-white dark:bg-[#12121C] hover:bg-stone-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-800 dark:text-slate-200 transition-colors cursor-pointer flex items-center justify-center active:translate-y-0.5"
                     >
                       恢复第三方头像
                     </button>
@@ -365,7 +365,7 @@ export const ProfileSettings: React.FC = () => {
                 value={avatarUrl.startsWith("data:") ? "" : avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
                 placeholder="https://example.com/avatar.png"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-xs text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
+                className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
               />
             </div>
           </div>
@@ -386,7 +386,7 @@ export const ProfileSettings: React.FC = () => {
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder={t.profile?.displayNamePlaceholder || "请输入公开展示昵称"}
               maxLength={40}
-              className={`w-full px-4 py-2.5 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none transition-all ${
+              className={`w-full min-h-[44px] px-4 py-3 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none transition-all ${
                 isNameInvalid && displayName.length > 0
                   ? "border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
                   : "border-stone-300 dark:border-white/20 focus:border-stone-900 dark:focus:border-[#CCFF00]"
@@ -413,7 +413,7 @@ export const ProfileSettings: React.FC = () => {
               onChange={(e) => setBio(e.target.value)}
               placeholder={t.profile?.bioPlaceholder || "用一两句话描述您的心智思考模式或探索宣言..."}
               maxLength={300}
-              className="w-full px-4 py-2.5 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all resize-none"
+              className="w-full min-h-[88px] px-4 py-3 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all resize-none"
             />
             <p className="text-[11px] text-stone-500 dark:text-slate-400 font-medium">{t.profile?.bioHelp || "上限 300 个字符"}</p>
           </div>
@@ -552,7 +552,7 @@ export const ProfileSettings: React.FC = () => {
                 value={socialLinks.github || ""}
                 onChange={(e) => setSocialLinks({ ...socialLinks, github: e.target.value })}
                 placeholder="torvalds"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-xs text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
+                className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
               />
             </div>
 
@@ -567,7 +567,7 @@ export const ProfileSettings: React.FC = () => {
                 value={socialLinks.linuxdo || ""}
                 onChange={(e) => setSocialLinks({ ...socialLinks, linuxdo: e.target.value })}
                 placeholder="neo"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-xs text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
+                className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
               />
             </div>
 
@@ -582,7 +582,7 @@ export const ProfileSettings: React.FC = () => {
                 value={socialLinks.twitter || ""}
                 onChange={(e) => setSocialLinks({ ...socialLinks, twitter: e.target.value })}
                 placeholder="@username"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-xs text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
+                className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
               />
             </div>
 
@@ -597,7 +597,7 @@ export const ProfileSettings: React.FC = () => {
                 value={socialLinks.website || ""}
                 onChange={(e) => setSocialLinks({ ...socialLinks, website: e.target.value })}
                 placeholder="https://example.com"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-xs text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
+                className="w-full min-h-[44px] px-4 py-3 rounded-xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-300 dark:border-white/20 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 font-medium focus:outline-none focus:border-stone-900 dark:focus:border-[#CCFF00] transition-all"
               />
             </div>
           </div>
@@ -657,7 +657,7 @@ export const ProfileSettings: React.FC = () => {
                         type="button"
                         onClick={() => handleUnlink(prov.provider)}
                         disabled={totalLinked <= 1 || unlinkingProvider === prov.provider}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:translate-y-0.5 ${
                           totalLinked <= 1
                             ? "bg-stone-100 dark:bg-white/5 text-stone-400 dark:text-slate-500 border border-stone-200 dark:border-white/5 cursor-not-allowed"
                             : "bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border-2 border-rose-300 dark:border-rose-500/40"
@@ -674,7 +674,7 @@ export const ProfileSettings: React.FC = () => {
                     ) : (
                       <a
                         href={`/api/auth/link/${prov.provider}`}
-                        className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] hover:bg-stone-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-black text-stone-900 dark:text-white transition-all flex items-center gap-1.5 shadow-[0_2px_0_#1c1917] dark:shadow-none"
+                        className="min-h-[44px] px-4 py-2 rounded-xl bg-white dark:bg-[#12121C] hover:bg-stone-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-black text-stone-900 dark:text-white transition-all flex items-center justify-center gap-1.5 shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>{t.profile?.linkProviderBtn || "立即关联"}</span>
@@ -714,7 +714,7 @@ export const ProfileSettings: React.FC = () => {
                     setMotionMode("full");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
                     motionMode === "full"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
@@ -728,7 +728,7 @@ export const ProfileSettings: React.FC = () => {
                     setMotionMode("reduced");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
                     motionMode === "reduced"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
@@ -756,7 +756,7 @@ export const ProfileSettings: React.FC = () => {
                     setSoundMode("enabled");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
                     soundMode === "enabled"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
@@ -769,7 +769,7 @@ export const ProfileSettings: React.FC = () => {
                   onClick={() => {
                     setSoundMode("muted");
                   }}
-                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
                     soundMode === "muted"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
@@ -797,7 +797,7 @@ export const ProfileSettings: React.FC = () => {
                     setPerformanceMode("high");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
                     performanceMode === "high"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
@@ -811,7 +811,7 @@ export const ProfileSettings: React.FC = () => {
                     setPerformanceMode("eco");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
                     performanceMode === "eco"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
@@ -834,7 +834,7 @@ export const ProfileSettings: React.FC = () => {
           <button
             type="submit"
             disabled={saving || isNameInvalid}
-            className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl text-sm font-black border-2 border-stone-900 dark:border-black transition-all duration-200 cursor-pointer ${
+            className={`min-h-[48px] w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl text-sm font-black border-2 border-stone-900 dark:border-black transition-all duration-200 cursor-pointer ${
               saving || isNameInvalid
                 ? "bg-stone-300 dark:bg-stone-800 text-stone-500 dark:text-slate-500 cursor-not-allowed opacity-60 shadow-none"
                 : "bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none"

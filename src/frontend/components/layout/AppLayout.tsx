@@ -621,14 +621,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
       {/* Main Content Area */}
       <div className="flex-1 min-w-0 h-screen h-dvh min-h-dvh overflow-y-auto relative bg-[#FFFDF8] dark:bg-[#08080C] pb-[env(safe-area-inset-bottom)]">
-        {/* Mobile-only floating sidebar drawer button with safe-area padding */}
+        {/* Mobile-only floating sidebar drawer button with safe-area padding (>=44px touch target) */}
         <button
           type="button"
           onClick={() => setMobileMenuOpen(true)}
           aria-label="Open navigation menu"
-          className="md:hidden fixed top-[max(0.75rem,env(safe-area-inset-top))] left-[max(0.75rem,env(safe-area-inset-left))] z-30 w-9 h-9 rounded-xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-pointer"
+          className="md:hidden fixed top-[max(0.75rem,env(safe-area-inset-top))] left-[max(0.75rem,env(safe-area-inset-left))] z-30 min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-pointer active:translate-y-0.5"
         >
-          <Menu className="w-4 h-4" />
+          <Menu className="w-5 h-5" />
         </button>
 
         {children}
