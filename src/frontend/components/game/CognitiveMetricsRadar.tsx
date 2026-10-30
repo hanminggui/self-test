@@ -35,7 +35,7 @@ export const CognitiveMetricsRadar: React.FC<CognitiveMetricsRadarProps> = ({
   // 4 Axes Coordinates on a 320x320 SVG Canvas
   const CX = 160;
   const CY = 160;
-  const MAX_R = 105;
+  const MAX_R = 98;
 
   // Top: Calibration Balance
   const pTop = {
@@ -64,7 +64,7 @@ export const CognitiveMetricsRadar: React.FC<CognitiveMetricsRadarProps> = ({
 
   return (
     <div
-      className={`rounded-[28px] p-6 sm:p-7 bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] space-y-5 ${className}`}
+      className={`rounded-[28px] p-4 sm:p-7 bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] space-y-4 sm:space-y-5 overflow-hidden ${className}`}
     >
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-stone-900/10 dark:border-white/10 pb-3">
@@ -80,9 +80,9 @@ export const CognitiveMetricsRadar: React.FC<CognitiveMetricsRadarProps> = ({
       </div>
 
       {/* SVG Radar Visual Canvas */}
-      <div className="flex flex-col items-center justify-center">
-        <div className="relative w-64 h-64 sm:w-72 sm:h-72 select-none">
-          <svg viewBox="0 0 320 320" className="w-full h-full overflow-visible">
+      <div className="flex flex-col items-center justify-center w-full overflow-hidden">
+        <div className="relative w-full max-w-[280px] sm:max-w-[320px] aspect-square mx-auto select-none">
+          <svg viewBox="-35 -15 390 350" className="w-full h-full max-w-full overflow-hidden">
             {/* Concentric Grid Diamonds */}
             {rings.map((ring) => {
               const r = ring * MAX_R;
@@ -153,7 +153,7 @@ export const CognitiveMetricsRadar: React.FC<CognitiveMetricsRadarProps> = ({
               {isEn ? "Calibration" : "自省自洽"} ({scoreCalibration}%)
             </text>
             <text
-              x={CX + MAX_R + 10}
+              x={CX + MAX_R + 8}
               y={CY + 4}
               textAnchor="start"
               className="fill-stone-950 dark:fill-white font-black text-[11px]"
@@ -169,7 +169,7 @@ export const CognitiveMetricsRadar: React.FC<CognitiveMetricsRadarProps> = ({
               {isEn ? "Accuracy" : "任务胜率"} ({scoreAccuracy}%)
             </text>
             <text
-              x={CX - MAX_R - 10}
+              x={CX - MAX_R - 8}
               y={CY + 4}
               textAnchor="end"
               className="fill-stone-950 dark:fill-white font-black text-[11px]"
@@ -181,55 +181,55 @@ export const CognitiveMetricsRadar: React.FC<CognitiveMetricsRadarProps> = ({
       </div>
 
       {/* 4 Quantitative Breakdown Indicator Badges */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-        <div className="p-3 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-600 dark:text-slate-400">
-            <Zap className="w-3.5 h-3.5 text-sky-700 dark:text-cyan-400" />
-            <span>{isEn ? "Acuity d'" : "任务辨别力 d'"}</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-1">
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-600 dark:text-slate-400 truncate">
+            <Zap className="w-3.5 h-3.5 text-sky-700 dark:text-cyan-400 shrink-0" />
+            <span className="truncate">{isEn ? "Acuity d'" : "任务辨别力 d'"}</span>
           </div>
-          <div className="text-lg font-black font-mono text-sky-800 dark:text-cyan-300">
+          <div className="text-base sm:text-lg font-black font-mono text-sky-800 dark:text-cyan-300">
             {dPrime.toFixed(2)}
           </div>
-          <p className="text-[9.5px] text-stone-600 dark:text-slate-500 font-bold">
+          <p className="text-[9.5px] text-stone-600 dark:text-slate-500 font-bold truncate">
             {isEn ? "Perceptual strength" : "感知敏锐度"}
           </p>
         </div>
 
-        <div className="p-3 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-600 dark:text-slate-400">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-700 dark:text-[#CCFF00]" />
-            <span>{isEn ? "Metacog M-Ratio" : "元认知效能 M"}</span>
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-600 dark:text-slate-400 truncate">
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-700 dark:text-[#CCFF00] shrink-0" />
+            <span className="truncate">{isEn ? "Metacog M" : "元认知效能 M"}</span>
           </div>
-          <div className="text-lg font-black font-mono text-emerald-800 dark:text-[#CCFF00]">
+          <div className="text-base sm:text-lg font-black font-mono text-emerald-800 dark:text-[#CCFF00]">
             {mRatio.toFixed(2)}
           </div>
-          <p className="text-[9.5px] text-stone-600 dark:text-slate-500 font-bold">
+          <p className="text-[9.5px] text-stone-600 dark:text-slate-500 font-bold truncate">
             {isEn ? "Type-2 self-insight" : "二阶自知杠杆"}
           </p>
         </div>
 
-        <div className="p-3 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-600 dark:text-slate-400">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-            <span>{isEn ? "Calibration Bias" : "自洽偏向 Bias"}</span>
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-600 dark:text-slate-400 truncate">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+            <span className="truncate">{isEn ? "Bias" : "自洽偏向 Bias"}</span>
           </div>
-          <div className="text-lg font-black font-mono text-amber-900 dark:text-amber-300">
+          <div className="text-base sm:text-lg font-black font-mono text-amber-900 dark:text-amber-300">
             {bias >= 0 ? `+${bias.toFixed(2)}` : bias.toFixed(2)}
           </div>
-          <p className="text-[9.5px] text-stone-600 dark:text-slate-500 font-bold">
+          <p className="text-[9.5px] text-stone-600 dark:text-slate-500 font-bold truncate">
             {Math.abs(bias) < 0.1 ? (isEn ? "Balanced" : "自洽平和") : bias > 0 ? (isEn ? "Confident" : "进取下注") : (isEn ? "Cautious" : "审慎防守")}
           </p>
         </div>
 
-        <div className="p-3 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-600 dark:text-slate-400">
-            <Target className="w-3.5 h-3.5 text-rose-700 dark:text-rose-400" />
-            <span>{isEn ? "Accuracy" : "综合准确率"}</span>
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-600 dark:text-slate-400 truncate">
+            <Target className="w-3.5 h-3.5 text-rose-700 dark:text-rose-400 shrink-0" />
+            <span className="truncate">{isEn ? "Accuracy" : "综合准确率"}</span>
           </div>
-          <div className="text-lg font-black font-mono text-rose-900 dark:text-rose-300">
+          <div className="text-base sm:text-lg font-black font-mono text-rose-900 dark:text-rose-300">
             {Math.round(accuracy * 100)}%
           </div>
-          <p className="text-[9.5px] text-stone-600 dark:text-slate-500 font-bold">
+          <p className="text-[9.5px] text-stone-600 dark:text-slate-500 font-bold truncate">
             {isEn ? "Trial convergence" : "阶梯收敛准确率"}
           </p>
         </div>
