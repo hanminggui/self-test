@@ -328,50 +328,50 @@ export const SharePage: React.FC = () => {
             <section className="space-y-6 pt-4">
               <div className="flex items-center justify-between border-b-2 border-stone-900/10 dark:border-white/10 pb-3">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-stone-900 dark:text-[#CCFF00]" />
-                  <h3 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
+                  <Activity className="w-5 h-5 text-stone-950 dark:text-[#CCFF00]" />
+                  <h3 className="text-lg sm:text-xl font-black text-stone-950 dark:text-white">
                     {isEn ? "Diagnostic Metrics & Trait Analysis" : "认知指标与画像深度解析"}
                   </h3>
                 </div>
-                <span className="text-xs text-stone-700 dark:text-[#CCFF00] font-mono font-bold bg-[#FEF3C7] dark:bg-[#12121C] px-2.5 py-0.5 rounded-full border border-stone-900 dark:border-[#CCFF00]">
+                <span className="text-xs text-stone-950 dark:text-[#CCFF00] font-mono font-black bg-[#FEF3C7] dark:bg-[#12121C] px-3 py-1 rounded-full border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
                   {localizedReport.quadrant_code}
                 </span>
               </div>
 
               {/* 4 Quantitative Metrics Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                <div className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 font-bold">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
+                <div className="bg-[#FFFBEB] dark:bg-[#0E0E16] rounded-2xl p-4 border-[2.5px] border-stone-900 dark:border-[#38BDF8] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#38BDF8] space-y-1.5">
+                  <span className="text-xs text-stone-700 dark:text-slate-300 font-black">
                     {isEn ? "1st-Order Sensitivity d'" : "一阶敏感度 d'"}
                   </span>
-                  <div className="text-xl sm:text-2xl font-mono font-black text-sky-700 dark:text-[#38BDF8]">
+                  <div className="text-2xl font-mono font-black text-sky-900 dark:text-[#38BDF8]">
                     {dPrime.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                  <p className="text-[10px] text-stone-600 dark:text-slate-300 font-bold">
                     {isEn ? "Raw perceptual & task acuity" : "基础任务敏锐度与信息处理"}
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 font-bold">
+                <div className="bg-[#FFFBEB] dark:bg-[#0E0E16] rounded-2xl p-4 border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] space-y-1.5">
+                  <span className="text-xs text-stone-700 dark:text-slate-300 font-black">
                     {isEn ? "Metacog M-Ratio" : "元认知效率 M-Ratio"}
                   </span>
-                  <div className="text-xl sm:text-2xl font-mono font-black text-emerald-700 dark:text-[#CCFF00]">
+                  <div className="text-2xl font-mono font-black text-emerald-900 dark:text-[#CCFF00]">
                     {mRatio.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                  <p className="text-[10px] text-stone-600 dark:text-slate-300 font-bold">
                     {isEn ? "Type-2 self-monitoring leverage" : "二阶自省与置信度博弈效率"}
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 font-bold">
+                <div className="bg-[#FFFBEB] dark:bg-[#0E0E16] rounded-2xl p-4 border-[2.5px] border-stone-900 dark:border-[#FBBF24] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#FBBF24] space-y-1.5">
+                  <span className="text-xs text-stone-700 dark:text-slate-300 font-black">
                     {isEn ? "Calibration Bias" : "校准偏差 Bias"}
                   </span>
-                  <div className="text-xl sm:text-2xl font-mono font-black text-amber-700 dark:text-[#FBBF24]">
+                  <div className="text-2xl font-mono font-black text-amber-900 dark:text-[#FBBF24]">
                     {biasSign}{bias.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                  <p className="text-[10px] text-stone-600 dark:text-slate-300 font-bold">
                     {bias > 0.1
                       ? (isEn ? "Overconfidence tendency" : "偏向自信敢下注")
                       : bias < -0.1
@@ -380,14 +380,14 @@ export const SharePage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 font-bold">
+                <div className="bg-[#FFFBEB] dark:bg-[#0E0E16] rounded-2xl p-4 border-[2.5px] border-stone-900 dark:border-[#10B981] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#10B981] space-y-1.5">
+                  <span className="text-xs text-stone-700 dark:text-slate-300 font-black">
                     {isEn ? "Task Accuracy" : "综合准确率"}
                   </span>
-                  <div className="text-xl sm:text-2xl font-mono font-black text-emerald-600 dark:text-[#10B981]">
+                  <div className="text-2xl font-mono font-black text-rose-900 dark:text-[#10B981]">
                     {Math.round(accuracy * 100)}%
                   </div>
-                  <p className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                  <p className="text-[10px] text-stone-600 dark:text-slate-300 font-bold">
                     {isEn ? "Psychophysical test accuracy" : "自适应阶梯收敛表现"}
                   </p>
                 </div>
@@ -395,12 +395,12 @@ export const SharePage: React.FC = () => {
 
               {/* Empowering Feedback Card */}
               {profile.empowering_feedback && (
-                <div className="bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] rounded-2xl p-5 sm:p-6 space-y-2 text-left">
-                  <div className="flex items-center gap-2 text-xs font-black text-amber-800 dark:text-[#CCFF00]">
+                <div className="bg-[#FFFBEB] dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] p-6 sm:p-7 rounded-[28px] space-y-3">
+                  <div className="flex items-center gap-2 font-black text-sm text-stone-950 dark:text-white border-b-2 border-stone-900/10 dark:border-white/10 pb-3">
                     <Sparkles className="w-4 h-4 text-amber-600 fill-amber-400 dark:text-[#CCFF00] dark:fill-[#CCFF00]" />
                     <span>{isEn ? "Empowering Resonance" : "思维特质深度共鸣"}</span>
                   </div>
-                  <p className="text-xs sm:text-sm text-stone-700 dark:text-slate-200 leading-relaxed font-medium">
+                  <p className="text-xs sm:text-sm text-stone-900 dark:text-slate-200 leading-relaxed font-medium">
                     {profile.empowering_feedback}
                   </p>
                 </div>
@@ -409,46 +409,51 @@ export const SharePage: React.FC = () => {
               {/* 4 Innate Skills Breakdown */}
               {profile.skills && profile.skills.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-sm font-black text-stone-900 dark:text-white flex items-center gap-1.5">
+                  <h4 className="text-sm font-black text-stone-950 dark:text-white flex items-center gap-1.5">
                     <Zap className="w-4 h-4 text-amber-500 fill-amber-400 dark:text-[#CCFF00] dark:fill-[#CCFF00]/20" />
                     <span>{isEn ? "Innate Cognitive Skills" : "专属四大正向特技"}</span>
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {profile.skills.map((skill: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1 hover:-translate-y-0.5 transition-all"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{skill.icon || "✨"}</span>
-                            <span className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">
-                              {skill.name}
-                            </span>
-                          </div>
-                          {skill.type && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#0E0E16] text-stone-900 dark:text-[#CCFF00] border border-stone-900 dark:border-white/20 font-bold">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {profile.skills.map((skill: any, idx: number) => {
+                      const colorMap = [
+                        "bg-white dark:bg-[#12121C]",
+                        "bg-white dark:bg-[#12121C]",
+                        "bg-white dark:bg-[#12121C]",
+                        "bg-white dark:bg-[#12121C]",
+                      ];
+                      const skillBg = colorMap[idx % colorMap.length];
+                      return (
+                        <div
+                          key={idx}
+                          className={`${skillBg} rounded-2xl p-4 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_3.5px_0_#1c1917] dark:shadow-[2px_2px_0px_rgba(0,0,0,0.8)] space-y-1.5`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{skill.icon}</span>
+                              <span className="font-black text-xs sm:text-sm text-stone-950 dark:text-white">{skill.name}</span>
+                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#08080C] text-stone-950 dark:text-[#CCFF00] border-2 border-stone-900 dark:border-[#CCFF00] font-black">
                               {skill.type}
                             </span>
-                          )}
+                          </div>
+                          <p className="text-xs text-stone-700 dark:text-slate-300 font-bold leading-relaxed">
+                            {skill.desc}
+                          </p>
                         </div>
-                        <p className="text-[11px] text-stone-600 dark:text-slate-300 leading-relaxed font-medium pt-1">
-                          {skill.desc}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               {/* Growth Advice */}
               {profile.growth_advice && (
-                <div className="bg-[#FFFBEB] dark:bg-[#12121C] rounded-2xl p-4 sm:p-5 border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1">
-                  <span className="text-xs font-black text-stone-900 dark:text-slate-200 flex items-center gap-1.5">
-                    <Shield className="w-4 h-4 text-stone-900 dark:text-[#38BDF8]" />
+                <div className="bg-[#FFFBEB] dark:bg-[#0E0E16] rounded-2xl p-4 sm:p-5 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] text-xs sm:text-sm leading-relaxed space-y-1.5">
+                  <span className="font-black text-stone-950 dark:text-[#CCFF00] flex items-center gap-1.5">
+                    <Compass className="w-4 h-4 text-stone-950 dark:text-[#CCFF00]" />
                     <span>{isEn ? "Strategic Growth Blueprint" : "认知演进策略指南"}</span>
                   </span>
-                  <p className="text-xs text-stone-600 dark:text-slate-300 leading-relaxed font-medium pt-1">
+                  <p className="text-xs text-stone-800 dark:text-slate-300 leading-relaxed font-bold pt-1">
                     {profile.growth_advice}
                   </p>
                 </div>
