@@ -340,38 +340,38 @@ export const SharePage: React.FC = () => {
 
               {/* 4 Quantitative Metrics Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                <div className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 font-bold">
+                <div className="bg-white dark:bg-[#0E0E16] rounded-2xl p-4 border-2 border-stone-900 dark:border-[#38BDF8] shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_#38BDF8] space-y-1 transition-all">
+                  <span className="text-[11px] text-stone-500 dark:text-slate-300 font-bold">
                     {isEn ? "1st-Order Sensitivity d'" : "一阶敏感度 d'"}
                   </span>
                   <div className="text-xl sm:text-2xl font-mono font-black text-sky-700 dark:text-[#38BDF8]">
                     {dPrime.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                  <p className="text-[10px] text-stone-500 dark:text-slate-300 font-medium">
                     {isEn ? "Raw perceptual & task acuity" : "基础任务敏锐度与信息处理"}
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 font-bold">
+                <div className="bg-white dark:bg-[#0E0E16] rounded-2xl p-4 border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] space-y-1 transition-all">
+                  <span className="text-[11px] text-stone-500 dark:text-slate-300 font-bold">
                     {isEn ? "Metacog M-Ratio" : "元认知效率 M-Ratio"}
                   </span>
                   <div className="text-xl sm:text-2xl font-mono font-black text-emerald-700 dark:text-[#CCFF00]">
                     {mRatio.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                  <p className="text-[10px] text-stone-500 dark:text-slate-300 font-medium">
                     {isEn ? "Type-2 self-monitoring leverage" : "二阶自省与置信度博弈效率"}
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 font-bold">
+                <div className="bg-white dark:bg-[#0E0E16] rounded-2xl p-4 border-2 border-stone-900 dark:border-[#FBBF24] shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_#FBBF24] space-y-1 transition-all">
+                  <span className="text-[11px] text-stone-500 dark:text-slate-300 font-bold">
                     {isEn ? "Calibration Bias" : "校准偏差 Bias"}
                   </span>
                   <div className="text-xl sm:text-2xl font-mono font-black text-amber-700 dark:text-[#FBBF24]">
                     {biasSign}{bias.toFixed(2)}
                   </div>
-                  <p className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                  <p className="text-[10px] text-stone-500 dark:text-slate-300 font-medium">
                     {bias > 0.1
                       ? (isEn ? "Overconfidence tendency" : "偏向自信敢下注")
                       : bias < -0.1
@@ -380,14 +380,14 @@ export const SharePage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 font-bold">
+                <div className="bg-white dark:bg-[#0E0E16] rounded-2xl p-4 border-2 border-stone-900 dark:border-[#10B981] shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_#10B981] space-y-1 transition-all">
+                  <span className="text-[11px] text-stone-500 dark:text-slate-300 font-bold">
                     {isEn ? "Task Accuracy" : "综合准确率"}
                   </span>
                   <div className="text-xl sm:text-2xl font-mono font-black text-emerald-600 dark:text-[#10B981]">
                     {Math.round(accuracy * 100)}%
                   </div>
-                  <p className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                  <p className="text-[10px] text-stone-500 dark:text-slate-300 font-medium">
                     {isEn ? "Psychophysical test accuracy" : "自适应阶梯收敛表现"}
                   </p>
                 </div>
@@ -395,7 +395,7 @@ export const SharePage: React.FC = () => {
 
               {/* Empowering Feedback Card */}
               {profile.empowering_feedback && (
-                <div className="bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] rounded-2xl p-5 sm:p-6 space-y-2 text-left">
+                <div className="bg-[#FFFBEB] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] rounded-2xl p-5 sm:p-6 space-y-2 text-left">
                   <div className="flex items-center gap-2 text-xs font-black text-amber-800 dark:text-[#CCFF00]">
                     <Sparkles className="w-4 h-4 text-amber-600 fill-amber-400 dark:text-[#CCFF00] dark:fill-[#CCFF00]" />
                     <span>{isEn ? "Empowering Resonance" : "思维特质深度共鸣"}</span>
@@ -417,7 +417,7 @@ export const SharePage: React.FC = () => {
                     {profile.skills.map((skill: any, idx: number) => (
                       <div
                         key={idx}
-                        className="bg-white dark:bg-[#12121C] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1 hover:-translate-y-0.5 transition-all"
+                        className="bg-white dark:bg-[#0E0E16] rounded-2xl p-4 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1 hover:-translate-y-0.5 hover:dark:border-[#CCFF00] hover:dark:shadow-[3px_3px_0px_#CCFF00] transition-all"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -427,7 +427,7 @@ export const SharePage: React.FC = () => {
                             </span>
                           </div>
                           {skill.type && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#0E0E16] text-stone-900 dark:text-[#CCFF00] border border-stone-900 dark:border-white/20 font-bold">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#12121C] text-stone-900 dark:text-[#CCFF00] border border-stone-900 dark:border-white/20 font-bold">
                               {skill.type}
                             </span>
                           )}
@@ -443,8 +443,8 @@ export const SharePage: React.FC = () => {
 
               {/* Growth Advice */}
               {profile.growth_advice && (
-                <div className="bg-[#FFFBEB] dark:bg-[#12121C] rounded-2xl p-4 sm:p-5 border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none space-y-1">
-                  <span className="text-xs font-black text-stone-900 dark:text-slate-200 flex items-center gap-1.5">
+                <div className="bg-[#FFFBEB] dark:bg-[#0E0E16] rounded-2xl p-4 sm:p-5 border-2 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-[4px_4px_0px_#38BDF8] space-y-1">
+                  <span className="text-xs font-black text-stone-900 dark:text-[#38BDF8] flex items-center gap-1.5">
                     <Shield className="w-4 h-4 text-stone-900 dark:text-[#38BDF8]" />
                     <span>{isEn ? "Strategic Growth Blueprint" : "认知演进策略指南"}</span>
                   </span>

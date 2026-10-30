@@ -65,11 +65,11 @@ export const PosterModal: React.FC<PosterModalProps> = ({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-xl my-auto py-4">
+      <div className="relative w-full max-w-xl my-auto py-4 bg-white/95 dark:bg-[#08080C] border-2 border-stone-900 dark:border-white/20 shadow-[0_8px_0_#1c1917] dark:shadow-[6px_6px_0px_#CCFF00] p-4 sm:p-6 rounded-[28px]">
         {/* 顶部弹窗控制栏 */}
         <div className="flex items-center justify-between pb-3 px-2">
-          <div className="flex items-center gap-2 font-black text-sm text-white">
-            <Sparkles className="w-4 h-4 text-[#FBBF24] fill-[#FBBF24]" />
+          <div className="flex items-center gap-2 font-black text-sm text-stone-900 dark:text-white">
+            <Sparkles className="w-4 h-4 text-[#FBBF24] fill-[#FBBF24] dark:text-[#CCFF00] dark:fill-[#CCFF00]" />
             <span>
               {isEn
                 ? "Arcane Order · Cognitive Archetype Seal"
@@ -80,7 +80,7 @@ export const PosterModal: React.FC<PosterModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white dark:bg-[#0E0E16] hover:bg-amber-100 dark:hover:bg-white/10 text-stone-900 dark:text-white flex items-center justify-center border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-white dark:bg-[#0E0E16] hover:bg-amber-100 dark:hover:bg-white/10 text-stone-900 dark:text-white flex items-center justify-center border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
             aria-label={isEn ? "Close" : "关闭"}
           >
             <X className="w-4 h-4 text-stone-900 dark:text-white stroke-[2.5]" />

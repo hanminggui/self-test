@@ -173,7 +173,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       {/* Left Collapsible Sidebar */}
       <aside
         aria-label={isEn ? "Primary Sidebar Navigation" : "应用主导航侧边栏"}
-        className={`fixed md:static inset-y-0 left-0 z-50 flex flex-col justify-between bg-[#FFFBEB] dark:bg-[#0C0F17] border-r-2 border-stone-900 dark:border-white/15 transition-[width,transform] duration-200 ease-out select-none ${
+        className={`fixed md:static inset-y-0 left-0 z-50 flex flex-col justify-between bg-[#FFFBEB] dark:bg-[#08080C] border-r-2 border-stone-900 dark:border-white/20 transition-[width,transform] duration-200 ease-out select-none ${
           mobileMenuOpen ? "translate-x-0 w-72" : "-translate-x-full md:translate-x-0"
         } ${isCollapsed ? "md:w-[68px]" : "md:w-[272px]"}`}
       >

@@ -134,12 +134,12 @@ const renderSymbolGrid = (matrix: string[][], isOption: boolean = false) => {
                 key={cIdx}
                 className={`${cellSize} flex items-center justify-center rounded-lg transition-all font-bold ${
                   isEmpty
-                    ? "bg-amber-100/50 dark:bg-white/5 border border-stone-300 dark:border-white/10 text-stone-400 dark:text-stone-500"
+                    ? "bg-amber-100/50 dark:bg-[#12121C] border border-stone-300 dark:border-white/20 text-stone-400 dark:text-slate-400"
                     : "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-900 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
                 }`}
               >
                 {isEmpty ? (
-                  <span className={`${dotSize} rounded-full bg-stone-400 dark:bg-stone-600 inline-block`} />
+                  <span className={`${dotSize} rounded-full bg-stone-400 dark:bg-white/40 inline-block`} />
                 ) : (
                   <span>{cell}</span>
                 )}
@@ -168,9 +168,160 @@ const renderOption = (rawVal: string) => {
   }
 
   return (
-    <span className="text-xs md:text-sm text-stone-900 dark:text-stone-100 leading-relaxed font-mono font-medium whitespace-pre-line pt-0.5 inline-block">
+    <span className="text-xs md:text-sm text-stone-900 dark:text-white leading-relaxed font-mono font-medium whitespace-pre-line pt-0.5 inline-block">
       {val}
     </span>
+  );
+};
+
+interface CognitiveRadarChartProps {
+  metrics?: any;
+  isEn?: boolean;
+}
+
+const CognitiveRadarChart: React.FC<CognitiveRadarChartProps> = ({ metrics, isEn = false }) => {
+  const dPrime = metrics?.d_prime ?? 1.8;
+  const mRatio = metrics?.m_ratio ?? 0.85;
+  const acc = metrics?.first_order_accuracy ?? 0.75;
+  const bias = metrics?.calibration_bias ?? 0.05;
+
+  const dVal = Math.min(1, Math.max(0.2, dPrime / 3.0));
+  const mVal = Math.min(1, Math.max(0.2, mRatio / 1.5));
+  const aVal = Math.min(1, Math.max(0.2, acc));
+  const cVal = Math.min(1, Math.max(0.2, 1 - Math.abs(bias) * 1.2));
+
+  const axes = [
+    { label: isEn ? "Acuity d'" : "解题敏锐 d'", val: dVal, display: Number(dPrime).toFixed(2) },
+    { label: isEn ? "Metacog M" : "元认知 M", val: mVal, display: Number(mRatio).toFixed(2) },
+    { label: isEn ? "Accuracy" : "决断准度", val: aVal, display: `${Math.round(acc * 100)}%` },
+    { label: isEn ? "Calibration" : "知行校准", val: cVal, display: `${bias >= 0 ? "+" : ""}${Number(bias).toFixed(2)}` },
+  ];
+
+  const cx = 150;
+  const cy = 135;
+  const R = 85;
+
+  const getCoord = (angle: number, radius: number) => {
+    return {
+      x: cx + radius * Math.cos(angle),
+      y: cy + radius * Math.sin(angle),
+    };
+  };
+
+  const polyPoints = axes
+    .map((ax, idx) => {
+      const angle = -Math.PI / 2 + idx * (Math.PI / 2);
+      const { x, y } = getCoord(angle, R * ax.val);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-[24px] bg-[#FFFBEB] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00]">
+      <div className="space-y-2 text-left">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border border-stone-900 dark:border-black text-[11px] font-black text-stone-900 dark:text-[#08080C] shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
+          <Activity className="w-3.5 h-3.5 text-stone-900 dark:text-[#08080C]" />
+          <span>{isEn ? "4D Cognitive Manifold Radar" : "4 维认知指标雷达图"}</span>
+        </div>
+        <h4 className="text-base sm:text-lg font-black text-stone-900 dark:text-white">
+          {isEn ? "Metacognitive Acuity & Calibration" : "心智敏锐度与决断校准分布"}
+        </h4>
+        <p className="text-xs text-stone-600 dark:text-slate-200 max-w-xs font-medium leading-relaxed">
+          {isEn
+            ? "Visualizing Type-1 performance acuity and Type-2 metacognitive self-awareness calibration."
+            : "量化一阶任务感知硬实力与二阶反思校准力，全景展现您的心智平衡模型。"}
+        </p>
+      </div>
+
+      <div className="relative w-[300px] h-[270px] shrink-0 select-none">
+        <svg viewBox="0 0 300 270" className="w-full h-full overflow-visible">
+          {/* Concentric Grid Webs */}
+          {[0.25, 0.5, 0.75, 1.0].map((ring) => {
+            const ringPts = axes
+              .map((_, idx) => {
+                const angle = -Math.PI / 2 + idx * (Math.PI / 2);
+                const { x, y } = getCoord(angle, R * ring);
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+              })
+              .join(" ");
+            return (
+              <polygon
+                key={ring}
+                points={ringPts}
+                fill="none"
+                stroke="currentColor"
+                className="text-stone-900/15 dark:text-white/20"
+                strokeWidth={ring === 1.0 ? "1.5" : "1"}
+                strokeDasharray={ring === 1.0 ? "none" : "2,2"}
+              />
+            );
+          })}
+
+          {/* Cross Axes Lines */}
+          {axes.map((_, idx) => {
+            const angle = -Math.PI / 2 + idx * (Math.PI / 2);
+            const { x, y } = getCoord(angle, R);
+            return (
+              <line
+                key={idx}
+                x1={cx}
+                y1={cy}
+                x2={x}
+                y2={y}
+                stroke="currentColor"
+                className="text-stone-900/20 dark:text-white/25"
+                strokeWidth="1.2"
+              />
+            );
+          })}
+
+          {/* Shaded Radar Area */}
+          <polygon
+            points={polyPoints}
+            className="fill-amber-400/40 dark:fill-[#CCFF00]/25 stroke-stone-900 dark:stroke-[#CCFF00]"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+          />
+
+          {/* Vertex Points & Labels */}
+          {axes.map((ax, idx) => {
+            const angle = -Math.PI / 2 + idx * (Math.PI / 2);
+            const { x, y } = getCoord(angle, R * ax.val);
+            const labelCoord = getCoord(angle, R + 24);
+
+            return (
+              <g key={idx}>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="4.5"
+                  className="fill-stone-950 dark:fill-[#08080C] stroke-stone-900 dark:stroke-[#CCFF00]"
+                  strokeWidth="2"
+                />
+                <text
+                  x={labelCoord.x}
+                  y={labelCoord.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="fill-stone-900 dark:fill-white text-[10px] font-black font-sans"
+                >
+                  {ax.label}
+                </text>
+                <text
+                  x={labelCoord.x}
+                  y={labelCoord.y + 11}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="fill-amber-800 dark:fill-[#CCFF00] text-[9px] font-mono font-bold"
+                >
+                  {ax.display}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
   );
 };
 
@@ -229,7 +380,7 @@ const renderPrompt = (rawPrompt: string) => {
 
         // 3. Standard text paragraph
         return (
-          <p key={idx} className="text-sm md:text-base text-stone-900 dark:text-stone-100 leading-relaxed font-sans font-bold whitespace-pre-line">
+          <p key={idx} className="text-sm md:text-base text-stone-900 dark:text-white leading-relaxed font-sans font-bold whitespace-pre-line">
             {cleanLines.join("\n")}
           </p>
         );
@@ -915,13 +1066,13 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               {t.app.welcomeTitle}
             </h2>
 
-            <p className="text-stone-600 dark:text-slate-300 text-sm md:text-base leading-relaxed mb-8 max-w-lg mx-auto font-medium">
+            <p className="text-stone-600 dark:text-slate-200 text-sm md:text-base leading-relaxed mb-8 max-w-lg mx-auto font-medium">
               {t.app.welcomeDesc}
             </p>
 
             <div className="space-y-5 max-w-sm mx-auto text-left mb-8">
               <div>
-                <label className="block text-xs font-extrabold text-stone-800 dark:text-slate-200 mb-1.5 flex items-center justify-between">
+                <label className="block text-xs font-extrabold text-stone-800 dark:text-white mb-1.5 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Feather className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" /> {t.app.explorerNameLabel}
                   </span>
@@ -944,7 +1095,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     placeholder={formatMessage(t.app.placeholderCodename, { name: placeholderCodename })}
                     value={subjectName}
                     onChange={(e) => setSubjectName(e.target.value)}
-                    className="w-full pl-4 pr-10 py-3 rounded-2xl bg-[#FFFDF8] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 dark:focus:ring-[#CCFF00] text-sm font-semibold shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all"
+                    className="w-full pl-4 pr-10 py-3 rounded-2xl bg-[#FFFDF8] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400 dark:focus:ring-[#CCFF00] dark:focus:border-[#CCFF00] text-sm font-semibold shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all"
                   />
                   <button
                     type="button"
@@ -962,7 +1113,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               </div>
 
               <div>
-                <label className="block text-xs font-extrabold text-stone-800 dark:text-slate-200 mb-1.5">{t.app.voyageScaleLabel}</label>
+                <label className="block text-xs font-extrabold text-stone-800 dark:text-white mb-1.5">{t.app.voyageScaleLabel}</label>
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: t.app.scale30, val: 30 },
@@ -975,7 +1126,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                       className={`px-3 py-2.5 rounded-2xl text-xs font-black border-2 border-stone-900 dark:border-white/20 text-center transition-all cursor-pointer ${
                         totalTrials === opt.val
                           ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] scale-[1.02]"
-                          : "bg-[#FFFDF8] dark:bg-[#12121C] text-stone-600 dark:text-slate-300 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-amber-50 dark:hover:bg-white/10"
+                          : "bg-[#FFFDF8] dark:bg-[#12121C] text-stone-600 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-amber-50 dark:hover:border-[#CCFF00]"
                       }`}
                     >
                       {opt.label}
@@ -1114,11 +1265,15 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     className={`p-4 rounded-2xl border-2 text-left transition-all duration-150 flex items-start gap-3.5 cursor-pointer relative ${
                       isSelected
                         ? "bg-[#D1FAE5] dark:bg-[#0E0E16] border-stone-900 dark:border-[#CCFF00] ring-2 ring-emerald-500 dark:ring-0 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.01]"
-                        : "bg-white dark:bg-[#12121C] border-stone-900 dark:border-white/15 text-stone-900 dark:text-white hover:bg-[#FFFBEB] dark:hover:border-[#CCFF00] hover:-translate-y-0.5 shadow-[0_3px_0_#1c1917] dark:shadow-none active:translate-y-1 active:shadow-none"
+                        : "bg-white dark:bg-[#12121C] border-stone-900 dark:border-white/20 text-stone-900 dark:text-white hover:bg-[#FFFBEB] dark:hover:border-[#CCFF00] dark:hover:bg-[#161624] dark:hover:shadow-[2px_2px_0px_#CCFF00] hover:-translate-y-0.5 shadow-[0_3px_0_#1c1917] dark:shadow-none active:translate-y-1 active:shadow-none"
                     }`}
                   >
                     <span
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs font-mono shrink-0 transition-colors border-2 border-stone-900 dark:border-white/20 shadow-[0_1.5px_0_#1c1917] dark:shadow-none ${badgeColor} dark:bg-black/60 dark:text-[#CCFF00] text-stone-950`}
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs font-mono shrink-0 transition-colors border-2 border-stone-900 dark:border-white/20 shadow-[0_1.5px_0_#1c1917] dark:shadow-none ${badgeColor} ${
+                        isSelected
+                          ? "dark:bg-[#CCFF00] dark:text-[#08080C] dark:border-[#CCFF00]"
+                          : "dark:bg-black/60 dark:text-white"
+                      } text-stone-950`}
                     >
                       {key}
                     </span>
@@ -1131,7 +1286,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
             </div>
 
             {/* 决断本能选择面板 */}
-            <div className="bg-white dark:bg-[#0E0E16] rounded-[24px] p-5 space-y-4 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)]">
+            <div className="bg-white dark:bg-[#0E0E16] rounded-[24px] p-5 space-y-4 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00]">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-extrabold text-stone-800 dark:text-white">{t.app.instinctPrompt}</span>
                 <span className="text-[11px] font-bold text-stone-500 dark:text-slate-400 font-mono">{t.app.instinctShortcuts}</span>
@@ -1148,17 +1303,25 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
                     selectedAction === "HIGH_BET"
                       ? "bg-[#FFE4E6] dark:bg-[#FF3366] text-stone-950 dark:text-white border-stone-900 dark:border-[#FF3366] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.01]"
-                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-700 dark:text-slate-300 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-rose-50 dark:hover:border-[#FF3366]"
+                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-700 dark:text-white border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-rose-50 dark:hover:border-[#FF3366] dark:hover:shadow-[2px_2px_0px_#FF3366] active:translate-y-0.5"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-black text-xs md:text-sm flex items-center gap-1.5 text-rose-700 dark:text-[#FF3366]">
-                      <Flame className="w-4 h-4 text-rose-600 fill-rose-500 dark:text-[#FF3366]" />
+                    <span className={`font-black text-xs md:text-sm flex items-center gap-1.5 ${
+                      selectedAction === "HIGH_BET" ? "text-rose-900 dark:text-white" : "text-rose-700 dark:text-[#FF3366]"
+                    }`}>
+                      <Flame className="w-4 h-4 text-rose-600 fill-rose-500 dark:text-current dark:fill-current" />
                       {formatMessage(t.app.highBetTitle, { pos: 10 - hintsCost, neg: 10 + hintsCost })}
                     </span>
-                    <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-black/60 border border-stone-900 dark:border-white/20 font-mono font-bold">1</kbd>
+                    <kbd className={`text-[10px] px-1.5 py-0.5 rounded border font-mono font-bold ${
+                      selectedAction === "HIGH_BET"
+                        ? "bg-white/80 dark:bg-black/40 text-stone-950 dark:text-white border-stone-900 dark:border-white/40"
+                        : "bg-white dark:bg-black/60 text-stone-800 dark:text-slate-300 border-stone-900 dark:border-white/20"
+                    }`}>1</kbd>
                   </div>
-                  <div className="text-[11px] text-stone-600 dark:text-slate-400 font-medium">
+                  <div className={`text-[11px] font-medium ${
+                    selectedAction === "HIGH_BET" ? "text-stone-800 dark:text-white/90" : "text-stone-600 dark:text-slate-300"
+                  }`}>
                     {t.app.highBetDesc}
                   </div>
                 </button>
@@ -1173,17 +1336,25 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
                     selectedAction === "SAFE_BET"
                       ? "bg-[#E0F2FE] dark:bg-[#38BDF8] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-[#38BDF8] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.01]"
-                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-700 dark:text-slate-300 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-sky-50 dark:hover:border-[#38BDF8]"
+                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-700 dark:text-white border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-sky-50 dark:hover:border-[#38BDF8] dark:hover:shadow-[2px_2px_0px_#38BDF8] active:translate-y-0.5"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-black text-xs md:text-sm flex items-center gap-1.5 text-sky-700 dark:text-[#38BDF8]">
-                      <Shield className="w-4 h-4 text-sky-600 fill-sky-400 dark:text-[#38BDF8]" />
+                    <span className={`font-black text-xs md:text-sm flex items-center gap-1.5 ${
+                      selectedAction === "SAFE_BET" ? "text-sky-900 dark:text-[#08080C]" : "text-sky-700 dark:text-[#38BDF8]"
+                    }`}>
+                      <Shield className="w-4 h-4 text-sky-600 fill-sky-400 dark:text-current dark:fill-current" />
                       {formatMessage(t.app.safeBetTitle, { pos: 3 - hintsCost })}
                     </span>
-                    <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-black/60 border border-stone-900 dark:border-white/20 font-mono font-bold">2</kbd>
+                    <kbd className={`text-[10px] px-1.5 py-0.5 rounded border font-mono font-bold ${
+                      selectedAction === "SAFE_BET"
+                        ? "bg-white/80 dark:bg-black/40 text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-white/40"
+                        : "bg-white dark:bg-black/60 text-stone-800 dark:text-slate-300 border-stone-900 dark:border-white/20"
+                    }`}>2</kbd>
                   </div>
-                  <div className="text-[11px] text-stone-600 dark:text-slate-400 font-medium">
+                  <div className={`text-[11px] font-medium ${
+                    selectedAction === "SAFE_BET" ? "text-stone-800 dark:text-[#08080C]/90" : "text-stone-600 dark:text-slate-300"
+                  }`}>
                     {t.app.safeBetDesc}
                   </div>
                 </button>
@@ -1315,6 +1486,9 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   </p>
                 </div>
               </div>
+
+              {/* 4 维认知指标雷达图 */}
+              <CognitiveRadarChart metrics={displayReport.metrics || displayReport.metacognitive_metrics} isEn={isEn} />
 
               {/* 专属特技谱系 */}
               <div className="space-y-4">

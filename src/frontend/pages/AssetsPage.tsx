@@ -44,6 +44,7 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
   const [assets, setAssets] = useState<CognitiveAssetItem[]>([]);
   const [unlockedCount, setUnlockedCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"ALL" | "UNLOCKED" | "LOCKED">("ALL");
 
   const navigate = (path: string) => {
     if (onNavigate) {
@@ -130,21 +131,61 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="px-4 py-2 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none flex items-center gap-3">
-            <div className="text-xs text-stone-600 dark:text-slate-400 font-bold">{isEn ? "Unlocked" : "已点亮图鉴"}</div>
+          <div className="px-4 py-2 rounded-2xl bg-[#FFFBEB] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] flex items-center gap-3">
+            <div className="text-xs text-stone-600 dark:text-slate-300 font-bold">{isEn ? "Unlocked" : "已点亮图鉴"}</div>
             <div className="text-base font-mono font-black text-stone-900 dark:text-[#CCFF00]">
-              {unlockedCount} <span className="text-stone-400 dark:text-slate-500 text-xs">/ 8</span>
+              {unlockedCount} <span className="text-stone-400 dark:text-slate-400 text-xs">/ 8</span>
+              <span className="ml-2 text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-[#CCFF00]/20 text-amber-900 dark:text-[#CCFF00]">
+                {Math.round((unlockedCount / 8) * 100)}%
+              </span>
             </div>
           </div>
           <button
             type="button"
             onClick={fetchAssets}
-            className="p-2.5 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all cursor-pointer"
+            className="p-2.5 rounded-2xl bg-white dark:bg-[#0E0E16] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_rgba(255,255,255,0.15)] transition-all cursor-pointer"
             title={isEn ? "Refresh" : "刷新资产"}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-amber-500 dark:text-[#CCFF00]" : ""}`} />
           </button>
         </div>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-stone-100 dark:bg-[#0E0E16] border-2 border-stone-900/10 dark:border-white/20 w-fit">
+        <button
+          type="button"
+          onClick={() => setFilter("ALL")}
+          className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            filter === "ALL"
+              ? "bg-white dark:bg-[#CCFF00] text-stone-900 dark:text-[#08080C] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
+              : "text-stone-600 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
+          }`}
+        >
+          {isEn ? "All" : "全部"} ({assets.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter("UNLOCKED")}
+          className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            filter === "UNLOCKED"
+              ? "bg-white dark:bg-[#CCFF00] text-stone-900 dark:text-[#08080C] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
+              : "text-stone-600 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
+          }`}
+        >
+          {isEn ? "Collected" : "已收录"} ({unlockedCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter("LOCKED")}
+          className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            filter === "LOCKED"
+              ? "bg-white dark:bg-[#CCFF00] text-stone-900 dark:text-[#08080C] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
+              : "text-stone-600 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
+          }`}
+        >
+          {isEn ? "Unclaimed" : "待探索"} ({Math.max(0, assets.length - unlockedCount)})
+        </button>
       </div>
 
       {loading && assets.length === 0 ? (
@@ -156,7 +197,13 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {assets.map((item) => {
+          {assets
+            .filter((item) => {
+              if (filter === "UNLOCKED") return item.unlocked;
+              if (filter === "LOCKED") return !item.unlocked;
+              return true;
+            })
+            .map((item) => {
             const mythic = getMythicArchetype(item.quadrant_code);
             const arcane = getArcaneArchetype(item.quadrant_code);
             const totemLabel = isEn
@@ -169,7 +216,7 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                 className={`rounded-[24px] p-5 border-2 transition-all duration-300 flex flex-col justify-between relative overflow-hidden ${
                   item.unlocked
                     ? "bg-[#FFFBEB] dark:bg-[#0E0E16] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00]"
-                    : "bg-white/80 dark:bg-[#0E0E16]/60 border-stone-300 dark:border-white/10 opacity-75 hover:opacity-95"
+                    : "bg-white/80 dark:bg-[#0E0E16] border-stone-300 dark:border-white/20 shadow-none dark:shadow-[3px_3px_0px_rgba(0,0,0,0.6)] hover:border-stone-400 dark:hover:border-white/40"
                 }`}
               >
                 <div className="space-y-3.5 relative z-10">
@@ -179,20 +226,20 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                       className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border ${
                         item.unlocked
                           ? "bg-[#FEF3C7] dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] text-stone-900 dark:text-[#CCFF00] font-black"
-                          : "bg-stone-100 dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-400 dark:text-slate-500 font-bold"
+                          : "bg-stone-100 dark:bg-white/10 border-stone-300 dark:border-white/20 text-stone-500 dark:text-slate-300 font-bold"
                       }`}
                     >
                       {item.quadrant_code}
                     </span>
 
                     {item.unlocked ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-800 dark:text-[#CCFF00] bg-emerald-100/80 dark:bg-[#CCFF00]/10 border border-emerald-600/40 dark:border-[#CCFF00]/30 px-2 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-800 dark:text-[#CCFF00] bg-emerald-100/80 dark:bg-[#CCFF00]/15 border border-emerald-600/40 dark:border-[#CCFF00]/40 px-2 py-0.5 rounded-full">
                         <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-[#CCFF00]" />
                         <span>{isEn ? `Collected ×${item.count}` : `已收录 ×${item.count}`}</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-stone-400 dark:text-slate-500 bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 px-2 py-0.5 rounded-full font-bold">
-                        <Lock className="w-3 h-3" />
+                      <span className="inline-flex items-center gap-1 text-[11px] text-stone-500 dark:text-slate-300 bg-stone-100 dark:bg-white/10 border border-stone-200 dark:border-white/20 px-2 py-0.5 rounded-full font-bold">
+                        <Lock className="w-3 h-3 text-stone-400 dark:text-amber-400" />
                         <span>{isEn ? "Unclaimed" : "待探索"}</span>
                       </span>
                     )}
@@ -200,19 +247,19 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
 
                   {/* Totem & Role Title */}
                   <div className="space-y-1">
-                    <div className="text-[11px] font-bold text-amber-800 dark:text-[#CCFF00] truncate">
+                    <div className={`text-[11px] font-bold truncate ${item.unlocked ? "text-amber-800 dark:text-[#CCFF00]" : "text-stone-500 dark:text-cyan-300/80"}`}>
                       {totemLabel}
                     </div>
                     <h2
                       className={`text-xl font-black tracking-tight ${
                         item.unlocked
                           ? "text-stone-900 dark:text-white"
-                          : "text-stone-400 dark:text-slate-500"
+                          : "text-stone-700 dark:text-slate-100"
                       }`}
                     >
                       {item.role_title}
                     </h2>
-                    <p className="text-xs text-stone-600 dark:text-slate-400 italic line-clamp-1 font-medium">
+                    <p className={`text-xs italic line-clamp-1 font-medium ${item.unlocked ? "text-stone-600 dark:text-slate-400" : "text-stone-500 dark:text-slate-400"}`}>
                       “{item.praise_tagline}”
                     </p>
                   </div>
@@ -225,7 +272,7 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                         className={`text-[10px] px-2 py-0.5 rounded-md border font-bold ${
                           item.unlocked
                             ? "bg-white dark:bg-[#12121C] border-stone-900 dark:border-white/20 text-stone-900 dark:text-slate-200"
-                            : "bg-stone-100 dark:bg-white/5 border-stone-200 dark:border-white/10 text-stone-400 dark:text-slate-500"
+                            : "bg-stone-100 dark:bg-white/5 border-stone-200 dark:border-white/15 text-stone-600 dark:text-slate-300"
                         }`}
                       >
                         #{tag}
@@ -239,10 +286,10 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                       {item.skills.slice(0, 2).map((sk, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-[11px]">
                           <span>{sk.icon}</span>
-                          <span className={item.unlocked ? "text-stone-800 dark:text-slate-200 font-bold" : "text-stone-400 dark:text-slate-500"}>
+                          <span className={item.unlocked ? "text-stone-800 dark:text-slate-200 font-bold" : "text-stone-600 dark:text-slate-300"}>
                             {sk.name}
                           </span>
-                          <span className="text-[9px] text-stone-500 dark:text-slate-500 font-bold ml-auto">{sk.type}</span>
+                          <span className={`text-[9px] font-bold ml-auto ${item.unlocked ? "text-stone-500 dark:text-slate-400" : "text-stone-400 dark:text-slate-400"}`}>{sk.type}</span>
                         </div>
                       ))}
                     </div>
@@ -254,16 +301,16 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                   {item.unlocked && item.latest_session_id ? (
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2 text-[10px]">
-                        <div className="p-2 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
+                        <div className="p-2 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
                           <span className="text-stone-500 dark:text-slate-400 flex items-center gap-1 font-bold">
-                            <Zap className="w-3 h-3 text-sky-600 dark:text-cyan-400" />
+                            <Zap className="w-3 h-3 text-sky-600 dark:text-[#38BDF8]" />
                             <span>Best d&apos;</span>
                           </span>
-                          <span className="font-mono font-black text-sky-700 dark:text-cyan-300 text-xs">
+                          <span className="font-mono font-black text-sky-700 dark:text-[#38BDF8] text-xs">
                             {item.best_d_prime?.toFixed(2) ?? "--"}
                           </span>
                         </div>
-                        <div className="p-2 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
+                        <div className="p-2 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
                           <span className="text-stone-500 dark:text-slate-400 flex items-center gap-1 font-bold">
                             <TrendingUp className="w-3 h-3 text-emerald-600 dark:text-[#CCFF00]" />
                             <span>Best M</span>
@@ -277,7 +324,7 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                       <button
                         type="button"
                         onClick={() => navigate(`/report/${item.latest_session_id}`)}
-                        className="w-full py-2.5 px-3 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:text-[#08080C] text-stone-950 text-xs font-black border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-none flex items-center justify-center gap-1.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+                        className="w-full py-2.5 px-3 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:text-[#08080C] text-stone-950 text-xs font-black border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] flex items-center justify-center gap-1.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
                       >
                         <Sparkles className="w-3.5 h-3.5 text-stone-950 dark:text-[#08080C]" />
                         <span>{isEn ? "Inspect Report" : "查看代表报告"}</span>
@@ -288,7 +335,7 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                     <button
                       type="button"
                       onClick={() => navigate("/")}
-                      className="w-full py-2.5 px-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-700 dark:text-slate-300 text-xs font-bold shadow-[0_2px_0_#1c1917] dark:shadow-none flex items-center justify-center gap-1.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+                      className="w-full py-2.5 px-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-700 dark:text-slate-200 dark:hover:text-[#CCFF00] dark:hover:border-[#CCFF00] text-xs font-bold shadow-[0_2px_0_#1c1917] dark:shadow-none flex items-center justify-center gap-1.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
                     >
                       <Compass className="w-3.5 h-3.5" />
                       <span>{isEn ? "Start Test to Unlock" : "参与评测以解锁"}</span>

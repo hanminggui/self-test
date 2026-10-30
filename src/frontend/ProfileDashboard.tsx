@@ -366,54 +366,54 @@ export const ProfileDashboard: React.FC = () => {
               <>
                 {/* 1. Summary Metric KPI Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_2px_0_#1c1917] dark:shadow-none space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-bold flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
                       <span>{t.profile?.statTotalSessions || "评测总场次"}</span>
                       <Calendar className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
                     </div>
                     <div className="text-xl font-black font-mono text-stone-900 dark:text-white">
                       {summaryStats.total}
                     </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-500 font-medium">
+                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
                       人: {summaryStats.humanCount} · 智能体: {summaryStats.agentCount}
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_2px_0_#1c1917] dark:shadow-none space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-bold flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
                       <span>{t.profile?.statMeanAccuracy || "平均准确率"}</span>
                       <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-[#10B981]" />
                     </div>
-                    <div className="text-xl font-black font-mono text-emerald-700 dark:text-emerald-300">
+                    <div className="text-xl font-black font-mono text-emerald-700 dark:text-[#10B981]">
                       {summaryStats.avgAccuracy}
                     </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-500 font-medium">阶梯收敛 ~70%</div>
+                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">阶梯收敛 ~70%</div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_2px_0_#1c1917] dark:shadow-none space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-bold flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
                       <span>{t.profile?.statMeanDPrime || "平均敏感度 d'"}</span>
-                      <Zap className="w-3.5 h-3.5 text-sky-600 dark:text-cyan-400" />
+                      <Zap className="w-3.5 h-3.5 text-sky-600 dark:text-[#38BDF8]" />
                     </div>
-                    <div className="text-xl font-black font-mono text-sky-700 dark:text-cyan-300">
+                    <div className="text-xl font-black font-mono text-sky-700 dark:text-[#38BDF8]">
                       {summaryStats.avgDPrime}
                     </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-500 font-medium">一阶感知辨别力</div>
+                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">一阶感知辨别力</div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_2px_0_#1c1917] dark:shadow-none space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-bold flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
                       <span>{t.profile?.statMeanMRatio || "元认知 M_ratio"}</span>
-                      <TrendingUp className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                      <TrendingUp className="w-3.5 h-3.5 text-purple-600 dark:text-[#CCFF00]" />
                     </div>
-                    <div className="text-xl font-black font-mono text-purple-700 dark:text-purple-300">
+                    <div className="text-xl font-black font-mono text-purple-700 dark:text-[#CCFF00]">
                       {summaryStats.avgMRatio}
                     </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-500 font-medium">基准值 0.80</div>
+                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">基准值 0.80</div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_2px_0_#1c1917] dark:shadow-none space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-bold flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
                       <span>{t.profile?.statLatestBias || "最新偏向 Bias"}</span>
                       <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     </div>
@@ -422,13 +422,13 @@ export const ProfileDashboard: React.FC = () => {
                         summaryStats.latestBiasNum > 0.12
                           ? "text-rose-600 dark:text-rose-400"
                           : summaryStats.latestBiasNum < -0.12
-                          ? "text-sky-600 dark:text-sky-400"
-                          : "text-emerald-600 dark:text-emerald-400"
+                          ? "text-sky-600 dark:text-[#38BDF8]"
+                          : "text-emerald-600 dark:text-[#CCFF00]"
                       }`}
                     >
                       {summaryStats.latestBias}
                     </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-500 font-medium">
+                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
                       {summaryStats.latestBiasNum > 0.12
                         ? "自信高估"
                         : summaryStats.latestBiasNum < -0.12
@@ -437,15 +437,15 @@ export const ProfileDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_2px_0_#1c1917] dark:shadow-none space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-bold flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
                       <span>{t.profile?.statDominantArchetype || "主导认知流派"}</span>
                       <Award className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div className="text-sm font-black text-amber-800 dark:text-amber-300 truncate" title={summaryStats.dominantRole}>
                       {summaryStats.dominantRole}
                     </div>
-                    <div className="text-[10px] font-mono text-stone-500 dark:text-slate-500 font-bold">
+                    <div className="text-[10px] font-mono text-stone-500 dark:text-[#CCFF00] font-bold">
                       {summaryStats.dominantCode}
                     </div>
                   </div>
@@ -474,7 +474,7 @@ export const ProfileDashboard: React.FC = () => {
                     </div>
 
                     {/* SVG Manifold Trajectory Coordinate Plane */}
-                    <div className="relative w-full h-[360px] select-none rounded-2xl bg-[#FFFDF8] dark:bg-[#08080C] border border-stone-300 dark:border-white/10 p-2 overflow-hidden">
+                    <div className="relative w-full h-[360px] select-none rounded-2xl bg-[#FFFDF8] dark:bg-[#08080C] border-2 border-stone-900/15 dark:border-white/20 p-2 overflow-hidden shadow-inner">
                       <ManifoldTrajectorySvg
                         sessions={chronologicalSessions}
                         hoveredId={hoveredPointId}
@@ -485,16 +485,16 @@ export const ProfileDashboard: React.FC = () => {
                     </div>
 
                     {/* Visual Channel Legend Bar */}
-                    <div className="pt-2 border-t-2 border-stone-900/10 dark:border-white/10 flex flex-wrap items-center justify-between gap-4 text-[10px] text-stone-600 dark:text-slate-400 font-mono">
+                    <div className="pt-2 border-t-2 border-stone-900/10 dark:border-white/10 flex flex-wrap items-center justify-between gap-4 text-[10px] text-stone-600 dark:text-slate-300 font-mono">
                       <div className="flex items-center gap-2">
-                        <span className="text-stone-900 dark:text-slate-300 font-sans font-bold">色相 Hue (Bias 偏向):</span>
+                        <span className="text-stone-900 dark:text-white font-sans font-black">色相 Hue (Bias 偏向):</span>
                         <div className="w-20 h-2 rounded-full bg-gradient-to-r from-sky-400 via-emerald-400 to-rose-400" />
                         <span>谨慎 (-1.0) → 自洽 (0) → 自负 (+1.0)</span>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-stone-900 dark:text-slate-300 font-sans font-bold">饱和度/光晕 (IVE 杠杆):</span>
-                        <div className="w-14 h-2 rounded-full bg-gradient-to-r from-slate-600 via-amber-500/70 to-amber-300" />
+                        <span className="text-stone-900 dark:text-white font-sans font-black">饱和度/光晕 (IVE 杠杆):</span>
+                        <div className="w-14 h-2 rounded-full bg-gradient-to-r from-slate-600 via-amber-500/70 to-[#CCFF00]" />
                         <span>内生 (0) → 高杠杆 (≥0.7)</span>
                       </div>
                     </div>
@@ -530,8 +530,8 @@ export const ProfileDashboard: React.FC = () => {
                           onClick={() => setMetricTab(tab.key)}
                           className={`flex-1 min-w-[60px] py-1.5 px-2 rounded-xl text-[11px] font-black transition-all text-center cursor-pointer ${
                             metricTab === tab.key
-                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border border-stone-900 dark:border-black shadow-sm"
-                              : "text-stone-600 dark:text-slate-400 hover:text-stone-950 dark:hover:text-white"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border border-stone-900 dark:border-black shadow-sm dark:shadow-[2px_2px_0px_#FFFFFF]"
+                              : "text-stone-600 dark:text-slate-300 hover:text-stone-950 dark:hover:text-white"
                           }`}
                         >
                           {tab.label}
@@ -540,7 +540,7 @@ export const ProfileDashboard: React.FC = () => {
                     </div>
 
                     {/* SVG Line / Evolution Chart */}
-                    <div className="relative w-full h-[320px] select-none rounded-2xl bg-[#FFFDF8] dark:bg-[#08080C] border border-stone-300 dark:border-white/10 p-2 overflow-hidden">
+                    <div className="relative w-full h-[320px] select-none rounded-2xl bg-[#FFFDF8] dark:bg-[#08080C] border-2 border-stone-900/15 dark:border-white/20 p-2 overflow-hidden shadow-inner">
                       <EvolutionLineChartSvg
                         sessions={chronologicalSessions}
                         tab={metricTab}
@@ -652,13 +652,13 @@ export const ProfileDashboard: React.FC = () => {
                           onMouseLeave={() => setHoveredPointId(null)}
                           className={`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
                             isHovered
-                              ? "bg-amber-100/60 dark:bg-white/10 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]"
-                              : "bg-[#FFFBEB] dark:bg-[#12121C] border-stone-900/15 dark:border-white/10 hover:border-stone-900 dark:hover:border-white/20"
+                              ? "bg-amber-100/60 dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00]"
+                              : "bg-[#FFFBEB] dark:bg-[#0E0E16] border-stone-900/15 dark:border-white/20 hover:border-stone-900 dark:hover:border-[#CCFF00] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.6)]"
                           }`}
                         >
                           {/* Left: Index, Role Title, Date, Subject Type */}
                           <div className="flex items-center gap-3.5 min-w-[220px]">
-                            <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#0E0E16] border border-stone-900/30 dark:border-white/20 flex items-center justify-center font-mono text-xs font-black text-stone-900 dark:text-white">
+                            <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900/30 dark:border-white/20 flex items-center justify-center font-mono text-xs font-black text-stone-900 dark:text-[#CCFF00]">
                               #{sortOrder === "NEWEST" ? timelineSessions.length - idx : idx + 1}
                             </div>
 
@@ -678,12 +678,12 @@ export const ProfileDashboard: React.FC = () => {
                                 </span>
                               </div>
 
-                              <div className="flex items-center gap-2 text-[11px] text-stone-500 dark:text-slate-400 font-medium">
+                              <div className="flex items-center gap-2 text-[11px] text-stone-500 dark:text-slate-300 font-medium">
                                 <span>{dateStr}</span>
                                 <span>·</span>
                                 {isHuman ? (
-                                  <span className="flex items-center gap-1 text-stone-600 dark:text-slate-400">
-                                    <UserIcon className="w-3 h-3 text-stone-500" />
+                                  <span className="flex items-center gap-1 text-stone-600 dark:text-slate-300">
+                                    <UserIcon className="w-3 h-3 text-stone-500 dark:text-slate-400" />
                                     <span>人类受测</span>
                                   </span>
                                 ) : (
@@ -700,36 +700,36 @@ export const ProfileDashboard: React.FC = () => {
 
                           {/* Middle: 4D Metrics Badges */}
                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full md:w-auto font-mono text-xs">
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#0E0E16] border border-stone-900/15 dark:border-white/10 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-400 font-sans font-bold">准确率</div>
-                              <div className="font-black text-emerald-700 dark:text-emerald-300">
+                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
+                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">准确率</div>
+                              <div className="font-black text-emerald-700 dark:text-[#10B981]">
                                 {(firstAcc * 100).toFixed(1)}%
                               </div>
                             </div>
 
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#0E0E16] border border-stone-900/15 dark:border-white/10 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-400 font-sans font-bold">辨别力 d'</div>
-                              <div className="font-black text-sky-700 dark:text-cyan-300">{dPrime.toFixed(2)}</div>
+                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
+                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">辨别力 d'</div>
+                              <div className="font-black text-sky-700 dark:text-[#38BDF8]">{dPrime.toFixed(2)}</div>
                             </div>
 
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#0E0E16] border border-stone-900/15 dark:border-white/10 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-400 font-sans font-bold">M_ratio</div>
-                              <div className="font-black text-purple-700 dark:text-purple-300">{mRatio.toFixed(2)}</div>
+                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
+                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">M_ratio</div>
+                              <div className="font-black text-purple-700 dark:text-[#CCFF00]">{mRatio.toFixed(2)}</div>
                             </div>
 
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#0E0E16] border border-stone-900/15 dark:border-white/10 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-400 font-sans font-bold">Bias</div>
+                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
+                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">Bias</div>
                               <div
                                 className={`font-black ${
-                                  bias > 0.12 ? "text-rose-600 dark:text-rose-400" : bias < -0.12 ? "text-sky-600 dark:text-sky-400" : "text-emerald-600 dark:text-emerald-400"
+                                  bias > 0.12 ? "text-rose-600 dark:text-rose-400" : bias < -0.12 ? "text-sky-600 dark:text-[#38BDF8]" : "text-emerald-600 dark:text-[#CCFF00]"
                                 }`}
                               >
                                 {formatBias(Math.round(bias * 100) / 100)}
                               </div>
                             </div>
 
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#0E0E16] border border-stone-900/15 dark:border-white/10 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-400 font-sans font-bold">IVE 杠杆</div>
+                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
+                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">IVE 杠杆</div>
                               <div className="font-black text-amber-700 dark:text-amber-300">{ive.toFixed(2)}</div>
                             </div>
                           </div>
@@ -739,7 +739,7 @@ export const ProfileDashboard: React.FC = () => {
                             <button
                               onClick={() => handleOpenPoster(session)}
                               disabled={loadingReportId === session.id}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#0E0E16] hover:bg-amber-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-900 dark:text-white transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-900 dark:text-white dark:hover:border-[#CCFF00] dark:hover:text-[#CCFF00] transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
                               title={t.profile?.shareCard || "生成分享名片"}
                             >
                               <Share2 className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
@@ -748,7 +748,7 @@ export const ProfileDashboard: React.FC = () => {
 
                             <button
                               onClick={() => handleViewReport(session.id)}
-                              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 border-2 border-stone-900 dark:border-black text-xs font-black text-stone-950 dark:text-[#08080C] transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 border-2 border-stone-900 dark:border-black text-xs font-black text-stone-950 dark:text-[#08080C] transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                               title={t.profile?.viewReport || "查看完整画像报告"}
                             >
                               <FileText className="w-3.5 h-3.5" />
@@ -866,14 +866,14 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
           markerHeight="6"
           orient="auto-start-reverse"
         >
-          <path d="M 0 1 L 10 5 L 0 9 z" fill="#818cf8" opacity="0.8" />
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#CCFF00" opacity="0.9" />
         </marker>
 
         {/* Trajectory line gradient */}
         <linearGradient id="trajectory-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#818cf8" stopOpacity="0.4" />
-          <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="#fbbf24" stopOpacity="1" />
+          <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.8" />
+          <stop offset="50%" stopColor="#818CF8" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#CCFF00" stopOpacity="1" />
         </linearGradient>
 
         {/* Pulsing ring filter */}
@@ -893,8 +893,8 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         y={padTop}
         width={padLeft + plotWidth - baselineX}
         height={baselineY - padTop}
-        fill="#10b981"
-        fillOpacity="0.04"
+        fill="#CCFF00"
+        fillOpacity="0.08"
       />
       {/* Q2: Lower-Right (D* >= 0.60, M_ratio < 0.80) */}
       <rect
@@ -902,8 +902,8 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         y={baselineY}
         width={padLeft + plotWidth - baselineX}
         height={padTop + plotHeight - baselineY}
-        fill="#f59e0b"
-        fillOpacity="0.03"
+        fill="#FBBF24"
+        fillOpacity="0.06"
       />
       {/* Q3: Upper-Left (D* < 0.60, M_ratio >= 0.80) */}
       <rect
@@ -911,8 +911,8 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         y={padTop}
         width={baselineX - padLeft}
         height={baselineY - padTop}
-        fill="#6366f1"
-        fillOpacity="0.03"
+        fill="#38BDF8"
+        fillOpacity="0.06"
       />
       {/* Q4: Lower-Left (D* < 0.60, M_ratio < 0.80) */}
       <rect
@@ -920,8 +920,8 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         y={baselineY}
         width={baselineX - padLeft}
         height={padTop + plotHeight - baselineY}
-        fill="#64748b"
-        fillOpacity="0.02"
+        fill="#64748B"
+        fillOpacity="0.04"
       />
 
       {/* Quadrant Zone Labels */}
@@ -929,7 +929,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + plotWidth - 6}
         y={padTop + 14}
         textAnchor="end"
-        className="fill-emerald-400/40 text-[9px] font-mono tracking-widest font-bold"
+        className="fill-emerald-600 dark:fill-[#CCFF00] text-[9px] font-mono tracking-widest font-black opacity-85"
       >
         Q1 · 真知 (VERITAS)
       </text>
@@ -937,7 +937,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + plotWidth - 6}
         y={padTop + plotHeight - 8}
         textAnchor="end"
-        className="fill-amber-400/40 text-[9px] font-mono tracking-widest font-bold"
+        className="fill-amber-600 dark:fill-[#FBBF24] text-[9px] font-mono tracking-widest font-black opacity-85"
       >
         Q2 · 洞见 (VISIONARY)
       </text>
@@ -945,7 +945,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + 6}
         y={padTop + 14}
         textAnchor="start"
-        className="fill-indigo-400/40 text-[9px] font-mono tracking-widest font-bold"
+        className="fill-indigo-600 dark:fill-[#38BDF8] text-[9px] font-mono tracking-widest font-black opacity-85"
       >
         Q3 · 守御 (DEFENDER)
       </text>
@@ -953,7 +953,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + 6}
         y={padTop + plotHeight - 8}
         textAnchor="start"
-        className="fill-slate-500/40 text-[9px] font-mono tracking-widest font-bold"
+        className="fill-slate-500 dark:fill-slate-300 text-[9px] font-mono tracking-widest font-black opacity-85"
       >
         Q4 · 混沌 (CHAOS)
       </text>
@@ -968,15 +968,15 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
               y1={y}
               x2={padLeft + plotWidth}
               y2={y}
-              stroke="#ffffff"
-              strokeOpacity="0.06"
+              stroke="#94a3b8"
+              strokeOpacity="0.22"
               strokeDasharray="2,2"
             />
             <text
               x={padLeft - 6}
               y={y + 3}
               textAnchor="end"
-              className="fill-slate-500 text-[9px] font-mono"
+              className="fill-stone-600 dark:fill-slate-300 text-[9px] font-mono font-bold"
             >
               {val.toFixed(1)}
             </text>
@@ -993,15 +993,15 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
               y1={padTop}
               x2={x}
               y2={padTop + plotHeight}
-              stroke="#ffffff"
-              strokeOpacity="0.06"
+              stroke="#94a3b8"
+              strokeOpacity="0.22"
               strokeDasharray="2,2"
             />
             <text
               x={x}
               y={padTop + plotHeight + 14}
               textAnchor="middle"
-              className="fill-slate-500 text-[9px] font-mono"
+              className="fill-stone-600 dark:fill-slate-300 text-[9px] font-mono font-bold"
             >
               {val.toFixed(1)}
             </text>
@@ -1015,20 +1015,20 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         y1={padTop}
         x2={baselineX}
         y2={padTop + plotHeight}
-        stroke="#38bdf8"
-        strokeOpacity="0.4"
+        stroke="#38BDF8"
+        strokeOpacity="0.75"
         strokeDasharray="4,3"
-        strokeWidth="1.2"
+        strokeWidth="1.5"
       />
       <line
         x1={padLeft}
         y1={baselineY}
         x2={padLeft + plotWidth}
         y2={baselineY}
-        stroke="#c084fc"
-        strokeOpacity="0.4"
+        stroke="#CCFF00"
+        strokeOpacity="0.75"
         strokeDasharray="4,3"
-        strokeWidth="1.2"
+        strokeWidth="1.5"
       />
 
       {/* Axis Titles */}
@@ -1036,7 +1036,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + plotWidth / 2}
         y={padTop + plotHeight + 28}
         textAnchor="middle"
-        className="fill-slate-400 text-[9px] font-mono font-medium tracking-wider"
+        className="fill-stone-700 dark:fill-slate-200 text-[9px] font-mono font-black tracking-wider"
       >
         相变突破度 D* (PHASE BREAKTHROUGH)
       </text>
@@ -1045,7 +1045,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         y={padTop + plotHeight / 2}
         textAnchor="middle"
         transform={`rotate(-90 12 ${padTop + plotHeight / 2})`}
-        className="fill-slate-400 text-[9px] font-mono font-medium tracking-wider"
+        className="fill-stone-700 dark:fill-slate-200 text-[9px] font-mono font-black tracking-wider"
       >
         元认知效率 M_ratio
       </text>
@@ -1356,8 +1356,8 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
             y1={y}
             x2={padLeft + plotWidth}
             y2={y}
-            stroke="#ffffff"
-            strokeOpacity="0.05"
+            stroke="#94a3b8"
+            strokeOpacity="0.2"
             strokeDasharray="2,2"
           />
         );
@@ -1373,14 +1373,14 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
               y1={padTop + plotHeight}
               x2={x}
               y2={padTop + plotHeight + 4}
-              stroke="#ffffff"
-              strokeOpacity="0.2"
+              stroke="#94a3b8"
+              strokeOpacity="0.4"
             />
             <text
               x={x}
               y={padTop + plotHeight + 16}
               textAnchor="middle"
-              className="fill-slate-500 text-[9px] font-mono"
+              className="fill-stone-600 dark:fill-slate-300 text-[9px] font-mono font-bold"
             >
               #{idx + 1}
             </text>
@@ -1420,13 +1420,14 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
                   x2={padLeft + plotWidth}
                   y2={refY}
                   stroke={series.refColor || series.color}
-                  strokeOpacity="0.4"
+                  strokeOpacity="0.6"
                   strokeDasharray="3,3"
+                  strokeWidth="1.2"
                 />
                 <text
                   x={padLeft + 4}
                   y={refY - 3}
-                  className="fill-slate-400 text-[8px] font-mono"
+                  className="fill-stone-600 dark:fill-slate-200 text-[8px] font-mono font-bold"
                 >
                   基准: {series.refVal}
                 </text>
@@ -1438,7 +1439,7 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
               d={lineD}
               fill="none"
               stroke={series.color}
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -1451,10 +1452,10 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
                   key={`dot-${series.key}-${p.id}-${idx}`}
                   cx={p.x}
                   cy={p.y}
-                  r={isHovered ? 5.5 : 3.5}
-                  fill={isHovered ? "#ffffff" : series.color}
-                  stroke="#0f172a"
-                  strokeWidth="1.5"
+                  r={isHovered ? 6 : 4}
+                  fill={isHovered ? "#CCFF00" : series.color}
+                  stroke={isHovered ? "#08080C" : "#0f172a"}
+                  strokeWidth="2"
                   className="cursor-pointer transition-all"
                   onMouseEnter={() => onHover(p.id)}
                   onMouseLeave={() => onHover(null)}
@@ -1470,8 +1471,8 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
         {seriesConfig.map((series, idx) => {
           return (
             <g key={`leg-${series.key}`} transform={`translate(${idx * 110}, 0)`}>
-              <circle cx="4" cy="-4" r="3" fill={series.color} />
-              <text x="12" y="-1" className="fill-slate-300 text-[9px] font-mono">
+              <circle cx="4" cy="-4" r="3.5" fill={series.color} />
+              <text x="12" y="-1" className="fill-stone-700 dark:fill-slate-200 text-[9px] font-mono font-bold">
                 {series.name}
               </text>
             </g>
