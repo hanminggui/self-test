@@ -31,10 +31,12 @@ import {
   downloadPoster,
   copyPosterImageToClipboard,
   copyShareTextToClipboard,
+  generateShareText,
   PosterShareData,
   SkillDisplayItem,
 } from "./posterGenerator";
 import { buildSessionReportUrl, buildSessionShareUrl } from "../../utils/sessionRoute";
+import { triggerNativeShare } from "../../utils/shareUtils";
 import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 
 export interface WesternArcanePosterProps {
@@ -196,6 +198,24 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
     }
   };
 
+  // 一键系统原生分享 (Web Share API 优先，平滑降级复制短链)
+  const handleNativeShare = async () => {
+    try {
+      const text = generateShareText(shareData);
+      const res = await triggerNativeShare({
+        title: `Self-Test · Cognitive Archetype [${shareData.roleTitle}]`,
+        text,
+        url: resolvedUrl,
+      });
+      if (res.message) {
+        showToast(res.message);
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast("Share failed, link copied instead");
+    }
+  };
+
   const colors = arcaneConfig.colorScheme;
 
   return (
@@ -214,7 +234,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
       {/* 核心海报视觉卡片容器 (DOM 实时高清预览) */}
       <div
         ref={posterCardRef}
-        className="relative w-full rounded-3xl overflow-hidden shadow-2xl border transition-all duration-300"
+        className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border transition-all duration-300"
         style={{
           borderColor: colors.cardBorder,
           boxShadow: `0 25px 60px -15px ${colors.glowColor}, 0 0 40px -10px ${colors.primaryGold}33`,
@@ -225,9 +245,9 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
         <div className="absolute inset-0 pointer-events-none opacity-40 bg-[radial-gradient(#c084fc_1px,transparent_1px)] [background-size:24px_24px]" />
 
         {/* 顶部秘法横批 */}
-        <div className="pt-6 pb-3 text-center border-b border-white/10 relative z-10 bg-black/20">
+        <div className="pt-5 sm:pt-6 pb-2.5 sm:pb-3 text-center border-b border-white/10 relative z-10 bg-black/20">
           <div
-            className="text-[13px] font-bold tracking-[0.25em] font-sans"
+            className="text-[12px] sm:text-[13px] font-bold tracking-[0.25em] font-sans"
             style={{ color: colors.secondaryGold }}
           >
             ARCANE ORDER · COGNITIVE SPECTRUM
@@ -238,7 +258,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
         </div>
 
         {/* 主体卡片区域 */}
-        <div className="p-6 md:p-8 space-y-6 relative z-10">
+        <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 relative z-10">
           {/* 1. 秘法徽章 */}
           <div className="relative flex flex-col items-center justify-center pt-2">
             {/* 背部外发光 */}
@@ -400,20 +420,30 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
       </div>
 
       {/* 底部功能按钮操作栏 (One-Click Actions) */}
-      <div className="w-full flex flex-wrap items-center justify-center gap-3 mt-6">
-        {/* 1. 下载高清海报 PNG */}
+      <div className="w-full flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mt-5 sm:mt-6">
+        {/* 0. 优先唤起系统原生分享 (Web Share API) */}
         <button
           type="button"
-          onClick={handleDownload}
-          disabled={downloading}
-          className="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg active:scale-95 disabled:opacity-50"
+          onClick={handleNativeShare}
+          className="min-h-[44px] px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg active:scale-95"
           style={{
             backgroundColor: colors.primaryGold,
             color: "#ffffff",
             boxShadow: `0 4px 14px ${colors.glowColor}`,
           }}
         >
-          <Download className="w-4 h-4" />
+          <Share2 className="w-4 h-4" />
+          <span>System Share</span>
+        </button>
+
+        {/* 1. 下载高清海报 PNG */}
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={downloading}
+          className="min-h-[44px] px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95 disabled:opacity-50"
+        >
+          <Download className="w-4 h-4 text-purple-400" />
           <span>{downloading ? "Rendering Poster..." : "Download HD Poster (PNG)"}</span>
         </button>
 
@@ -422,7 +452,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
           type="button"
           onClick={handleCopyImage}
           disabled={copyingImage}
-          className="px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95 disabled:opacity-50"
+          className="min-h-[44px] px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95 disabled:opacity-50"
         >
           <Copy className="w-4 h-4 text-purple-400" />
           <span>{copyingImage ? "Copying Image..." : "Copy Poster to Clipboard"}</span>
@@ -432,7 +462,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
         <button
           type="button"
           onClick={handleCopyText}
-          className="px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95"
+          className="min-h-[44px] px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95"
         >
           {copiedText ? (
             <>
@@ -441,7 +471,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
             </>
           ) : (
             <>
-              <Share2 className="w-4 h-4 text-purple-400" />
+              <Copy className="w-4 h-4 text-purple-400" />
               <span>Copy Share Text</span>
             </>
           )}

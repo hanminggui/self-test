@@ -23,6 +23,8 @@ import {
   ExternalLink,
   ChevronRight,
   RotateCcw,
+  Share2,
+  Check,
 } from "lucide-react";
 import { useLocale } from "../contexts/LocaleContext";
 import { LanguageToggle } from "../components/LanguageToggle";
@@ -33,6 +35,7 @@ import {
   extractSessionIdFromUrl,
   buildSessionShareUrl,
 } from "../utils/sessionRoute";
+import { triggerNativeShare } from "../utils/shareUtils";
 import { getArchetypeDefinition } from "../../backend/archetype_matrix";
 import { getMythicArchetype } from "../components/share/mythicArchetypes";
 import { getArcaneArchetype } from "../components/share/arcaneArchetypes";
@@ -168,19 +171,19 @@ export const SharePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex flex-col font-sans selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C]">
       {/* 顶部全局导航栏 */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-[#08080C]/80 border-b-2 border-stone-900/10 dark:border-white/10 px-4 py-3 sm:px-6">
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-[#08080C]/80 border-b-2 border-stone-900/10 dark:border-white/10 px-3 py-2.5 sm:px-6 sm:py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <a
             href="/"
-            className="flex items-center gap-2.5 group cursor-pointer"
+            className="flex items-center gap-2 group cursor-pointer min-w-0"
             aria-label="Self-Test Home"
           >
-            <div className="w-10 h-10 rounded-2xl bg-[#FBBF24] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] group-hover:-translate-y-0.5 active:translate-y-0.5 transition-all">
-              <Compass className="w-5 h-5 text-stone-950 dark:text-[#CCFF00]" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#FBBF24] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] group-hover:-translate-y-0.5 active:translate-y-0.5 transition-all shrink-0">
+              <Compass className="w-4 h-4 sm:w-5 sm:h-5 text-stone-950 dark:text-[#CCFF00]" />
             </div>
-            <div className="flex flex-col">
-              <span className="font-black text-sm sm:text-base tracking-tight text-stone-900 dark:text-white group-hover:text-amber-800 dark:group-hover:text-[#CCFF00] transition-colors">
-                Self-Test · {isEn ? "Cognitive Manifold" : "思维星图"}
+            <div className="flex flex-col min-w-0">
+              <span className="font-black text-xs sm:text-base tracking-tight text-stone-900 dark:text-white group-hover:text-amber-800 dark:group-hover:text-[#CCFF00] transition-colors truncate max-w-[120px] sm:max-w-none">
+                Self-Test · {isEn ? "Manifold" : "思维星图"}
               </span>
               <span className="text-[10px] text-stone-500 dark:text-slate-400 font-bold hidden sm:inline">
                 {isEn ? "Metacognitive Psychophysics" : "决策元认知评测系统"}
@@ -188,7 +191,7 @@ export const SharePage: React.FC = () => {
             </div>
           </a>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <ThemeToggle />
             <LanguageToggle />
 
@@ -196,17 +199,17 @@ export const SharePage: React.FC = () => {
             <button
               onClick={handleStartMyTest}
               type="button"
-              className="px-4 py-2 rounded-2xl text-xs sm:text-sm font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] flex items-center gap-1.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+              className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl text-xs sm:text-sm font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] flex items-center gap-1 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer min-h-[38px] sm:min-h-[40px]"
             >
-              <Sparkles className="w-4 h-4 text-stone-950 dark:text-[#08080C]" />
-              <span>{isEn ? "Test My Metacognition" : "测测我的认知"}</span>
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-stone-950 dark:text-[#08080C]" />
+              <span className="hidden xs:inline">{isEn ? "Test Now" : "测测我的认知"}</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* 主体内容 */}
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 sm:px-6 space-y-10">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-3.5 py-6 sm:px-6 sm:py-8 space-y-6 sm:space-y-10">
         {/* Loading State */}
         {loading && (
           <div className="py-24 text-center space-y-4 animate-pulse">
@@ -310,15 +313,33 @@ export const SharePage: React.FC = () => {
                     : "你是统御全局的人形外挂、明察秋毫的诸葛在世，还是无畏探索的飞龙在天？无需注册，立即开启 30 轮自适应阶梯测评，测出你的真实认知流形！"}
                 </p>
 
-                <div className="pt-2 flex justify-center">
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     onClick={handleStartMyTest}
                     type="button"
-                    className="px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl text-sm sm:text-base font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] flex items-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+                    className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl text-sm sm:text-base font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] flex items-center justify-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer min-h-[44px]"
                   >
                     <Sparkles className="w-5 h-5 text-stone-950 dark:text-[#08080C]" />
                     <span>{isEn ? "Test My Metacognition Now" : "测测我的认知 · 立即开启"}</span>
                     <ArrowRight className="w-5 h-5" />
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      const text = isEn
+                        ? `Check out ${localizedReport.subject_name || "Explorer"}'s [${profile.role_title}] archetype on Self-Test:`
+                        : `来看看【${localizedReport.subject_name || "受测者"}】在 Self-Test 解锁的【${profile.role_title}】专属认知画像：`;
+                      await triggerNativeShare({
+                        title: `Self-Test · ${profile.role_title}`,
+                        text,
+                        url: shareUrl,
+                      });
+                    }}
+                    type="button"
+                    className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 rounded-2xl text-sm sm:text-base font-black bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] flex items-center justify-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer min-h-[44px]"
+                  >
+                    <Share2 className="w-5 h-5 text-stone-950 dark:text-[#CCFF00]" />
+                    <span>{isEn ? "Share This Archetype" : "原生分享此画像"}</span>
                   </button>
                 </div>
               </div>
@@ -461,11 +482,11 @@ export const SharePage: React.FC = () => {
             </section>
 
             {/* Bottom Final CTA Button */}
-            <div className="py-6 text-center space-y-3">
+            <div className="py-6 text-center space-y-3 max-w-md mx-auto">
               <button
                 onClick={handleStartMyTest}
                 type="button"
-                className="px-8 py-4 rounded-2xl text-base font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] inline-flex items-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl text-base font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] inline-flex items-center justify-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer min-h-[44px]"
               >
                 <Sparkles className="w-5 h-5 text-stone-950 dark:text-[#08080C]" />
                 <span>{isEn ? "Test My Metacognition Now" : "测测我的认知 · 开始评测"}</span>
@@ -482,7 +503,7 @@ export const SharePage: React.FC = () => {
       </main>
 
       {/* 底部页脚 */}
-      <footer className="border-t-2 border-stone-900/10 dark:border-white/10 py-6 px-4 text-center text-xs text-stone-500 dark:text-slate-400 space-y-2">
+      <footer className="border-t-2 border-stone-900/10 dark:border-white/10 py-6 px-4 text-center text-xs text-stone-500 dark:text-slate-400 space-y-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <div className="flex flex-wrap items-center justify-center gap-4 text-stone-600 dark:text-slate-400 font-bold">
           <a href="/" className="hover:text-amber-800 dark:hover:text-[#CCFF00] transition-colors">
             {isEn ? "Home" : "首页"}

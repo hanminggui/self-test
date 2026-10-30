@@ -43,10 +43,12 @@ import { MobileNavDrawer } from "./components/layout/MobileNavDrawer";
 import {
   extractSessionIdFromUrl,
   buildSessionReportUrl,
+  buildSessionShareUrl,
   saveLastCompletedSession,
   getLastCompletedSession,
   canGuestStartNewSession,
 } from "./utils/sessionRoute";
+import { triggerNativeShare } from "./utils/shareUtils";
 import { UserNav } from "./components/auth/UserNav";
 
 interface TrialPayload {
@@ -1488,10 +1490,10 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           const displayReport = localizedReport || report!;
           const profile = displayReport.diagnostic_profile;
           return (
-            <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+            <div className="w-full max-w-3xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-12">
               {/* 游客答题完成后的强引导登录收集结果画像卡片 */}
               {!user && (
-                <div className="p-6 rounded-[24px] bg-[#FEF3C7] dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="p-4 sm:p-6 rounded-[24px] bg-[#FEF3C7] dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] sm:shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="space-y-1 text-left">
                     <div className="inline-flex items-center gap-1.5 text-xs font-black text-stone-900 dark:text-[#CCFF00]">
                       <Sparkles className="w-4 h-4 text-amber-600 fill-amber-500 dark:text-[#CCFF00] dark:fill-[#CCFF00]/20" />
@@ -1511,7 +1513,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   <button
                     type="button"
                     onClick={openAuthModal}
-                    className="px-5 py-3 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none flex items-center gap-2 shrink-0 cursor-pointer transition-all"
+                    className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none flex items-center justify-center gap-2 shrink-0 cursor-pointer transition-all"
                   >
                     <LogIn className="w-4 h-4" />
                     <span>{isEn ? "Sign In to Collect Archetype" : "登录收集此结果画像"}</span>
@@ -1520,7 +1522,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               )}
 
               {/* 专属性格解压/先锋名片大卡片 */}
-              <div className="bg-white dark:bg-[#0E0E16] rounded-[28px] p-8 md:p-12 relative overflow-hidden text-center shadow-[0_8px_0_#1c1917] dark:shadow-[6px_6px_0px_#CCFF00] border-[2.5px] border-stone-900 dark:border-white/20">
+              <div className="bg-white dark:bg-[#0E0E16] rounded-[28px] p-5 sm:p-8 md:p-12 relative overflow-hidden text-center shadow-[0_6px_0_#1c1917] sm:shadow-[0_8px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] sm:dark:shadow-[6px_6px_0px_#CCFF00] border-[2.5px] border-stone-900 dark:border-white/20">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black text-xs text-stone-900 dark:text-[#08080C] mb-4 font-black shadow-[0_2px_0_#1c1917] dark:shadow-none">
                   <Crown className="w-4 h-4 text-amber-600 fill-amber-400 dark:text-[#08080C] dark:fill-[#08080C]" /> {t.app.archetypeCardHeader}
                 </div>
@@ -1530,19 +1532,19 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 </div>
 
                 {/* 角色称号：纯色大标题（彻底告别假精致 gradient-text） */}
-                <h2 className="text-4xl md:text-6xl font-black tracking-tight text-stone-900 dark:text-white uppercase mb-3">
+                <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-stone-900 dark:text-white uppercase mb-3 break-words">
                   {profile.role_title}
                 </h2>
 
                 {/* 专属灵魂 Tagline */}
-                <div className="my-5">
-                  <span className="text-base md:text-xl text-stone-900 dark:text-[#CCFF00] font-black tracking-wide bg-[#FFFBEB] dark:bg-[#12121C] px-5 py-2 rounded-2xl border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2.5px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] inline-block">
+                <div className="my-4 sm:my-5">
+                  <span className="text-sm sm:text-base md:text-xl text-stone-900 dark:text-[#CCFF00] font-black tracking-wide bg-[#FFFBEB] dark:bg-[#12121C] px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-2xl border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2.5px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] inline-block max-w-full break-words">
                     “{profile.praise_tagline}”
                   </span>
                 </div>
 
                 {/* 高光标签 */}
-                <div className="flex flex-wrap items-center justify-center gap-2.5 max-w-lg mx-auto mb-8">
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 max-w-lg mx-auto mb-6 sm:mb-8">
                   {profile.strength_tags.map((tag, idx) => {
                     const tagColors = [
                       "bg-[#D1FAE5] text-stone-900", // 开心果绿
@@ -1554,7 +1556,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     return (
                       <span
                         key={idx}
-                        className={`px-4 py-1.5 rounded-full text-xs font-black border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] ${colorClass} dark:bg-[#0E0E16] dark:text-[#CCFF00]`}
+                        className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs font-black border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] ${colorClass} dark:bg-[#0E0E16] dark:text-[#CCFF00] break-all`}
                       >
                         #{tag}
                       </span>
@@ -1563,11 +1565,11 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 </div>
 
                 {/* 深度赋能评语 */}
-                <div className="text-sm md:text-base text-stone-800 dark:text-slate-200 leading-relaxed max-w-2xl mx-auto text-left bg-[#FFFBEB] dark:bg-[#12121C] p-6 rounded-2xl border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] space-y-2">
+                <div className="text-xs sm:text-sm md:text-base text-stone-800 dark:text-slate-200 leading-relaxed max-w-2xl mx-auto text-left bg-[#FFFBEB] dark:bg-[#12121C] p-4 sm:p-6 rounded-2xl border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)] space-y-2">
                   <div className="text-xs font-black text-amber-800 dark:text-[#CCFF00] flex items-center gap-1.5 mb-2">
                     <Sparkles className="w-4 h-4 text-amber-600 fill-amber-400 dark:text-[#CCFF00] dark:fill-[#CCFF00]" /> {t.app.soulResonance}
                   </div>
-                  <p className="text-stone-700 dark:text-slate-300 text-sm md:text-base leading-relaxed font-medium">
+                  <p className="text-stone-700 dark:text-slate-300 text-xs sm:text-sm md:text-base leading-relaxed font-medium">
                     {profile.empowering_feedback}
                   </p>
                 </div>
@@ -1619,7 +1621,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               </div>
 
               {/* 战略建议 */}
-              <div className="p-6 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] text-xs md:text-sm text-stone-950 dark:text-white leading-relaxed space-y-1">
+              <div className="p-4 sm:p-6 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] text-xs md:text-sm text-stone-950 dark:text-white leading-relaxed space-y-1">
                 <div className="font-black text-stone-950 dark:text-[#CCFF00] flex items-center gap-1.5">
                   <Compass className="w-4 h-4 text-stone-950 dark:text-[#CCFF00]" /> {t.app.strategicAdvice}
                 </div>
@@ -1629,7 +1631,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               </div>
 
               {/* 专属永久报告链接卡片 */}
-              <div className="p-5 md:p-6 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-2.5 text-left">
+              <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-2.5 text-left">
                 <div className="flex items-center justify-between">
                   <span className="text-xs md:text-sm font-black text-stone-900 dark:text-white flex items-center gap-1.5 font-sans">
                     <Link2 className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" /> {t.app.permanentLinkTitle}
@@ -1669,7 +1671,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               </div>
 
               {/* 按钮区 */}
-              <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 pt-4 w-full max-w-xl mx-auto">
                 {user ? (
                   <button
                     type="button"
@@ -1680,7 +1682,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                       setSessionId("");
                       navigateTo("/");
                     }}
-                    className="px-6 py-3.5 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs flex items-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-none active:translate-y-1 active:shadow-none"
+                    className="w-full sm:w-auto min-h-[44px] px-6 py-3.5 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-none active:translate-y-1 active:shadow-none"
                   >
                     <RotateCcw className="w-4 h-4" /> {t.app.restartVoyage}
                   </button>
@@ -1688,7 +1690,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   <button
                     type="button"
                     onClick={openAuthModal}
-                    className="px-6 py-3.5 rounded-2xl bg-[#38BDF8] hover:bg-[#0EA5E9] text-stone-950 font-black text-xs flex items-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-[#38BDF8] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] active:translate-y-1 active:shadow-none"
+                    className="w-full sm:w-auto min-h-[44px] px-6 py-3.5 rounded-2xl bg-[#38BDF8] hover:bg-[#0EA5E9] text-stone-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-[#38BDF8] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] active:translate-y-1 active:shadow-none"
                   >
                     <LogIn className="w-4 h-4" />
                     <span>
@@ -1699,12 +1701,40 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   </button>
                 )}
 
+                {/* 生成海报弹窗 */}
                 <button
                   type="button"
+                  data-testid="generate-poster-btn"
                   onClick={() => setShowPosterModal(true)}
-                  className="px-7 py-3.5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-sm flex items-center gap-2 cursor-pointer transition-all border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-1 active:shadow-none"
+                  className="w-full sm:w-auto min-h-[44px] px-6 py-3.5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-1 active:shadow-none"
                 >
-                  <Share2 className="w-4 h-4 text-stone-950 dark:text-[#08080C]" /> {t.app.shareBtn}
+                  <Sparkles className="w-4 h-4 text-stone-950 dark:text-[#08080C]" />
+                  <span>{isEn ? "Generate Poster" : "生成专属海报"}</span>
+                </button>
+
+                {/* 优先调起移动端系统原生 Web Share API */}
+                <button
+                  type="button"
+                  data-testid="report-direct-share-btn"
+                  onClick={async () => {
+                    const text = isEn
+                      ? `I unlocked the cognitive archetype [${profile.role_title}]: "${profile.praise_tagline}"! Test your metacognition now:`
+                      : `我在 Self-Test 认知测试中解锁了【${profile.role_title}】：“${profile.praise_tagline}”！快来测测你的思维图腾：`;
+                    const shareUrl = buildSessionShareUrl(displayReport.session_id);
+                    const res = await triggerNativeShare({
+                      title: `Self-Test · 认知画像【${profile.role_title}】`,
+                      text,
+                      url: shareUrl,
+                    });
+                    if (res.method === "clipboard" && res.success) {
+                      setCopiedPermalink(true);
+                      setTimeout(() => setCopiedPermalink(false), 2500);
+                    }
+                  }}
+                  className="w-full sm:w-auto min-h-[44px] px-6 py-3.5 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-1 active:shadow-none"
+                >
+                  <Share2 className="w-4 h-4 text-stone-950 dark:text-[#CCFF00]" />
+                  <span>{isEn ? "System Share" : "系统原生分享"}</span>
                 </button>
               </div>
             </div>

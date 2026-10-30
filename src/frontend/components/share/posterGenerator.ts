@@ -838,9 +838,9 @@ export async function copyPosterImageToClipboard(
 }
 
 /**
- * 复制文案格式的分享信息 (彻底净化 4D 敏感数据与卦象爻线)
+ * 生成文案格式的分享信息字符串 (彻底净化 4D 敏感数据与卦象爻线)
  */
-export async function copyShareTextToClipboard(data: PosterShareData): Promise<boolean> {
+export function generateShareText(data: PosterShareData): string {
   const isEn = data.locale === "en-US";
   const mythicConfig = getMythicArchetype(data.archetype);
   const arcaneConfig = getArcaneArchetype(data.archetype);
@@ -865,13 +865,11 @@ export async function copyShareTextToClipboard(data: PosterShareData): Promise<b
 
   const entryUrl = data.entryUrl || "http://localhost:8000/";
 
-  let text = "";
-
   if (isEn) {
     const skillsText = skills
       .map((s) => `• [${s.type}] ${s.name}: ${s.desc}`)
       .join("\n");
-    text = [
+    return [
       `[${roleTitle}]`,
       `"${praiseTagline}"`,
       `Explorer: ${data.subjectName}`,
@@ -885,25 +883,32 @@ export async function copyShareTextToClipboard(data: PosterShareData): Promise<b
       `───────────`,
       `Discover your cognitive archetype: ${entryUrl}`,
     ].filter(Boolean).join("\n");
-  } else {
-    const skillsText = skills
-      .map((s) => `• 【${s.type}】${s.name}：${s.desc}`)
-      .join("\n");
-    text = [
-      `【${roleTitle}】`,
-      `“${praiseTagline}”`,
-      `探索者：${data.subjectName}`,
-      tags ? `标签：${tags}` : "",
-      `───────────`,
-      `专属认知特技：`,
-      skillsText,
-      `───────────`,
-      `赋能启示：`,
-      `“${empoweringFeedback}”`,
-      `───────────`,
-      `测算你的认知本命流形：${entryUrl}`,
-    ].filter(Boolean).join("\n");
   }
+
+  const skillsText = skills
+    .map((s) => `• 【${s.type}】${s.name}：${s.desc}`)
+    .join("\n");
+  return [
+    `【${roleTitle}】`,
+    `“${praiseTagline}”`,
+    `探索者：${data.subjectName}`,
+    tags ? `标签：${tags}` : "",
+    `───────────`,
+    `专属认知特技：`,
+    skillsText,
+    `───────────`,
+    `赋能启示：`,
+    `“${empoweringFeedback}”`,
+    `───────────`,
+    `测算你的认知本命流形：${entryUrl}`,
+  ].filter(Boolean).join("\n");
+}
+
+/**
+ * 复制文案格式的分享信息 (彻底净化 4D 敏感数据与卦象爻线)
+ */
+export async function copyShareTextToClipboard(data: PosterShareData): Promise<boolean> {
+  const text = generateShareText(data);
 
   if (navigator?.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
