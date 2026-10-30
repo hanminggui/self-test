@@ -186,17 +186,51 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
     [currentRotation]
   );
 
-  // 支持鼠标/触摸直接左右拖拽画卷
+  const touchStartXRef = useRef(0);
+  const touchStartYRef = useRef(0);
+
+  // 移动端专用原生触控滑动手势 (左右轻扫切画卷)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a")) return;
+    if (e.touches.length > 0) {
+      touchStartXRef.current = e.touches[0].clientX;
+      touchStartYRef.current = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!e.changedTouches || e.changedTouches.length === 0) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
+
+    // 水平轻扫判定：水平位移超过 25px 且大于垂直位移，即顺畅切换流派
+    if (Math.abs(deltaX) > 25 && Math.abs(deltaX) > Math.abs(deltaY) * 0.8) {
+      if (deltaX < 0) {
+        snapToSector(activeSectorIndex + 1, true);
+      } else {
+        snapToSector(activeSectorIndex - 1, true);
+      }
+    }
+  };
+
+  // 支持鼠标/触摸直接左右拖拽与滑动手势画卷
   const handlePointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest("button")) return;
+    if (target.closest("button") || target.closest("a")) return;
 
     isDraggingRef.current = true;
     lastPointerXRef.current = e.clientX;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let hasMoved = false;
 
     const handleWindowPointerMove = (ev: PointerEvent) => {
       const dx = ev.clientX - lastPointerXRef.current;
       lastPointerXRef.current = ev.clientX;
+      if (Math.abs(ev.clientX - startX) > 4) {
+        hasMoved = true;
+      }
 
       const degDelta = (dx / SECTOR_WIDTH) * 45;
       rotationRef.current += degDelta;
@@ -204,10 +238,25 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
       setCurrentRotation(rotationRef.current);
     };
 
-    const handleWindowPointerUp = () => {
+    const handleWindowPointerUp = (ev: PointerEvent) => {
       isDraggingRef.current = false;
       window.removeEventListener("pointermove", handleWindowPointerMove);
       window.removeEventListener("pointerup", handleWindowPointerUp);
+      window.removeEventListener("pointercancel", handleWindowPointerUp);
+
+      const totalDx = ev.clientX - startX;
+      const totalDy = ev.clientY - startY;
+
+      // 如果是明确的水平滑动且位移明显 (移动端手势轻扫快速切流派)
+      if (hasMoved && Math.abs(totalDx) > 36 && Math.abs(totalDx) > Math.abs(totalDy)) {
+        if (totalDx < 0) {
+          snapToSector(activeSectorIndex + 1, false);
+          return;
+        } else {
+          snapToSector(activeSectorIndex - 1, false);
+          return;
+        }
+      }
 
       const curRot = ((-rotationRef.current % 360) + 360) % 360;
       let closestIdx = 0;
@@ -225,6 +274,7 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
 
     window.addEventListener("pointermove", handleWindowPointerMove);
     window.addEventListener("pointerup", handleWindowPointerUp);
+    window.addEventListener("pointercancel", handleWindowPointerUp);
   };
 
   // 将 24 颗 Mock 探索者星宿投影到画卷天轨上作为氛围背景星
@@ -277,7 +327,9 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
       <div
         ref={stageRef}
         onPointerDown={handlePointerDown}
-        className="lg:sticky lg:top-0 w-full min-h-screen lg:h-screen flex flex-col justify-between overflow-hidden select-none cursor-grab active:cursor-grabbing"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="lg:sticky lg:top-0 w-full min-h-screen lg:h-screen flex flex-col justify-between overflow-hidden select-none cursor-grab active:cursor-grabbing touch-pan-y"
         style={{ background: "#050811" }}
       >
         {/* 1. 背景全景无缝画卷 SVG 舞台 (100% 铺满视口) */}
@@ -540,7 +592,7 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
         </svg>
 
         {/* 2. 顶部画卷标题与滚动进度提示 */}
-        <div className="relative z-20 max-w-7xl w-full mx-auto px-4 sm:px-8 pt-20 pb-3 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="relative z-20 max-w-7xl w-full mx-auto px-4 sm:px-8 pt-14 sm:pt-20 pb-2 sm:pb-3 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <div className="text-center sm:text-left">
             <div className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-amber-400">
               <Sparkles className="w-3.5 h-3.5" />
@@ -558,7 +610,7 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
           </div>
 
           {/* 交互指引提示 */}
-          <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-950/80 border border-white/10 backdrop-blur-md text-xs text-slate-300">
+          <div className="flex items-center gap-3 px-3.5 sm:px-4 py-2 rounded-2xl bg-slate-950/80 border border-white/10 backdrop-blur-md text-xs text-slate-300">
             <MousePointerClick className="w-4 h-4 text-amber-400 shrink-0" />
             <span>
               {isEn
@@ -574,7 +626,7 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
         {/* 3. 正中央：当前聚焦化身的高定泥金/奥术主展陈卡 */}
         <div className="relative z-20 flex-1 flex items-center justify-center px-4 sm:px-8 py-2">
           <div
-            className="w-full max-w-4xl rounded-3xl p-6 sm:p-8 lg:p-10 bg-slate-950/80 backdrop-blur-xl border shadow-2xl transition-all duration-300 relative overflow-hidden"
+            className="w-full max-w-4xl rounded-3xl p-4 sm:p-8 lg:p-10 bg-slate-950/80 backdrop-blur-xl border shadow-2xl transition-all duration-300 relative overflow-hidden"
             style={{
               borderColor: `${activeConf.primaryColor}66`,
               boxShadow: `0 25px 70px -15px ${activeConf.primaryColor}33`,
@@ -601,9 +653,9 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-8 items-center">
               {/* 左侧：神兽/化身名讳、金句与深度赋能解读 */}
-              <div className="lg:col-span-6 space-y-4 text-center lg:text-left">
+              <div className="lg:col-span-6 space-y-3.5 sm:space-y-4 text-center lg:text-left">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border text-xs font-bold"
                   style={{
                     backgroundColor: `${activeConf.primaryColor}18`,
@@ -617,7 +669,7 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
 
                 <div>
                   <h3
-                    className="text-3xl sm:text-5xl font-black tracking-tight"
+                    className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight"
                     style={{
                       color: "#ffffff",
                       textShadow: `0 0 28px ${activeConf.primaryColor}66`,
@@ -626,7 +678,7 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
                     {activeDef.role_title}
                   </h3>
                   <p
-                    className="text-sm sm:text-base font-bold mt-2"
+                    className="text-sm sm:text-base font-bold mt-1.5 sm:mt-2"
                     style={{ color: activeConf.secondaryColor }}
                   >
                     “{activeDef.praise_tagline}”
@@ -634,11 +686,11 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
                 </div>
 
                 {/* 核心优势标签 */}
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1.5 sm:gap-2">
                   {activeDef.strength_tags.map((tag, idx) => (
                     <span
                       key={idx}
-                      className="px-3 py-1 rounded-full text-xs font-semibold bg-white/[0.05] border border-white/10 text-slate-200"
+                      className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-semibold bg-white/[0.05] border border-white/10 text-slate-200"
                     >
                       #{tag}
                     </span>
@@ -646,15 +698,15 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
                 </div>
 
                 {/* 通俗温暖的赋能解读 */}
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-4">
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-3 sm:line-clamp-4">
                   {activeDef.empowering_feedback}
                 </p>
 
-                <div className="pt-2 flex items-center justify-center lg:justify-start gap-3">
+                <div className="pt-1.5 sm:pt-2 flex items-center justify-center lg:justify-start gap-3">
                   <button
                     type="button"
                     onClick={onStartTest}
-                    className="px-6 py-3 rounded-2xl font-extrabold text-xs sm:text-sm text-slate-950 shadow-lg flex items-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer"
+                    className="w-full sm:w-auto min-h-[44px] px-6 py-3 rounded-2xl font-extrabold text-xs sm:text-sm text-slate-950 shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer"
                     style={{
                       backgroundColor: activeConf.secondaryColor,
                       boxShadow: `0 10px 30px -5px ${activeConf.primaryColor}66`,
@@ -672,7 +724,7 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
               </div>
 
               {/* 右侧：4 大专属天赋特技 (2x2 Grid) */}
-              <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                 {activeDef.skills.slice(0, 4).map((skill, idx) => (
                   <div
                     key={idx}
@@ -713,13 +765,14 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
               <button
                 type="button"
                 onClick={() => snapToSector(activeSectorIndex - 1, true)}
-                className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-white/10 text-slate-200 hover:text-white transition-all cursor-pointer shrink-0"
+                aria-label={isEn ? "Previous Archetype" : "上一尊化身"}
+                className="w-11 h-11 min-w-[44px] min-h-[44px] p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] active:bg-white/[0.2] border border-white/10 text-slate-200 hover:text-white transition-all cursor-pointer shrink-0 flex items-center justify-center"
                 title={isEn ? "Previous Archetype" : "上一尊化身"}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-5 h-5" />
               </button>
 
-              {/* 8 大化身直达胶囊 */}
+              {/* 8 大化身直达胶囊 (>=44x44px touch target) */}
               <div className="flex-1 flex items-center justify-start sm:justify-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                 {scrollSectorConfigs.map((conf, idx) => {
                   const isActive = idx === activeSectorIndex;
@@ -729,7 +782,7 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
                       key={conf.code}
                       type="button"
                       onClick={() => snapToSector(idx, true)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 border ${
+                      className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 border ${
                         isActive
                           ? "text-slate-950 shadow-md scale-[1.03]"
                           : "bg-white/[0.03] hover:bg-white/[0.08] text-slate-300 border-white/10"
@@ -758,10 +811,11 @@ export const ArchetypeStickyScrollBand: React.FC<ArchetypeStickyScrollBandProps>
               <button
                 type="button"
                 onClick={() => snapToSector(activeSectorIndex + 1, true)}
-                className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] border border-white/10 text-slate-200 hover:text-white transition-all cursor-pointer shrink-0"
+                aria-label={isEn ? "Next Archetype" : "下一尊化身"}
+                className="w-11 h-11 min-w-[44px] min-h-[44px] p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.12] active:bg-white/[0.2] border border-white/10 text-slate-200 hover:text-white transition-all cursor-pointer shrink-0 flex items-center justify-center"
                 title={isEn ? "Next Archetype" : "下一尊化身"}
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
 
