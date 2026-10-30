@@ -264,24 +264,24 @@ export const ProfileSettings: React.FC = () => {
       {/* Status Alert Toast */}
       {statusMessage && (
         <div
-          className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-sm transition-all duration-300 ${
+          className={`p-4 rounded-2xl border-2 flex items-center justify-between gap-3 text-sm font-bold transition-all duration-300 shadow-[0_3px_0_#1c1917] ${
             statusMessage.type === "success"
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-              : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+              ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-600 dark:border-emerald-500/30 text-emerald-900 dark:text-emerald-300"
+              : "bg-rose-50 dark:bg-rose-500/10 border-rose-600 dark:border-rose-500/30 text-rose-900 dark:text-rose-300"
           }`}
         >
           <div className="flex items-center gap-2.5">
             {statusMessage.type === "success" ? (
-              <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-400" />
+              <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600 dark:text-rose-400" />
             )}
             <span>{statusMessage.text}</span>
           </div>
           <button
             type="button"
             onClick={() => setStatusMessage(null)}
-            className="text-xs opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
+            className="text-xs font-black opacity-70 hover:opacity-100 transition-opacity cursor-pointer px-2 py-1"
           >
             ✕
           </button>
@@ -290,20 +290,22 @@ export const ProfileSettings: React.FC = () => {
 
       <form onSubmit={handleSave} className="space-y-8">
         {/* Section 1: Basic Profile Card */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-6 sm:p-8 space-y-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-            <UserIcon className="w-5 h-5 text-indigo-400" />
+        <div className="rounded-2xl bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 p-6 sm:p-8 space-y-6 shadow-[0_4px_0_#1c1917] dark:shadow-none">
+          <div className="flex items-center gap-3 border-b-2 border-stone-100 dark:border-white/10 pb-4">
+            <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-950/40 border border-stone-900/10 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-400">
+              <UserIcon className="w-5 h-5" />
+            </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-wide">
+              <h2 className="text-base font-black text-stone-950 dark:text-white tracking-wide">
                 {t.profile?.displayNameLabel || "基本资料"}
               </h2>
-              <p className="text-xs text-slate-400">公开个人名片、头像与认知宣言</p>
+              <p className="text-xs font-semibold text-stone-600 dark:text-slate-400">公开个人名片、头像与认知宣言</p>
             </div>
           </div>
 
           {/* Avatar Selector */}
           <div className="space-y-4">
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+            <label className="block text-xs font-bold text-stone-800 dark:text-slate-300 uppercase tracking-wider">
               {t.profile?.avatarLabel || "头像选择"}
             </label>
 
@@ -314,7 +316,7 @@ export const ProfileSettings: React.FC = () => {
                   <img
                     src={avatarUrl}
                     alt={displayName}
-                    className="w-16 h-16 rounded-2xl object-cover ring-2 ring-indigo-500/50 shadow-lg"
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-none"
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-2xl bg-[#FBBF24] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black flex items-center justify-center text-stone-950 dark:text-[#08080C] text-2xl font-black shadow-[0_3px_0_#1c1917] dark:shadow-none">
@@ -325,7 +327,7 @@ export const ProfileSettings: React.FC = () => {
 
               {/* Preset Avatars */}
               <div className="flex-1 space-y-2">
-                <p className="text-xs text-slate-400 font-medium">{t.profile?.avatarPresetLabel || "预置星象头像"}</p>
+                <p className="text-xs text-stone-600 dark:text-slate-400 font-bold">{t.profile?.avatarPresetLabel || "预置星象头像"}</p>
                 <div className="flex flex-wrap gap-2.5">
                   {PRESET_AVATARS.map((preset) => {
                     const presetDataUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="18" fill="%231e1b4b"/><text x="40" y="48" font-size="34" text-anchor="middle" dominant-baseline="middle">${preset.symbol}</text></svg>`;
@@ -336,8 +338,8 @@ export const ProfileSettings: React.FC = () => {
                         type="button"
                         onClick={() => setAvatarUrl(presetDataUrl)}
                         title={preset.name}
-                        className={`w-10 h-10 rounded-xl bg-gradient-to-br ${preset.gradient} flex items-center justify-center text-lg shadow-sm transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
-                          isSelected ? "ring-2 ring-white scale-105" : "opacity-80 hover:opacity-100"
+                        className={`w-10 h-10 rounded-xl bg-gradient-to-br ${preset.gradient} border-2 border-stone-900 flex items-center justify-center text-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
+                          isSelected ? "ring-2 ring-stone-900 dark:ring-white scale-105 shadow-[0_3px_0_#1c1917]" : "opacity-85 hover:opacity-100 shadow-[0_2px_0_#1c1917]"
                         }`}
                       >
                         {preset.symbol}
@@ -348,7 +350,7 @@ export const ProfileSettings: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setAvatarUrl(user.avatar_url || "")}
-                      className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-slate-300 transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-white/5 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/10 text-xs font-bold text-stone-800 dark:text-slate-300 shadow-[0_2px_0_#1c1917] dark:shadow-none transition-colors"
                     >
                       恢复第三方头像
                     </button>
@@ -359,13 +361,13 @@ export const ProfileSettings: React.FC = () => {
 
             {/* Custom URL Input */}
             <div className="pt-2">
-              <label className="block text-[11px] text-slate-400 mb-1">{t.profile?.avatarCustomLabel || "自定义图片 URL"}</label>
+              <label className="block text-xs font-bold text-stone-700 dark:text-slate-400 mb-1.5">{t.profile?.avatarCustomLabel || "自定义图片 URL"}</label>
               <input
                 type="url"
                 value={avatarUrl.startsWith("data:") ? "" : avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
                 placeholder="https://example.com/avatar.png"
-                className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all"
+                className="w-full px-4 py-2.5 rounded-xl bg-[#FFFDF8] dark:bg-white/5 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-950 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 shadow-[0_2px_0_#1c1917] dark:shadow-none focus:outline-none focus:border-amber-500 dark:focus:border-indigo-400 transition-all"
               />
             </div>
           </div>
@@ -373,10 +375,10 @@ export const ProfileSettings: React.FC = () => {
           {/* Display Name Input */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <label className="text-xs font-bold text-stone-800 dark:text-slate-300 uppercase tracking-wider">
                 {t.profile?.displayNameLabel || "公开昵称"}
               </label>
-              <span className={`text-[11px] font-mono ${isNameTooLong ? "text-rose-400" : "text-slate-400"}`}>
+              <span className={`text-[11px] font-mono font-bold ${isNameTooLong ? "text-rose-600 dark:text-rose-400" : "text-stone-600 dark:text-slate-400"}`}>
                 {displayName.length} / 32
               </span>
             </div>
@@ -386,13 +388,13 @@ export const ProfileSettings: React.FC = () => {
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder={t.profile?.displayNamePlaceholder || "请输入公开展示昵称"}
               maxLength={40}
-              className={`w-full px-4 py-2.5 rounded-xl bg-white/5 border text-sm text-white placeholder-slate-500 focus:outline-none transition-all ${
+              className={`w-full px-4 py-2.5 rounded-xl bg-[#FFFDF8] dark:bg-white/5 border-2 text-sm font-bold text-stone-950 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 shadow-[0_2px_0_#1c1917] dark:shadow-none focus:outline-none transition-all ${
                 isNameInvalid && displayName.length > 0
-                  ? "border-rose-500/50 focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
-                  : "border-white/10 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                  ? "border-rose-600 focus:border-rose-600"
+                  : "border-stone-900 dark:border-white/20 focus:border-amber-500 dark:focus:border-indigo-400"
               }`}
             />
-            <p className="text-[11px] text-slate-400">
+            <p className="text-xs font-medium text-stone-600 dark:text-slate-400">
               {t.profile?.displayNameHelp || "支持 2-32 个字符，禁止包含脚本或违规侮辱性词汇"}
             </p>
           </div>
@@ -400,10 +402,10 @@ export const ProfileSettings: React.FC = () => {
           {/* Bio Input */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <label className="text-xs font-bold text-stone-800 dark:text-slate-300 uppercase tracking-wider">
                 {t.profile?.bioLabel || "个人简介 / 认知宣言"}
               </label>
-              <span className={`text-[11px] font-mono ${bio.length > 300 ? "text-rose-400" : "text-slate-400"}`}>
+              <span className={`text-[11px] font-mono font-bold ${bio.length > 300 ? "text-rose-600 dark:text-rose-400" : "text-stone-600 dark:text-slate-400"}`}>
                 {bio.length} / 300
               </span>
             </div>
@@ -413,21 +415,23 @@ export const ProfileSettings: React.FC = () => {
               onChange={(e) => setBio(e.target.value)}
               placeholder={t.profile?.bioPlaceholder || "用一两句话描述您的心智思考模式或探索宣言..."}
               maxLength={300}
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all resize-none"
+              className="w-full px-4 py-2.5 rounded-xl bg-[#FFFDF8] dark:bg-white/5 border-2 border-stone-900 dark:border-white/20 text-sm font-bold text-stone-950 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 shadow-[0_2px_0_#1c1917] dark:shadow-none focus:outline-none focus:border-amber-500 dark:focus:border-indigo-400 transition-all resize-none"
             />
-            <p className="text-[11px] text-slate-400">{t.profile?.bioHelp || "上限 300 个字符"}</p>
+            <p className="text-xs font-medium text-stone-600 dark:text-slate-400">{t.profile?.bioHelp || "上限 300 个字符"}</p>
           </div>
         </div>
 
         {/* Section 2: Visibility Preference Tier */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-6 sm:p-8 space-y-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-            <Shield className="w-5 h-5 text-amber-400" />
+        <div className="rounded-2xl bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 p-6 sm:p-8 space-y-6 shadow-[0_4px_0_#1c1917] dark:shadow-none">
+          <div className="flex items-center gap-3 border-b-2 border-stone-100 dark:border-white/10 pb-4">
+            <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/40 border border-stone-900/10 dark:border-amber-500/30 text-amber-700 dark:text-amber-400">
+              <Shield className="w-5 h-5" />
+            </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-wide">
+              <h2 className="text-base font-black text-stone-950 dark:text-white tracking-wide">
                 {t.profile?.visibilityLabel || "默认评测可见性偏好"}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs font-semibold text-stone-600 dark:text-slate-400">
                 {t.profile?.visibilityDesc || "决定您完成评测后的默认隐私等级"}
               </p>
             </div>
@@ -437,29 +441,29 @@ export const ProfileSettings: React.FC = () => {
             {/* L1: Private */}
             <div
               onClick={() => setDefaultVisibility("private")}
-              className={`p-5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between space-y-3 ${
+              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between space-y-3 ${
                 defaultVisibility === "private"
-                  ? "bg-slate-800/80 border-indigo-500 ring-2 ring-indigo-500/30 shadow-lg"
-                  : "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]"
+                  ? "bg-stone-100 dark:bg-slate-800/80 border-stone-900 dark:border-indigo-500 shadow-[0_4px_0_#1c1917] ring-2 ring-stone-900/10"
+                  : "bg-[#FFFDF8] dark:bg-white/[0.02] border-stone-900/30 dark:border-white/10 hover:border-stone-900 hover:shadow-[0_3px_0_#1c1917] dark:hover:bg-white/[0.04]"
               }`}
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-300">
-                    <Lock className="w-4 h-4 text-slate-300" />
+                  <div className="w-8 h-8 rounded-lg bg-stone-200 dark:bg-slate-700/50 flex items-center justify-center text-stone-700 dark:text-slate-300 border border-stone-900/20">
+                    <Lock className="w-4 h-4" />
                   </div>
                   {defaultVisibility === "private" && (
-                    <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                    <CheckCircle2 className="w-5 h-5 text-stone-900 dark:text-indigo-400" />
                   )}
                 </div>
-                <h3 className="text-sm font-bold text-white">
+                <h3 className="text-sm font-black text-stone-950 dark:text-white">
                   {t.profile?.visibilityL1Title || "私密保护 (L1: Private)"}
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs font-semibold text-stone-700 dark:text-slate-400 leading-relaxed">
                   {t.profile?.visibilityL1Desc || "仅您本人在个人面板中可见，绝不投影至公开群体散点"}
                 </p>
               </div>
-              <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-slate-700/50 text-slate-300 w-max">
+              <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-stone-900/20 bg-stone-200/80 dark:bg-slate-700/50 text-stone-800 dark:text-slate-300 w-max">
                 L1 · PRIVATE
               </span>
             </div>
@@ -467,29 +471,29 @@ export const ProfileSettings: React.FC = () => {
             {/* L2: Anonymous Codename */}
             <div
               onClick={() => setDefaultVisibility("anonymous")}
-              className={`p-5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between space-y-3 ${
+              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between space-y-3 ${
                 defaultVisibility === "anonymous"
-                  ? "bg-indigo-950/40 border-amber-500 ring-2 ring-amber-500/30 shadow-lg"
-                  : "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]"
+                  ? "bg-amber-100/70 dark:bg-indigo-950/40 border-stone-900 dark:border-amber-500 shadow-[0_4px_0_#1c1917] ring-2 ring-amber-400/40"
+                  : "bg-[#FFFDF8] dark:bg-white/[0.02] border-stone-900/30 dark:border-white/10 hover:border-stone-900 hover:shadow-[0_3px_0_#1c1917] dark:hover:bg-white/[0.04]"
               }`}
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-300">
-                    <EyeOff className="w-4 h-4 text-amber-400" />
+                  <div className="w-8 h-8 rounded-lg bg-amber-200 dark:bg-amber-500/20 flex items-center justify-center text-amber-900 dark:text-amber-300 border border-stone-900/20">
+                    <EyeOff className="w-4 h-4" />
                   </div>
                   {defaultVisibility === "anonymous" && (
-                    <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                    <CheckCircle2 className="w-5 h-5 text-amber-700 dark:text-amber-400" />
                   )}
                 </div>
-                <h3 className="text-sm font-bold text-white">
+                <h3 className="text-sm font-black text-stone-950 dark:text-white">
                   {t.profile?.visibilityL2Title || "匿名代号 (L2: Anonymous)"}
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs font-semibold text-stone-700 dark:text-slate-400 leading-relaxed">
                   {t.profile?.visibilityL2Desc || "推荐。以神话匿名星象代号投影至群体散点空间，抹除身份"}
                 </p>
               </div>
-              <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 w-max">
+              <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-600/30 bg-amber-200/70 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 w-max">
                 L2 · ANONYMOUS
               </span>
             </div>
@@ -497,29 +501,29 @@ export const ProfileSettings: React.FC = () => {
             {/* L3: Public */}
             <div
               onClick={() => setDefaultVisibility("public")}
-              className={`p-5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between space-y-3 ${
+              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between space-y-3 ${
                 defaultVisibility === "public"
-                  ? "bg-purple-950/40 border-purple-500 ring-2 ring-purple-500/30 shadow-lg"
-                  : "bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]"
+                  ? "bg-purple-100/70 dark:bg-purple-950/40 border-stone-900 dark:border-purple-500 shadow-[0_4px_0_#1c1917] ring-2 ring-purple-400/40"
+                  : "bg-[#FFFDF8] dark:bg-white/[0.02] border-stone-900/30 dark:border-white/10 hover:border-stone-900 hover:shadow-[0_3px_0_#1c1917] dark:hover:bg-white/[0.04]"
               }`}
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-300">
-                    <Globe className="w-4 h-4 text-purple-400" />
+                  <div className="w-8 h-8 rounded-lg bg-purple-200 dark:bg-purple-500/20 flex items-center justify-center text-purple-900 dark:text-purple-300 border border-stone-900/20">
+                    <Globe className="w-4 h-4" />
                   </div>
                   {defaultVisibility === "public" && (
-                    <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                    <CheckCircle2 className="w-5 h-5 text-purple-700 dark:text-purple-400" />
                   )}
                 </div>
-                <h3 className="text-sm font-bold text-white">
+                <h3 className="text-sm font-black text-stone-950 dark:text-white">
                   {t.profile?.visibilityL3Title || "公开名片 (L3: Public)"}
                 </h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs font-semibold text-stone-700 dark:text-slate-400 leading-relaxed">
                   {t.profile?.visibilityL3Desc || "完全公开。在认知大盘展示您的头像、昵称与主页链接"}
                 </p>
               </div>
-              <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 w-max">
+              <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-purple-600/30 bg-purple-200/70 dark:bg-purple-500/20 text-purple-900 dark:text-purple-300 w-max">
                 L3 · PUBLIC
               </span>
             </div>
@@ -527,14 +531,16 @@ export const ProfileSettings: React.FC = () => {
         </div>
 
         {/* Section 3: Social Links */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-6 sm:p-8 space-y-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-            <LinkIcon className="w-5 h-5 text-cyan-400" />
+        <div className="rounded-2xl bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 p-6 sm:p-8 space-y-6 shadow-[0_4px_0_#1c1917] dark:shadow-none">
+          <div className="flex items-center gap-3 border-b-2 border-stone-100 dark:border-white/10 pb-4">
+            <div className="p-2 rounded-xl bg-cyan-100 dark:bg-cyan-950/40 border border-stone-900/10 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-400">
+              <LinkIcon className="w-5 h-5" />
+            </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-wide">
+              <h2 className="text-base font-black text-stone-950 dark:text-white tracking-wide">
                 {t.profile?.socialLinksTitle || "社交网络链接"}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs font-semibold text-stone-600 dark:text-slate-400">
                 {t.profile?.socialLinksDesc || "展示在您的认知名片或主页中"}
               </p>
             </div>
@@ -542,8 +548,8 @@ export const ProfileSettings: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* GitHub */}
-            <div className="space-y-1">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-slate-300">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-stone-800 dark:text-slate-300">
                 <GithubIcon className="w-3.5 h-3.5" />
                 <span>{t.profile?.githubHandleLabel || "GitHub 用户名"}</span>
               </label>
@@ -552,13 +558,13 @@ export const ProfileSettings: React.FC = () => {
                 value={socialLinks.github || ""}
                 onChange={(e) => setSocialLinks({ ...socialLinks, github: e.target.value })}
                 placeholder="torvalds"
-                className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#FFFDF8] dark:bg-white/5 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-950 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 shadow-[0_2px_0_#1c1917] dark:shadow-none focus:outline-none focus:border-cyan-500 transition-all"
               />
             </div>
 
             {/* Linux Do */}
-            <div className="space-y-1">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-slate-300">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-stone-800 dark:text-slate-300">
                 <LinuxDoIcon className="w-3.5 h-3.5" />
                 <span>{t.profile?.linuxdoHandleLabel || "Linux Do 用户名"}</span>
               </label>
@@ -567,14 +573,14 @@ export const ProfileSettings: React.FC = () => {
                 value={socialLinks.linuxdo || ""}
                 onChange={(e) => setSocialLinks({ ...socialLinks, linuxdo: e.target.value })}
                 placeholder="neo"
-                className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#FFFDF8] dark:bg-white/5 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-950 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 shadow-[0_2px_0_#1c1917] dark:shadow-none focus:outline-none focus:border-amber-500 transition-all"
               />
             </div>
 
             {/* Twitter / X */}
-            <div className="space-y-1">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-slate-300">
-                <TwitterIcon className="w-3.5 h-3.5 text-sky-400" />
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-stone-800 dark:text-slate-300">
+                <TwitterIcon className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
                 <span>{t.profile?.twitterHandleLabel || "X (Twitter) 用户名"}</span>
               </label>
               <input
@@ -582,14 +588,14 @@ export const ProfileSettings: React.FC = () => {
                 value={socialLinks.twitter || ""}
                 onChange={(e) => setSocialLinks({ ...socialLinks, twitter: e.target.value })}
                 placeholder="@username"
-                className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#FFFDF8] dark:bg-white/5 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-950 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 shadow-[0_2px_0_#1c1917] dark:shadow-none focus:outline-none focus:border-sky-500 transition-all"
               />
             </div>
 
             {/* Personal Website */}
-            <div className="space-y-1">
-              <label className="flex items-center gap-1.5 text-xs font-medium text-slate-300">
-                <Globe className="w-3.5 h-3.5 text-indigo-400" />
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-stone-800 dark:text-slate-300">
+                <Globe className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>{t.profile?.websiteLabel || "个人独立主页"}</span>
               </label>
               <input
@@ -597,27 +603,29 @@ export const ProfileSettings: React.FC = () => {
                 value={socialLinks.website || ""}
                 onChange={(e) => setSocialLinks({ ...socialLinks, website: e.target.value })}
                 placeholder="https://example.com"
-                className="w-full px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#FFFDF8] dark:bg-white/5 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-950 dark:text-white placeholder-stone-400 dark:placeholder-slate-500 shadow-[0_2px_0_#1c1917] dark:shadow-none focus:outline-none focus:border-indigo-500 transition-all"
               />
             </div>
           </div>
         </div>
 
         {/* Section 4: Connected Accounts (OAuth Matrix) */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-6 sm:p-8 space-y-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-            <ExternalLink className="w-5 h-5 text-indigo-400" />
+        <div className="rounded-2xl bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 p-6 sm:p-8 space-y-6 shadow-[0_4px_0_#1c1917] dark:shadow-none">
+          <div className="flex items-center gap-3 border-b-2 border-stone-100 dark:border-white/10 pb-4">
+            <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-950/40 border border-stone-900/10 dark:border-purple-500/30 text-purple-700 dark:text-purple-400">
+              <ExternalLink className="w-5 h-5" />
+            </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-wide">
+              <h2 className="text-base font-black text-stone-950 dark:text-white tracking-wide">
                 {t.profile?.connectedAccountsTitle || "已关联的第三方登录方式"}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs font-semibold text-stone-600 dark:text-slate-400">
                 {t.profile?.connectedAccountsDesc || "管理 GitHub、Linux Do 与 Google 账号的多重绑定"}
               </p>
             </div>
           </div>
 
-          <div className="divide-y divide-white/5">
+          <div className="divide-y-2 divide-stone-100 dark:divide-white/5">
             {connectedProviders.map((prov) => {
               const providerName =
                 prov.provider === "github"
@@ -629,21 +637,21 @@ export const ProfileSettings: React.FC = () => {
               return (
                 <div key={prov.provider} className="py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-300">
-                      {prov.provider === "github" && <GithubIcon className="w-4 h-4 text-white" />}
-                      {prov.provider === "linuxdo" && <LinuxDoIcon className="w-4 h-4" />}
-                      {prov.provider === "google" && <GoogleIcon className="w-4 h-4" />}
+                    <div className="w-10 h-10 rounded-xl bg-stone-100 dark:bg-white/5 border-2 border-stone-900 dark:border-white/10 shadow-[0_2px_0_#1c1917] dark:shadow-none flex items-center justify-center text-stone-900 dark:text-slate-300">
+                      {prov.provider === "github" && <GithubIcon className="w-5 h-5 text-stone-900 dark:text-white" />}
+                      {prov.provider === "linuxdo" && <LinuxDoIcon className="w-5 h-5" />}
+                      {prov.provider === "google" && <GoogleIcon className="w-5 h-5" />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">{providerName}</span>
+                        <span className="text-sm font-black text-stone-950 dark:text-white">{providerName}</span>
                         {prov.is_primary && (
-                          <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#FBBF24] text-stone-950 border border-stone-900 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30">
                             {t.profile?.primaryProviderBadge || "主登录方式"}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs font-semibold text-stone-600 dark:text-slate-400">
                         {prov.linked
                           ? `${t.profile?.connectedStatus || "已关联"} ${prov.username ? `(${prov.username})` : ""}`
                           : t.profile?.unconnectedStatus || "未关联"}
@@ -657,10 +665,10 @@ export const ProfileSettings: React.FC = () => {
                         type="button"
                         onClick={() => handleUnlink(prov.provider)}
                         disabled={totalLinked <= 1 || unlinkingProvider === prov.provider}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                           totalLinked <= 1
-                            ? "bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed"
-                            : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                            ? "bg-stone-100 dark:bg-white/5 text-stone-400 dark:text-slate-500 border-2 border-stone-300 dark:border-white/5 cursor-not-allowed"
+                            : "bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-2 border-rose-300 dark:border-rose-500/30 shadow-[0_2px_0_#fda4af] dark:shadow-none"
                         }`}
                         title={totalLinked <= 1 ? t.profile?.cannotUnlinkSoleProvider || "不可解绑唯一的登录方式" : undefined}
                       >
@@ -674,7 +682,7 @@ export const ProfileSettings: React.FC = () => {
                     ) : (
                       <a
                         href={`/api/auth/link/${prov.provider}`}
-                        className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-white transition-all flex items-center gap-1.5"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] text-stone-950 font-black border-2 border-stone-900 shadow-[0_2px_0_#1c1917] active:translate-y-0.5 active:shadow-none transition-all flex items-center gap-1.5 text-xs"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>{t.profile?.linkProviderBtn || "立即关联"}</span>
@@ -688,14 +696,16 @@ export const ProfileSettings: React.FC = () => {
         </div>
 
         {/* Section 5: Interactive Motion & Acoustics (Game Effects & Accessibility) */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-6 sm:p-8 space-y-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-            <Sparkles className="w-5 h-5 text-amber-400" />
+        <div className="rounded-2xl bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 p-6 sm:p-8 space-y-6 shadow-[0_4px_0_#1c1917] dark:shadow-none">
+          <div className="flex items-center gap-3 border-b-2 border-stone-100 dark:border-white/10 pb-4">
+            <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/40 border border-stone-900/10 dark:border-amber-500/30 text-amber-700 dark:text-amber-400">
+              <Sparkles className="w-5 h-5" />
+            </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-wide">
+              <h2 className="text-base font-black text-stone-950 dark:text-white tracking-wide">
                 {t.gameEffects?.settingsAudioMotionTitle || "交互动效与声学体验"}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs font-semibold text-stone-600 dark:text-slate-400">
                 {t.gameEffects?.settingsAudioMotionDesc || "自定义系统交互手感、粒子流光视觉与 Web Audio 过程音效偏好"}
               </p>
             </div>
@@ -703,8 +713,8 @@ export const ProfileSettings: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Motion Mode */}
-            <div className="space-y-2 p-4 rounded-xl bg-white/[0.02] border border-white/10">
-              <div className="text-xs font-bold text-slate-200">
+            <div className="space-y-2.5 p-4 rounded-xl bg-[#FFFDF8] dark:bg-white/[0.02] border-2 border-stone-900/20 dark:border-white/10 shadow-[0_2px_0_#1c1917] dark:shadow-none">
+              <div className="text-xs font-black text-stone-900 dark:text-slate-200">
                 {t.gameEffects?.motionModeLabel || "过渡动效强度"}
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -714,10 +724,10 @@ export const ProfileSettings: React.FC = () => {
                     setMotionMode("full");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
                     motionMode === "full"
-                      ? "bg-amber-500/20 border-amber-400 text-amber-200"
-                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                      ? "bg-[#FBBF24] border-stone-900 text-stone-950 shadow-[0_2px_0_#1c1917] dark:bg-amber-500/20 dark:border-amber-400 dark:text-amber-200"
+                      : "bg-stone-100 dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:text-stone-950 dark:hover:text-white"
                   }`}
                 >
                   {t.gameEffects?.motionModeFull || "全量流光"}
@@ -728,16 +738,16 @@ export const ProfileSettings: React.FC = () => {
                     setMotionMode("reduced");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
                     motionMode === "reduced"
-                      ? "bg-cyan-500/20 border-cyan-400 text-cyan-200"
-                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                      ? "bg-[#38BDF8] border-stone-900 text-stone-950 shadow-[0_2px_0_#1c1917] dark:bg-cyan-500/20 dark:border-cyan-400 dark:text-cyan-200"
+                      : "bg-stone-100 dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:text-stone-950 dark:hover:text-white"
                   }`}
                 >
                   {t.gameEffects?.motionModeReduced || "极简减弱"}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[11px] font-medium text-stone-600 dark:text-slate-400 leading-relaxed">
                 {motionMode === "full"
                   ? t.gameEffects?.motionModeFullDesc || "启用星门穿梭、光幕流转、粒子消散与流形过渡"
                   : t.gameEffects?.motionModeReducedDesc || "遵循减弱动效偏好，消除剧烈位移与旋转，平滑淡入"}
@@ -745,8 +755,8 @@ export const ProfileSettings: React.FC = () => {
             </div>
 
             {/* Sound Mode */}
-            <div className="space-y-2 p-4 rounded-xl bg-white/[0.02] border border-white/10">
-              <div className="text-xs font-bold text-slate-200">
+            <div className="space-y-2.5 p-4 rounded-xl bg-[#FFFDF8] dark:bg-white/[0.02] border-2 border-stone-900/20 dark:border-white/10 shadow-[0_2px_0_#1c1917] dark:shadow-none">
+              <div className="text-xs font-black text-stone-900 dark:text-slate-200">
                 {t.gameEffects?.soundModeLabel || "交互音效 (Web Audio)"}
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -756,10 +766,10 @@ export const ProfileSettings: React.FC = () => {
                     setSoundMode("enabled");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
                     soundMode === "enabled"
-                      ? "bg-amber-500/20 border-amber-400 text-amber-200"
-                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                      ? "bg-[#10B981] border-stone-900 text-stone-950 shadow-[0_2px_0_#1c1917] dark:bg-amber-500/20 dark:border-amber-400 dark:text-amber-200"
+                      : "bg-stone-100 dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:text-stone-950 dark:hover:text-white"
                   }`}
                 >
                   {t.gameEffects?.soundModeEnabled || "开启音效"}
@@ -769,16 +779,16 @@ export const ProfileSettings: React.FC = () => {
                   onClick={() => {
                     setSoundMode("muted");
                   }}
-                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
                     soundMode === "muted"
-                      ? "bg-slate-700/60 border-slate-500 text-slate-300"
-                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                      ? "bg-stone-300 border-stone-900 text-stone-900 shadow-[0_2px_0_#1c1917] dark:bg-slate-700/60 dark:border-slate-500 dark:text-slate-300"
+                      : "bg-stone-100 dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:text-stone-950 dark:hover:text-white"
                   }`}
                 >
                   {t.gameEffects?.soundModeMuted || "静音模式"}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[11px] font-medium text-stone-600 dark:text-slate-400 leading-relaxed">
                 {soundMode === "enabled"
                   ? "程序化合成晶体敲击与秘法和弦，零音频文件下载"
                   : "所有作答选择、押注模式切换与推演过程静音进行"}
@@ -786,8 +796,8 @@ export const ProfileSettings: React.FC = () => {
             </div>
 
             {/* Performance Mode */}
-            <div className="space-y-2 p-4 rounded-xl bg-white/[0.02] border border-white/10">
-              <div className="text-xs font-bold text-slate-200">
+            <div className="space-y-2.5 p-4 rounded-xl bg-[#FFFDF8] dark:bg-white/[0.02] border-2 border-stone-900/20 dark:border-white/10 shadow-[0_2px_0_#1c1917] dark:shadow-none">
+              <div className="text-xs font-black text-stone-900 dark:text-slate-200">
                 {t.gameEffects?.perfModeLabel || "渲染性能偏好"}
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -797,10 +807,10 @@ export const ProfileSettings: React.FC = () => {
                     setPerformanceMode("high");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
                     performanceMode === "high"
-                      ? "bg-indigo-500/20 border-indigo-400 text-indigo-200"
-                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                      ? "bg-[#FB7185] border-stone-900 text-stone-950 shadow-[0_2px_0_#1c1917] dark:bg-indigo-500/20 dark:border-indigo-400 dark:text-indigo-200"
+                      : "bg-stone-100 dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:text-stone-950 dark:hover:text-white"
                   }`}
                 >
                   {t.gameEffects?.perfModeHigh || "高清全效"}
@@ -811,16 +821,16 @@ export const ProfileSettings: React.FC = () => {
                     setPerformanceMode("eco");
                     playSound("tap");
                   }}
-                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`px-3 py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
                     performanceMode === "eco"
-                      ? "bg-emerald-500/20 border-emerald-400 text-emerald-200"
-                      : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                      ? "bg-[#A78BFA] border-stone-900 text-stone-950 shadow-[0_2px_0_#1c1917] dark:bg-emerald-500/20 dark:border-emerald-400 dark:text-emerald-200"
+                      : "bg-stone-100 dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:text-stone-950 dark:hover:text-white"
                   }`}
                 >
                   {t.gameEffects?.perfModeEco || "节能降级"}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[11px] font-medium text-stone-600 dark:text-slate-400 leading-relaxed">
                 {performanceMode === "high"
                   ? t.gameEffects?.perfModeHighDesc || "完整启用粒子光晕与星云混合滤镜"
                   : t.gameEffects?.perfModeEcoDesc || "关闭高算力粒子动画与复杂滤镜，保障移动端超高帧率"}
@@ -834,10 +844,10 @@ export const ProfileSettings: React.FC = () => {
           <button
             type="submit"
             disabled={saving || isNameInvalid}
-            className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold text-white shadow-xl transition-all duration-200 cursor-pointer ${
+            className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-black transition-all duration-200 cursor-pointer ${
               saving || isNameInvalid
-                ? "bg-slate-700/50 cursor-not-allowed opacity-60"
-                : "bg-gradient-to-r from-indigo-500 via-purple-500 to-amber-500 hover:from-indigo-400 hover:to-amber-400 shadow-indigo-500/25 active:scale-95"
+                ? "bg-stone-300 dark:bg-slate-700/50 text-stone-500 dark:text-slate-400 border-2 border-stone-400 dark:border-white/10 cursor-not-allowed opacity-60"
+                : "bg-[#10B981] hover:bg-[#059669] text-stone-950 border-2 border-stone-900 shadow-[0_4px_0_#1c1917] active:translate-y-1 active:shadow-none"
             }`}
           >
             {saving ? (

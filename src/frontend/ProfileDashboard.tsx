@@ -226,7 +226,7 @@ export const ProfileDashboard: React.FC = () => {
   };
 
   return (
-    <div className="w-full text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div className="w-full text-stone-900 dark:text-slate-100 flex flex-col selection:bg-amber-200 selection:text-stone-950 dark:selection:bg-indigo-500/30 dark:selection:text-indigo-200">
       {/* Main Content Area (No Top Fixed Bar, No History/Settings Tab Bar) */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 lg:px-8 py-8 space-y-8">
         {/* State 1: Guest / Unauthenticated */}
@@ -338,22 +338,22 @@ export const ProfileDashboard: React.FC = () => {
 
             {/* State 3: Empty State */}
             {!loading && sessions.length === 0 && !error && (
-              <div className="w-full py-16 px-6 text-center rounded-3xl bg-white/[0.02] border border-white/10 flex flex-col items-center justify-center space-y-5">
-                <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <div className="w-full py-16 px-6 text-center rounded-[28px] bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-none flex flex-col items-center justify-center space-y-5">
+                <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-indigo-500/10 border-2 border-stone-900 dark:border-indigo-500/20 flex items-center justify-center text-stone-900 dark:text-indigo-400 shadow-[0_3px_0_#1c1917] dark:shadow-none">
                   <Sparkles className="w-8 h-8" />
                 </div>
                 <div className="space-y-1.5">
-                  <h3 className="text-base font-bold text-white">
+                  <h3 className="text-base font-black text-stone-950 dark:text-white">
                     {t.profile?.emptyTitle || "暂无历史评测记录"}
                   </h3>
-                  <p className="text-xs text-slate-400 max-w-md">
+                  <p className="text-xs text-stone-600 dark:text-slate-400 max-w-md font-medium">
                     {t.profile?.emptyDesc ||
                       "完成一次二元认知评测后，您的测试结果与四维流形心智轨迹将自动在此呈现。"}
                   </p>
                 </div>
                 <button
                   onClick={handleReturnToAssessment}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] text-stone-950 text-xs font-black border-2 border-stone-900 shadow-[0_3px_0_#1c1917] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
                 >
                   <Compass className="w-4 h-4" />
                   <span>{t.profile?.startAssessmentBtn || "立即开启评测"}</span>
@@ -929,7 +929,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + plotWidth - 6}
         y={padTop + 14}
         textAnchor="end"
-        className="fill-emerald-400/40 text-[9px] font-mono tracking-widest font-bold"
+        className="fill-emerald-800 dark:fill-emerald-400/50 text-[9px] font-mono tracking-widest font-black"
       >
         Q1 · 真知 (VERITAS)
       </text>
@@ -937,7 +937,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + plotWidth - 6}
         y={padTop + plotHeight - 8}
         textAnchor="end"
-        className="fill-amber-400/40 text-[9px] font-mono tracking-widest font-bold"
+        className="fill-amber-800 dark:fill-amber-400/50 text-[9px] font-mono tracking-widest font-black"
       >
         Q2 · 洞见 (VISIONARY)
       </text>
@@ -945,7 +945,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + 6}
         y={padTop + 14}
         textAnchor="start"
-        className="fill-indigo-400/40 text-[9px] font-mono tracking-widest font-bold"
+        className="fill-indigo-800 dark:fill-indigo-400/50 text-[9px] font-mono tracking-widest font-black"
       >
         Q3 · 守御 (DEFENDER)
       </text>
@@ -953,7 +953,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + 6}
         y={padTop + plotHeight - 8}
         textAnchor="start"
-        className="fill-slate-500/40 text-[9px] font-mono tracking-widest font-bold"
+        className="fill-stone-600 dark:fill-slate-500/50 text-[9px] font-mono tracking-widest font-black"
       >
         Q4 · 混沌 (CHAOS)
       </text>
@@ -968,15 +968,15 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
               y1={y}
               x2={padLeft + plotWidth}
               y2={y}
-              stroke="#ffffff"
-              strokeOpacity="0.06"
+              stroke="currentColor"
+              className="text-stone-900/10 dark:text-white/10"
               strokeDasharray="2,2"
             />
             <text
               x={padLeft - 6}
               y={y + 3}
               textAnchor="end"
-              className="fill-slate-500 text-[9px] font-mono"
+              className="fill-stone-600 dark:fill-slate-400 text-[9px] font-mono font-bold"
             >
               {val.toFixed(1)}
             </text>
@@ -993,15 +993,15 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
               y1={padTop}
               x2={x}
               y2={padTop + plotHeight}
-              stroke="#ffffff"
-              strokeOpacity="0.06"
+              stroke="currentColor"
+              className="text-stone-900/10 dark:text-white/10"
               strokeDasharray="2,2"
             />
             <text
               x={x}
               y={padTop + plotHeight + 14}
               textAnchor="middle"
-              className="fill-slate-500 text-[9px] font-mono"
+              className="fill-stone-600 dark:fill-slate-400 text-[9px] font-mono font-bold"
             >
               {val.toFixed(1)}
             </text>
@@ -1015,20 +1015,22 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         y1={padTop}
         x2={baselineX}
         y2={padTop + plotHeight}
-        stroke="#38bdf8"
-        strokeOpacity="0.4"
+        stroke="#0284c7"
+        className="dark:stroke-[#38bdf8]"
+        strokeOpacity="0.6"
         strokeDasharray="4,3"
-        strokeWidth="1.2"
+        strokeWidth="1.5"
       />
       <line
         x1={padLeft}
         y1={baselineY}
         x2={padLeft + plotWidth}
         y2={baselineY}
-        stroke="#c084fc"
-        strokeOpacity="0.4"
+        stroke="#9333ea"
+        className="dark:stroke-[#c084fc]"
+        strokeOpacity="0.6"
         strokeDasharray="4,3"
-        strokeWidth="1.2"
+        strokeWidth="1.5"
       />
 
       {/* Axis Titles */}
@@ -1036,7 +1038,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         x={padLeft + plotWidth / 2}
         y={padTop + plotHeight + 28}
         textAnchor="middle"
-        className="fill-slate-400 text-[9px] font-mono font-medium tracking-wider"
+        className="fill-stone-700 dark:fill-slate-400 text-[9px] font-mono font-bold tracking-wider"
       >
         相变突破度 D* (PHASE BREAKTHROUGH)
       </text>
@@ -1045,7 +1047,7 @@ const ManifoldTrajectorySvg: React.FC<ManifoldTrajectorySvgProps> = ({
         y={padTop + plotHeight / 2}
         textAnchor="middle"
         transform={`rotate(-90 12 ${padTop + plotHeight / 2})`}
-        className="fill-slate-400 text-[9px] font-mono font-medium tracking-wider"
+        className="fill-stone-700 dark:fill-slate-400 text-[9px] font-mono font-bold tracking-wider"
       >
         元认知效率 M_ratio
       </text>
@@ -1356,8 +1358,8 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
             y1={y}
             x2={padLeft + plotWidth}
             y2={y}
-            stroke="#ffffff"
-            strokeOpacity="0.05"
+            stroke="currentColor"
+            className="text-stone-900/10 dark:text-white/10"
             strokeDasharray="2,2"
           />
         );
@@ -1373,14 +1375,14 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
               y1={padTop + plotHeight}
               x2={x}
               y2={padTop + plotHeight + 4}
-              stroke="#ffffff"
-              strokeOpacity="0.2"
+              stroke="currentColor"
+              className="text-stone-900/20 dark:text-white/20"
             />
             <text
               x={x}
               y={padTop + plotHeight + 16}
               textAnchor="middle"
-              className="fill-slate-500 text-[9px] font-mono"
+              className="fill-stone-600 dark:fill-slate-400 text-[9px] font-mono font-bold"
             >
               #{idx + 1}
             </text>
@@ -1426,7 +1428,7 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
                 <text
                   x={padLeft + 4}
                   y={refY - 3}
-                  className="fill-slate-400 text-[8px] font-mono"
+                  className="fill-stone-700 dark:fill-slate-400 text-[8px] font-mono font-bold"
                 >
                   基准: {series.refVal}
                 </text>
@@ -1471,7 +1473,7 @@ const EvolutionLineChartSvg: React.FC<EvolutionLineChartSvgProps> = ({
           return (
             <g key={`leg-${series.key}`} transform={`translate(${idx * 110}, 0)`}>
               <circle cx="4" cy="-4" r="3" fill={series.color} />
-              <text x="12" y="-1" className="fill-slate-300 text-[9px] font-mono">
+              <text x="12" y="-1" className="fill-stone-800 dark:fill-slate-300 text-[9px] font-mono font-bold">
                 {series.name}
               </text>
             </g>

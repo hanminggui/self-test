@@ -35,6 +35,7 @@ import { LanguageToggle } from "./components/LanguageToggle";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { GameQuickControls } from "./components/game/GameQuickControls";
 import { GamifiedTransition } from "./components/game/GamifiedTransition";
+import { CognitiveMetricsRadar } from "./components/game/CognitiveMetricsRadar";
 import { PosterModal } from "./components/share/PosterModal";
 import {
   extractSessionIdFromUrl,
@@ -120,8 +121,8 @@ const renderSymbolGrid = (matrix: string[][], isOption: boolean = false) => {
     ? (isLarge ? "gap-1" : "gap-0.5")
     : (isLarge ? "gap-1.5" : "gap-1");
   const containerPad = isOption
-    ? "p-2 rounded-xl bg-amber-50/80 dark:bg-[#12121C] border border-stone-900/40 dark:border-white/20"
-    : "p-3 sm:p-4 rounded-2xl bg-[#FFFBEB] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]";
+    ? "p-2 rounded-xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900/30 dark:border-white/20 shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+    : "p-3 sm:p-4 rounded-2xl bg-[#FFFBEB] dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]";
 
   return (
     <div className={`inline-flex flex-col ${gap} ${containerPad} select-none`}>
@@ -132,14 +133,14 @@ const renderSymbolGrid = (matrix: string[][], isOption: boolean = false) => {
             return (
               <div
                 key={cIdx}
-                className={`${cellSize} flex items-center justify-center rounded-lg transition-all font-bold ${
+                className={`${cellSize} flex items-center justify-center rounded-lg transition-all font-black ${
                   isEmpty
-                    ? "bg-amber-100/50 dark:bg-white/5 border border-stone-300 dark:border-white/10 text-stone-400 dark:text-stone-500"
-                    : "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-900 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                    ? "bg-amber-100/70 dark:bg-white/5 border border-stone-400/40 dark:border-white/10 text-stone-500 dark:text-stone-500"
+                    : "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-none"
                 }`}
               >
                 {isEmpty ? (
-                  <span className={`${dotSize} rounded-full bg-stone-400 dark:bg-stone-600 inline-block`} />
+                  <span className={`${dotSize} rounded-full bg-stone-500 dark:bg-stone-600 inline-block`} />
                 ) : (
                   <span>{cell}</span>
                 )}
@@ -216,10 +217,10 @@ const renderPrompt = (rawPrompt: string) => {
           return (
             <div
               key={idx}
-              className="my-3 p-3.5 sm:p-4 rounded-2xl bg-[#FFFBEB] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#38BDF8] shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_#38BDF8] space-y-2 inline-block min-w-[220px]"
+              className="my-3 p-3.5 sm:p-4 rounded-2xl bg-[#FFFBEB] dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-[#38BDF8] shadow-[0_3.5px_0_#1c1917] dark:shadow-[3px_3px_0px_#38BDF8] space-y-2 inline-block min-w-[220px]"
             >
               {cleanLines.map((line, lIdx) => (
-                <div key={lIdx} className="font-mono text-sm md:text-base text-stone-900 dark:text-cyan-300 font-bold leading-relaxed tracking-wider">
+                <div key={lIdx} className="font-mono text-sm md:text-base text-stone-950 dark:text-cyan-300 font-black leading-relaxed tracking-wider">
                   {line}
                 </div>
               ))}
@@ -229,7 +230,7 @@ const renderPrompt = (rawPrompt: string) => {
 
         // 3. Standard text paragraph
         return (
-          <p key={idx} className="text-sm md:text-base text-stone-900 dark:text-stone-100 leading-relaxed font-sans font-bold whitespace-pre-line">
+          <p key={idx} className="text-sm md:text-base text-stone-950 dark:text-stone-100 leading-relaxed font-sans font-bold whitespace-pre-line">
             {cleanLines.join("\n")}
           </p>
         );
@@ -1111,18 +1112,18 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                       playSound("select");
                       triggerHaptic("light");
                     }}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all duration-150 flex items-start gap-3.5 cursor-pointer relative ${
+                    className={`p-4 rounded-2xl border-[2.5px] text-left transition-all duration-150 flex items-start gap-3.5 cursor-pointer relative ${
                       isSelected
-                        ? "bg-[#D1FAE5] dark:bg-[#0E0E16] border-stone-900 dark:border-[#CCFF00] ring-2 ring-emerald-500 dark:ring-0 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.01]"
-                        : "bg-white dark:bg-[#12121C] border-stone-900 dark:border-white/15 text-stone-900 dark:text-white hover:bg-[#FFFBEB] dark:hover:border-[#CCFF00] hover:-translate-y-0.5 shadow-[0_3px_0_#1c1917] dark:shadow-none active:translate-y-1 active:shadow-none"
+                        ? "bg-[#D1FAE5] dark:bg-[#0E0E16] border-stone-900 dark:border-[#CCFF00] ring-2 ring-emerald-600 dark:ring-0 shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.015]"
+                        : "bg-white dark:bg-[#12121C] border-stone-900 dark:border-white/20 text-stone-950 dark:text-white hover:bg-[#FFFBEB] dark:hover:border-[#CCFF00] hover:-translate-y-1 hover:shadow-[0_6px_0_#1c1917] shadow-[0_3.5px_0_#1c1917] dark:shadow-none active:translate-y-1.5 active:shadow-none"
                     }`}
                   >
                     <span
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs font-mono shrink-0 transition-colors border-2 border-stone-900 dark:border-white/20 shadow-[0_1.5px_0_#1c1917] dark:shadow-none ${badgeColor} dark:bg-black/60 dark:text-[#CCFF00] text-stone-950`}
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs font-mono shrink-0 transition-colors border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none ${badgeColor} dark:bg-black/60 dark:text-[#CCFF00] text-stone-950`}
                     >
                       {key}
                     </span>
-                    <div className="flex-1 min-w-0 text-stone-900 dark:text-white">
+                    <div className="flex-1 min-w-0 text-stone-950 dark:text-white">
                       {renderOption(rawVal)}
                     </div>
                   </button>
@@ -1131,10 +1132,10 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
             </div>
 
             {/* 决断本能选择面板 */}
-            <div className="bg-white dark:bg-[#0E0E16] rounded-[24px] p-5 space-y-4 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)]">
+            <div className="bg-white dark:bg-[#0E0E16] rounded-[24px] p-5 space-y-4 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_rgba(0,0,0,0.8)]">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-extrabold text-stone-800 dark:text-white">{t.app.instinctPrompt}</span>
-                <span className="text-[11px] font-bold text-stone-500 dark:text-slate-400 font-mono">{t.app.instinctShortcuts}</span>
+                <span className="font-black text-stone-900 dark:text-white">{t.app.instinctPrompt}</span>
+                <span className="text-[11px] font-bold text-stone-600 dark:text-slate-400 font-mono">{t.app.instinctShortcuts}</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1145,20 +1146,20 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     playSound("wager");
                     triggerHaptic("light");
                   }}
-                  className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
+                  className={`p-3.5 rounded-2xl border-[2.5px] transition-all cursor-pointer ${
                     selectedAction === "HIGH_BET"
-                      ? "bg-[#FFE4E6] dark:bg-[#FF3366] text-stone-950 dark:text-white border-stone-900 dark:border-[#FF3366] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.01]"
-                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-700 dark:text-slate-300 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-rose-50 dark:hover:border-[#FF3366]"
+                      ? "bg-[#FFE4E6] dark:bg-[#FF3366] text-stone-950 dark:text-white border-stone-900 dark:border-[#FF3366] shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.015]"
+                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-800 dark:text-slate-300 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none hover:bg-rose-50 hover:border-stone-900 hover:-translate-y-0.5 hover:shadow-[0_4px_0_#1c1917] active:translate-y-1.5 active:shadow-none"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-black text-xs md:text-sm flex items-center gap-1.5 text-rose-700 dark:text-[#FF3366]">
+                    <span className="font-black text-xs md:text-sm flex items-center gap-1.5 text-rose-900 dark:text-[#FF3366]">
                       <Flame className="w-4 h-4 text-rose-600 fill-rose-500 dark:text-[#FF3366]" />
                       {formatMessage(t.app.highBetTitle, { pos: 10 - hintsCost, neg: 10 + hintsCost })}
                     </span>
                     <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-black/60 border border-stone-900 dark:border-white/20 font-mono font-bold">1</kbd>
                   </div>
-                  <div className="text-[11px] text-stone-600 dark:text-slate-400 font-medium">
+                  <div className="text-[11px] text-stone-700 dark:text-slate-400 font-bold">
                     {t.app.highBetDesc}
                   </div>
                 </button>
@@ -1170,20 +1171,20 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     playSound("wager");
                     triggerHaptic("light");
                   }}
-                  className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
+                  className={`p-3.5 rounded-2xl border-[2.5px] transition-all cursor-pointer ${
                     selectedAction === "SAFE_BET"
-                      ? "bg-[#E0F2FE] dark:bg-[#38BDF8] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-[#38BDF8] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.01]"
-                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-700 dark:text-slate-300 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-none hover:bg-sky-50 dark:hover:border-[#38BDF8]"
+                      ? "bg-[#E0F2FE] dark:bg-[#38BDF8] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-[#38BDF8] shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.015]"
+                      : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-800 dark:text-slate-300 border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none hover:bg-sky-50 hover:border-stone-900 hover:-translate-y-0.5 hover:shadow-[0_4px_0_#1c1917] active:translate-y-1.5 active:shadow-none"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-black text-xs md:text-sm flex items-center gap-1.5 text-sky-700 dark:text-[#38BDF8]">
+                    <span className="font-black text-xs md:text-sm flex items-center gap-1.5 text-sky-900 dark:text-[#38BDF8]">
                       <Shield className="w-4 h-4 text-sky-600 fill-sky-400 dark:text-[#38BDF8]" />
                       {formatMessage(t.app.safeBetTitle, { pos: 3 - hintsCost })}
                     </span>
                     <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-black/60 border border-stone-900 dark:border-white/20 font-mono font-bold">2</kbd>
                   </div>
-                  <div className="text-[11px] text-stone-600 dark:text-slate-400 font-medium">
+                  <div className="text-[11px] text-stone-700 dark:text-slate-400 font-bold">
                     {t.app.safeBetDesc}
                   </div>
                 </button>
@@ -1316,13 +1317,19 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 </div>
               </div>
 
+              {/* 四维认知指标雷达图 */}
+              <CognitiveMetricsRadar
+                metrics={displayReport.metrics || (displayReport as any).metacognitive_metrics || {}}
+                locale={locale}
+              />
+
               {/* 专属特技谱系 */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-black text-stone-900 dark:text-white flex items-center gap-2">
+                  <h3 className="text-base font-black text-stone-950 dark:text-white flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400 dark:text-[#CCFF00] dark:fill-[#CCFF00]/20" /> {t.app.innateSkills}
                   </h3>
-                  <span className="text-xs text-stone-500 dark:text-slate-400 font-bold">{t.app.arsenalSubtitle}</span>
+                  <span className="text-xs text-stone-600 dark:text-slate-400 font-bold">{t.app.arsenalSubtitle}</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1337,18 +1344,18 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     return (
                       <div
                         key={idx}
-                        className={`${cardBg} dark:bg-[#12121C] rounded-2xl p-5 border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-2 hover:-translate-y-0.5 transition-all`}
+                        className={`${cardBg} dark:bg-[#12121C] rounded-2xl p-5 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-2 hover:-translate-y-0.5 transition-all`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-2xl">{skill.icon}</span>
-                            <span className="font-black text-sm text-stone-900 dark:text-white">{skill.name}</span>
+                            <span className="font-black text-sm text-stone-950 dark:text-white">{skill.name}</span>
                           </div>
-                          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white dark:bg-[#0E0E16] text-stone-900 dark:text-[#CCFF00] border border-stone-900 dark:border-white/20 font-black shadow-sm">
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white dark:bg-[#0E0E16] text-stone-950 dark:text-[#CCFF00] border-2 border-stone-900 dark:border-white/20 font-black shadow-sm">
                             {skill.type}
                           </span>
                         </div>
-                        <p className="text-xs text-stone-700 dark:text-slate-300 leading-relaxed pt-1 font-medium">{skill.desc}</p>
+                        <p className="text-xs text-stone-800 dark:text-slate-300 leading-relaxed pt-1 font-bold">{skill.desc}</p>
                       </div>
                     );
                   })}
@@ -1356,11 +1363,11 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               </div>
 
               {/* 战略建议 */}
-              <div className="p-6 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] text-xs md:text-sm text-stone-900 dark:text-white leading-relaxed space-y-1">
-                <div className="font-black text-stone-900 dark:text-[#CCFF00] flex items-center gap-1.5">
-                  <Compass className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" /> {t.app.strategicAdvice}
+              <div className="p-6 rounded-2xl bg-[#FEF3C7] dark:bg-[#12121C] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] text-xs md:text-sm text-stone-950 dark:text-white leading-relaxed space-y-1">
+                <div className="font-black text-stone-950 dark:text-[#CCFF00] flex items-center gap-1.5">
+                  <Compass className="w-4 h-4 text-stone-950 dark:text-[#CCFF00]" /> {t.app.strategicAdvice}
                 </div>
-                <p className="text-stone-700 dark:text-slate-300 text-xs md:text-sm pt-1 font-medium">
+                <p className="text-stone-800 dark:text-slate-300 text-xs md:text-sm pt-1 font-bold">
                   {profile.growth_advice}
                 </p>
               </div>

@@ -740,10 +740,12 @@ export async function executeStepByStepTrial(
     let hintsUnlocked = 0;
     let hintsCost = 0;
     if (Math.random() < 0.25) {
-      await fetch(`${config.apiBase}/api/sessions/${sessionId}/hint`, {
-        method: "POST",
-        headers: { "Accept-Language": config.locale },
-      });
+      try {
+        await fetch(`${config.apiBase}/api/sessions/${sessionId}/hint`, {
+          method: "POST",
+          headers: { "Accept-Language": config.locale },
+        });
+      } catch {}
       hintsUnlocked = 1;
       hintsCost = 1;
       operations.push({
@@ -752,10 +754,12 @@ export async function executeStepByStepTrial(
         details: { cost: 1 },
       });
       if (Math.random() < 0.30) {
-        await fetch(`${config.apiBase}/api/sessions/${sessionId}/hint`, {
-          method: "POST",
-          headers: { "Accept-Language": config.locale },
-        });
+        try {
+          await fetch(`${config.apiBase}/api/sessions/${sessionId}/hint`, {
+            method: "POST",
+            headers: { "Accept-Language": config.locale },
+          });
+        } catch {}
         hintsUnlocked = 2;
         hintsCost = 3;
         operations.push({
