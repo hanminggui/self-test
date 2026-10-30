@@ -23,6 +23,10 @@ import {
   CheckCircle2,
   RefreshCw,
   Settings,
+  ChevronDown,
+  ChevronUp,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { useUser } from "./contexts/UserContext";
 import { useLocale } from "./contexts/LocaleContext";
@@ -47,6 +51,18 @@ export const ProfileDashboard: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<"ALL" | "HUMAN" | "AGENT">("ALL");
   const [sortOrder, setSortOrder] = useState<"NEWEST" | "OLDEST">("NEWEST");
   const [metricTab, setMetricTab] = useState<"ALL" | "ACCURACY" | "DISCRIMINATION" | "M_RATIO" | "BIAS">("ALL");
+
+  // Mobile layout & fold states
+  const [overviewExpanded, setOverviewExpanded] = useState(false);
+  const [timelineLayout, setTimelineLayout] = useState<"single" | "double">("single");
+  const [expandedCardIds, setExpandedCardIds] = useState<Record<string, boolean>>({});
+
+  const toggleCardExpand = (id: string) => {
+    setExpandedCardIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   // Interaction states
   const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
@@ -312,89 +328,109 @@ export const ProfileDashboard: React.FC = () => {
             {/* State 4: Has History */}
             {sessions.length > 0 && summaryStats && (
               <>
-                {/* 1. Summary Metric KPI Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
-                      <span>{t.profile?.statTotalSessions || "评测总场次"}</span>
-                      <Calendar className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
-                    </div>
-                    <div className="text-xl font-black font-mono text-stone-900 dark:text-white">
-                      {summaryStats.total}
-                    </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
-                      人: {summaryStats.humanCount} · 智能体: {summaryStats.agentCount}
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
-                      <span>{t.profile?.statMeanAccuracy || "平均准确率"}</span>
-                      <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-[#10B981]" />
-                    </div>
-                    <div className="text-xl font-black font-mono text-emerald-700 dark:text-[#10B981]">
-                      {summaryStats.avgAccuracy}
-                    </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">阶梯收敛 ~70%</div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
-                      <span>{t.profile?.statMeanDPrime || "平均敏感度 d'"}</span>
-                      <Zap className="w-3.5 h-3.5 text-sky-600 dark:text-[#38BDF8]" />
-                    </div>
-                    <div className="text-xl font-black font-mono text-sky-700 dark:text-[#38BDF8]">
-                      {summaryStats.avgDPrime}
-                    </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">一阶感知辨别力</div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
-                      <span>{t.profile?.statMeanMRatio || "元认知 M_ratio"}</span>
-                      <TrendingUp className="w-3.5 h-3.5 text-purple-600 dark:text-[#CCFF00]" />
-                    </div>
-                    <div className="text-xl font-black font-mono text-purple-700 dark:text-[#CCFF00]">
-                      {summaryStats.avgMRatio}
-                    </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">基准值 0.80</div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
-                      <span>{t.profile?.statLatestBias || "最新偏向 Bias"}</span>
-                      <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <div
-                      className={`text-xl font-black font-mono ${
-                        summaryStats.latestBiasNum > 0.12
-                          ? "text-rose-600 dark:text-rose-400"
-                          : summaryStats.latestBiasNum < -0.12
-                          ? "text-sky-600 dark:text-[#38BDF8]"
-                          : "text-emerald-600 dark:text-[#CCFF00]"
-                      }`}
+                {/* 1. Summary Metric KPI Grid (Adaptive Single/Double Column with Mobile Fold) */}
+                <div className="space-y-2.5">
+                  <div className="sm:hidden flex items-center justify-between px-1">
+                    <span className="text-xs font-black text-stone-700 dark:text-slate-200">
+                      {overviewExpanded ? "全部数据概览 (6 项)" : "核心数据概览 (4 项)"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOverviewExpanded((prev) => !prev)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/20 dark:border-white/20 text-xs font-black text-stone-900 dark:text-white shadow-[0_1.5px_0_#1c1917] dark:shadow-none min-h-[36px] active:translate-y-0.5 cursor-pointer"
                     >
-                      {summaryStats.latestBias}
-                    </div>
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
-                      {summaryStats.latestBiasNum > 0.12
-                        ? "自信高估"
-                        : summaryStats.latestBiasNum < -0.12
-                        ? "审慎低估"
-                        : "自洽平衡"}
-                    </div>
+                      <span>{overviewExpanded ? "折叠概览" : "展开全部"}</span>
+                      {overviewExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
-                      <span>{t.profile?.statDominantArchetype || "主导认知流派"}</span>
-                      <Award className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                        <span>{t.profile?.statTotalSessions || "评测总场次"}</span>
+                        <Calendar className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
+                      </div>
+                      <div className="text-xl font-black font-mono text-stone-900 dark:text-white">
+                        {summaryStats.total}
+                      </div>
+                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                        人: {summaryStats.humanCount} · 智能体: {summaryStats.agentCount}
+                      </div>
                     </div>
-                    <div className="text-sm font-black text-amber-800 dark:text-amber-300 truncate" title={summaryStats.dominantRole}>
-                      {summaryStats.dominantRole}
+
+                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                        <span>{t.profile?.statMeanAccuracy || "平均准确率"}</span>
+                        <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-[#10B981]" />
+                      </div>
+                      <div className="text-xl font-black font-mono text-emerald-700 dark:text-[#10B981]">
+                        {summaryStats.avgAccuracy}
+                      </div>
+                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">阶梯收敛 ~70%</div>
                     </div>
-                    <div className="text-[10px] font-mono text-stone-500 dark:text-[#CCFF00] font-bold">
-                      {summaryStats.dominantCode}
+
+                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                        <span>{t.profile?.statMeanDPrime || "平均敏感度 d'"}</span>
+                        <Zap className="w-3.5 h-3.5 text-sky-600 dark:text-[#38BDF8]" />
+                      </div>
+                      <div className="text-xl font-black font-mono text-sky-700 dark:text-[#38BDF8]">
+                        {summaryStats.avgDPrime}
+                      </div>
+                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">一阶感知辨别力</div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
+                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                        <span>{t.profile?.statMeanMRatio || "元认知 M_ratio"}</span>
+                        <TrendingUp className="w-3.5 h-3.5 text-purple-600 dark:text-[#CCFF00]" />
+                      </div>
+                      <div className="text-xl font-black font-mono text-purple-700 dark:text-[#CCFF00]">
+                        {summaryStats.avgMRatio}
+                      </div>
+                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">基准值 0.80</div>
+                    </div>
+
+                    <div className={`p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1 ${
+                      overviewExpanded ? "block" : "hidden sm:block"
+                    }`}>
+                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                        <span>{t.profile?.statLatestBias || "最新偏向 Bias"}</span>
+                        <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div
+                        className={`text-xl font-black font-mono ${
+                          summaryStats.latestBiasNum > 0.12
+                            ? "text-rose-600 dark:text-rose-400"
+                            : summaryStats.latestBiasNum < -0.12
+                            ? "text-sky-600 dark:text-[#38BDF8]"
+                            : "text-emerald-600 dark:text-[#CCFF00]"
+                        }`}
+                      >
+                        {summaryStats.latestBias}
+                      </div>
+                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                        {summaryStats.latestBiasNum > 0.12
+                          ? "自信高估"
+                          : summaryStats.latestBiasNum < -0.12
+                          ? "审慎低估"
+                          : "自洽平衡"}
+                      </div>
+                    </div>
+
+                    <div className={`p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1 ${
+                      overviewExpanded ? "block" : "hidden sm:block"
+                    }`}>
+                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                        <span>{t.profile?.statDominantArchetype || "主导认知流派"}</span>
+                        <Award className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="text-sm font-black text-amber-800 dark:text-amber-300 truncate" title={summaryStats.dominantRole}>
+                        {summaryStats.dominantRole}
+                      </div>
+                      <div className="text-[10px] font-mono text-stone-500 dark:text-[#CCFF00] font-bold">
+                        {summaryStats.dominantCode}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -557,6 +593,7 @@ export const ProfileDashboard: React.FC = () => {
                       {/* Sort Order */}
                       <div className="flex items-center p-0.5 rounded-xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-xs">
                         <button
+                          type="button"
                           onClick={() => setSortOrder("NEWEST")}
                           className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                             sortOrder === "NEWEST" ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black" : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
@@ -565,6 +602,7 @@ export const ProfileDashboard: React.FC = () => {
                           {t.profile?.sortNewest || "最新优先"}
                         </button>
                         <button
+                          type="button"
                           onClick={() => setSortOrder("OLDEST")}
                           className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                             sortOrder === "OLDEST" ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black" : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
@@ -573,11 +611,43 @@ export const ProfileDashboard: React.FC = () => {
                           {t.profile?.sortOldest || "最早优先"}
                         </button>
                       </div>
+
+                      {/* Layout Mode (单列 / 双列折叠排布) */}
+                      <div className="flex items-center p-0.5 rounded-xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setTimelineLayout("single")}
+                          className={`min-h-[30px] px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                            timelineLayout === "single"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black"
+                              : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
+                          }`}
+                          title="单列视图"
+                          aria-label="单列视图"
+                        >
+                          <List className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">单列</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTimelineLayout("double")}
+                          className={`min-h-[30px] px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                            timelineLayout === "double"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black"
+                              : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
+                          }`}
+                          title="双列折叠视图"
+                          aria-label="双列折叠视图"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">双列</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Timeline Cards Grid */}
-                  <div className="space-y-3">
+                  {/* Timeline Cards Grid (Single / Double Column Adaptive) */}
+                  <div className={timelineLayout === "double" ? "grid grid-cols-1 md:grid-cols-2 gap-3.5" : "grid grid-cols-1 gap-3"}>
                     {timelineSessions.map((session, idx) => {
                       const quadrantCode = session.quadrant_code || "Q1-CAL";
                       const archetypeDef = getArchetypeDefinition(quadrantCode, locale);
@@ -593,6 +663,7 @@ export const ProfileDashboard: React.FC = () => {
                         : "--";
 
                       const isHovered = hoveredPointId === session.id;
+                      const isCardExpanded = Boolean(expandedCardIds[session.id]);
 
                       const firstAcc = session.first_order_accuracy ?? session.metrics?.first_order_accuracy ?? 0;
                       const dPrime = session.d_prime ?? session.metrics?.d_prime ?? 0;
@@ -607,105 +678,128 @@ export const ProfileDashboard: React.FC = () => {
                           key={session.id}
                           onMouseEnter={() => setHoveredPointId(session.id)}
                           onMouseLeave={() => setHoveredPointId(null)}
-                          className={`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
+                          className={`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col ${
+                            timelineLayout === "single" ? "lg:flex-row lg:items-center" : ""
+                          } justify-between gap-3.5 ${
                             isHovered
                               ? "bg-amber-100/60 dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00]"
                               : "bg-[#FFFBEB] dark:bg-[#0E0E16] border-stone-900/15 dark:border-white/20 hover:border-stone-900 dark:hover:border-[#CCFF00] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.6)]"
                           }`}
                         >
-                          {/* Left: Index, Role Title, Date, Subject Type */}
-                          <div className="flex items-center gap-3.5 min-w-[220px]">
-                            <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900/30 dark:border-white/20 flex items-center justify-center font-mono text-xs font-black text-stone-900 dark:text-[#CCFF00]">
-                              #{sortOrder === "NEWEST" ? timelineSessions.length - idx : idx + 1}
-                            </div>
-
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className="font-black text-sm text-stone-900 dark:text-white">
-                                  {session.role_title || archetypeDef.role_title}
-                                </span>
-                                <span
-                                  className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-stone-900/30 dark:border-white/20"
-                                  style={{
-                                    backgroundColor: visualToken.backgroundColor,
-                                    borderColor: visualToken.borderColor,
-                                  }}
-                                >
-                                  {quadrantCode}
-                                </span>
+                          {/* Top / Left Header: Index, Role Title, Date, Subject Type + Mobile fold toggle */}
+                          <div className="flex items-center justify-between gap-2 w-full min-w-0">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900/30 dark:border-white/20 flex items-center justify-center font-mono text-xs font-black text-stone-900 dark:text-[#CCFF00] shrink-0">
+                                #{sortOrder === "NEWEST" ? timelineSessions.length - idx : idx + 1}
                               </div>
 
-                              <div className="flex items-center gap-2 text-[11px] text-stone-500 dark:text-slate-300 font-medium">
-                                <span>{dateStr}</span>
-                                <span>·</span>
-                                {isHuman ? (
-                                  <span className="flex items-center gap-1 text-stone-600 dark:text-slate-300">
-                                    <UserIcon className="w-3 h-3 text-stone-500 dark:text-slate-400" />
-                                    <span>人类受测</span>
+                              <div className="space-y-0.5 min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-black text-sm text-stone-900 dark:text-white truncate">
+                                    {session.role_title || archetypeDef.role_title}
                                   </span>
-                                ) : (
-                                  <span className="flex items-center gap-1 text-sky-700 dark:text-cyan-400 font-mono font-bold">
-                                    <Cpu className="w-3 h-3" />
-                                    <span>
-                                      {session.agent_metadata?.model_name || "Agent"}
+                                  <span
+                                    className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-stone-900/30 dark:border-white/20 shrink-0"
+                                    style={{
+                                      backgroundColor: visualToken.backgroundColor,
+                                      borderColor: visualToken.borderColor,
+                                    }}
+                                  >
+                                    {quadrantCode}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-[11px] text-stone-500 dark:text-slate-300 font-medium truncate">
+                                  <span>{dateStr}</span>
+                                  <span>·</span>
+                                  {isHuman ? (
+                                    <span className="flex items-center gap-1 text-stone-600 dark:text-slate-300 shrink-0">
+                                      <UserIcon className="w-3 h-3 text-stone-500 dark:text-slate-400" />
+                                      <span>人类</span>
                                     </span>
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Middle: 4D Metrics Badges */}
-                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full md:w-auto font-mono text-xs">
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">准确率</div>
-                              <div className="font-black text-emerald-700 dark:text-[#10B981]">
-                                {(firstAcc * 100).toFixed(1)}%
+                                  ) : (
+                                    <span className="flex items-center gap-1 text-sky-700 dark:text-cyan-400 font-mono font-bold shrink-0">
+                                      <Cpu className="w-3 h-3" />
+                                      <span className="truncate max-w-[100px]">
+                                        {session.agent_metadata?.model_name || "Agent"}
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">辨别力 d'</div>
-                              <div className="font-black text-sky-700 dark:text-[#38BDF8]">{dPrime.toFixed(2)}</div>
-                            </div>
-
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">M_ratio</div>
-                              <div className="font-black text-purple-700 dark:text-[#CCFF00]">{mRatio.toFixed(2)}</div>
-                            </div>
-
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">Bias</div>
-                              <div
-                                className={`font-black ${
-                                  bias > 0.12 ? "text-rose-600 dark:text-rose-400" : bias < -0.12 ? "text-sky-600 dark:text-[#38BDF8]" : "text-emerald-600 dark:text-[#CCFF00]"
-                                }`}
-                              >
-                                {formatBias(Math.round(bias * 100) / 100)}
-                              </div>
-                            </div>
-
-                            <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
-                              <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">IVE 杠杆</div>
-                              <div className="font-black text-amber-700 dark:text-amber-300">{ive.toFixed(2)}</div>
-                            </div>
-                          </div>
-
-                          {/* Right: Action Buttons */}
-                          <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                            {/* Mobile / Double-column metrics fold toggle */}
                             <button
+                              type="button"
+                              onClick={() => toggleCardExpand(session.id)}
+                              className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/20 dark:border-white/20 text-xs font-black text-stone-900 dark:text-[#CCFF00] shrink-0 min-h-[36px] cursor-pointer active:translate-y-0.5"
+                              aria-label={isCardExpanded ? "收起指标" : "展开指标"}
+                            >
+                              <span>{isCardExpanded ? "收起" : "指标"}</span>
+                              {isCardExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+
+                          {/* Middle: 4D Metrics Badges (Collapsible on mobile or expanded on desktop) */}
+                          <div className={`w-full ${timelineLayout === "single" ? "lg:w-auto" : ""} ${
+                            isCardExpanded ? "block" : "hidden md:block"
+                          }`}>
+                            <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-2 font-mono text-xs">
+                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
+                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">准确率</div>
+                                <div className="font-black text-emerald-700 dark:text-[#10B981]">
+                                  {(firstAcc * 100).toFixed(1)}%
+                                </div>
+                              </div>
+
+                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
+                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">辨别力 d'</div>
+                                <div className="font-black text-sky-700 dark:text-[#38BDF8]">{dPrime.toFixed(2)}</div>
+                              </div>
+
+                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
+                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">M_ratio</div>
+                                <div className="font-black text-purple-700 dark:text-[#CCFF00]">{mRatio.toFixed(2)}</div>
+                              </div>
+
+                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
+                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">Bias</div>
+                                <div
+                                  className={`font-black ${
+                                    bias > 0.12 ? "text-rose-600 dark:text-rose-400" : bias < -0.12 ? "text-sky-600 dark:text-[#38BDF8]" : "text-emerald-600 dark:text-[#CCFF00]"
+                                  }`}
+                                >
+                                  {formatBias(Math.round(bias * 100) / 100)}
+                                </div>
+                              </div>
+
+                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center col-span-2 xs:col-span-1 sm:col-span-1">
+                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">IVE 杠杆</div>
+                                <div className="font-black text-amber-700 dark:text-amber-300">{ive.toFixed(2)}</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Action Buttons (>=44px touch targets) */}
+                          <div className={`flex items-center gap-2 ${
+                            timelineLayout === "single" ? "self-end lg:self-center" : "self-end"
+                          } shrink-0`}>
+                            <button
+                              type="button"
                               onClick={() => handleOpenPoster(session)}
                               disabled={loadingReportId === session.id}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-900 dark:text-white dark:hover:border-[#CCFF00] dark:hover:text-[#CCFF00] transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              className="min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-900 dark:text-white dark:hover:border-[#CCFF00] dark:hover:text-[#CCFF00] transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-none active:translate-y-0.5"
                               title={t.profile?.shareCard || "生成分享名片"}
                             >
                               <Share2 className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
-                              <span className="hidden sm:inline">{t.profile?.shareCard || "分享名片"}</span>
+                              <span>{t.profile?.shareCard || "名片"}</span>
                             </button>
 
                             <button
+                              type="button"
                               onClick={() => handleViewReport(session.id)}
-                              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 border-2 border-stone-900 dark:border-black text-xs font-black text-stone-950 dark:text-[#08080C] transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
+                              className="min-h-[44px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 border-2 border-stone-900 dark:border-black text-xs font-black text-stone-950 dark:text-[#08080C] transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] active:translate-y-0.5"
                               title={t.profile?.viewReport || "查看完整画像报告"}
                             >
                               <FileText className="w-3.5 h-3.5" />
