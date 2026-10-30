@@ -74,6 +74,22 @@ const AppRouter: React.FC = () => {
     }
   }, [resolved.redirectTo, syncLocation]);
 
+  // 3. Render target page view
+  const renderViewContent = () => {
+    switch (resolved.view) {
+      case "history":
+        return <ProfileDashboard />;
+      case "settings":
+        return <SettingsPage />;
+      case "assets":
+        return <AssetsPage onNavigate={navigate} />;
+      case "test":
+      case "report":
+      default:
+        return <App inAppLayout={resolved.inAppLayout} onNavigate={navigate} />;
+    }
+  };
+
   // 1. Standalone Public & Admin Surfaces (Always outside AppLayout)
   let content: React.ReactNode;
   if (resolved.view === "admin") {

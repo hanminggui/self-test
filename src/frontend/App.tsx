@@ -36,6 +36,7 @@ import { LanguageToggle } from "./components/LanguageToggle";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { GameQuickControls } from "./components/game/GameQuickControls";
 import { GamifiedTransition } from "./components/game/GamifiedTransition";
+import { MobileAssessmentView } from "./components/game/MobileAssessmentView";
 import { CognitiveMetricsRadar } from "./components/game/CognitiveMetricsRadar";
 import { PosterModal } from "./components/share/PosterModal";
 import { MobileNavDrawer } from "./components/layout/MobileNavDrawer";
@@ -392,12 +393,31 @@ const renderPrompt = (rawPrompt: string) => {
   );
 };
 
+function useIsMobile(breakpoint = 768): boolean {
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < breakpoint;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    setIsMobile(mql.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 interface AppProps {
   inAppLayout?: boolean;
   onNavigate?: (path: string) => void;
 }
 
 export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) {
+  const isMobile = useIsMobile();
   const { locale, t, formatMessage } = useLocale();
   const { user, openAuthModal, notifySessionChanged, sessionSyncVersion } = useUser();
   const { playSound, triggerHaptic, isReducedMotion, isEcoMode } = useGameEffects();
@@ -892,6 +912,45 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     Boolean(user),
     lastSessionRecord?.sessionId
   );
+
+  // 仅在移动端视口挂载专用的移动端答题视图组件，状态机与数据源严格一致
+  if (isMobile && stage === "TESTING" && trialData) {
+    return (
+      <div className="h-screen h-dvh min-h-dvh max-h-dvh w-full overflow-hidden bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex flex-col">
+        <MobileAssessmentView
+          trialData={trialData}
+          totalTrials={totalTrials}
+          selectedOption={selectedOption}
+          onSelectOption={(key) => {
+            setSelectedOption(key);
+            playSound("select");
+            triggerHaptic("light");
+          }}
+          selectedAction={selectedAction}
+          onSelectAction={(act) => {
+            setSelectedAction(act);
+            playSound("wager");
+            triggerHaptic("light");
+          }}
+          unlockedHints={unlockedHints}
+          hintsCost={hintsCost}
+          onBuyHint={handleBuyHint}
+          onSubmitTrial={handleSubmitTrial}
+          loading={loading}
+          errorMsg={errorMsg}
+          inAppLayout={inAppLayout}
+        />
+
+        {/* 算力推演全屏结算过渡动效 */}
+        <GamifiedTransition
+          active={Boolean(settlementState?.active)}
+          variant="settlement"
+          stepIndex={settlementState?.stepIndex ?? 0}
+          onSkip={handleSkipSettlement}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen min-h-dvh flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] text-stone-900 dark:text-white font-sans pb-[env(safe-area-inset-bottom)]">

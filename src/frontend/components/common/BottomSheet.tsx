@@ -177,7 +177,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                   type="button"
                   onClick={onClose}
                   aria-label="Close"
-                  className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-white/10 dark:hover:bg-white/20 border border-stone-300 dark:border-white/15 text-stone-700 dark:text-white flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-11 h-11 sm:w-8 sm:h-8 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-white/10 dark:hover:bg-white/20 border border-stone-300 dark:border-white/15 text-stone-700 dark:text-white flex items-center justify-center transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
