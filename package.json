@@ -11,6 +11,7 @@
     "deploy": "bun src/cli/deploy.ts",
     "start": "bun src/backend/server.ts",
     "test": "NODE_ENV=test bun test",
+    "test:mobile": "bun run scripts/verify-mobile-overflow.ts",
     "provider:config": "bun run src/cli/wizard.ts",
     "eval": "bun run src/cli/eval.ts",
     "eval:debug": "bun run src/cli/eval.ts --debug",

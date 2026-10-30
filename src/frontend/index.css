@@ -13,6 +13,17 @@
   --color-cheese: #fbbf24;
   --color-peach: #fb7185;
   --color-soda: #38bdf8;
+
+  /* iPhone / Mobile Safe Area Inset Variables */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+}
+
+html, body, #root {
+  min-height: 100%;
+  min-height: 100dvh;
 }
 
 @layer base {
@@ -317,4 +328,28 @@
 }
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #CCFF00;
+}
+
+/* Mobile Safe-Area & Viewport Utilities */
+.safe-area-pb {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+.safe-area-pt {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+}
+
+@keyframes bottom-sheet-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.9;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-bottom-sheet {
+  animation: bottom-sheet-slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

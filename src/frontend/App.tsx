@@ -23,6 +23,7 @@ import {
   Lock,
   LogIn,
   ArrowLeft,
+  Menu,
 } from "lucide-react";
 
 import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
@@ -37,6 +38,7 @@ import { GameQuickControls } from "./components/game/GameQuickControls";
 import { GamifiedTransition } from "./components/game/GamifiedTransition";
 import { CognitiveMetricsRadar } from "./components/game/CognitiveMetricsRadar";
 import { PosterModal } from "./components/share/PosterModal";
+import { MobileNavDrawer } from "./components/layout/MobileNavDrawer";
 import {
   extractSessionIdFromUrl,
   buildSessionReportUrl,
@@ -425,6 +427,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
   // Report state
   const [report, setReport] = useState<ReportData | null>(null);
   const [showPosterModal, setShowPosterModal] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [placeholderCodename, setPlaceholderCodename] = useState(() => generateRandomCodename(locale));
   const [reportLoading, setReportLoading] = useState(false);
   const [reportNotFound, setReportNotFound] = useState(false);
@@ -891,35 +894,37 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
   );
 
   return (
-    <div className="min-h-screen flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] text-stone-900 dark:text-white font-sans">
+    <div className="min-h-screen min-h-dvh flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] text-stone-900 dark:text-white font-sans pb-[env(safe-area-inset-bottom)]">
       {/* 仅在未进入 App Layout 时展示顶部萌趣导航栏 */}
       {!inAppLayout && (
         <header className="flex items-center justify-between py-4 border-b-2 border-stone-900/10 dark:border-white/15 mb-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <a
               href="/"
               onClick={(e) => {
                 e.preventDefault();
                 navigateTo("/");
               }}
-              className="flex items-center gap-2.5 group cursor-pointer"
+              className="flex items-center gap-2.5 group cursor-pointer min-w-0"
             >
-              <div className="w-10 h-10 rounded-2xl bg-[#FBBF24] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] group-hover:-translate-y-0.5 active:translate-y-0.5 transition-all">
+              <div className="w-10 h-10 rounded-2xl bg-[#FBBF24] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] flex items-center justify-center shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] group-hover:-translate-y-0.5 active:translate-y-0.5 transition-all shrink-0">
                 <Compass className="w-5 h-5 text-stone-950 dark:text-[#CCFF00]" />
               </div>
-              <div>
-                <h1 className="text-sm md:text-base font-black tracking-tight text-stone-900 dark:text-white flex items-center gap-2">
+              <div className="min-w-0">
+                <h1 className="text-sm md:text-base font-black tracking-tight text-stone-900 dark:text-white truncate">
                   {t.app.appTitle}
                 </h1>
-                <p className="text-[11px] font-bold text-stone-500 dark:text-[#CCFF00] font-mono uppercase">{t.app.appSubtitle}</p>
+                <p className="text-[11px] font-bold text-stone-500 dark:text-[#CCFF00] font-mono uppercase hidden xs:block truncate">
+                  {t.app.appSubtitle}
+                </p>
               </div>
             </a>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {stage === "TESTING" && trialData && (
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none">
-                <span className="text-[11px] font-bold text-stone-700 dark:text-[#08080C] uppercase">{t.app.voyageProgress}</span>
+              <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-[#FEF3C7] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none shrink-0">
+                <span className="text-[10px] sm:text-[11px] font-bold text-stone-700 dark:text-[#08080C] uppercase hidden xs:inline">{t.app.voyageProgress}</span>
                 <span className="font-mono text-stone-950 dark:text-[#08080C] font-black text-xs">
                   {String(trialData.trial_index).padStart(2, "0")} / {totalTrials}
                 </span>
@@ -936,13 +941,34 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
               <ArrowLeft className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
               <span>{isEn ? "Official Home" : "返回官网首页"}</span>
             </a>
-            <ThemeToggle />
-            <LanguageToggle />
-            <GameQuickControls />
-            <UserNav />
+            
+            {/* Desktop Full Controls */}
+            <div className="hidden sm:flex items-center gap-2">
+              <ThemeToggle />
+              <LanguageToggle />
+              <GameQuickControls />
+              <UserNav />
+            </div>
+
+            {/* Mobile Hamburger Drawer Menu Button */}
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label={isEn ? "Open navigation drawer" : "展开导航菜单"}
+              className="sm:hidden w-9 h-9 rounded-xl bg-white dark:bg-[#0E0E16] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
           </div>
         </header>
       )}
+
+      {/* Mobile Drawer */}
+      <MobileNavDrawer
+        isOpen={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        onNavigate={navigateTo}
+      />
 
       {/* 主体区域 */}
       <main className="flex-1 flex flex-col justify-center">

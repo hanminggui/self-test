@@ -13,12 +13,13 @@ import {
   Eye,
   ShieldCheck,
   Flame,
+  Menu,
 } from "lucide-react";
 import { useLocale } from "../contexts/LocaleContext";
 import { useUser } from "../contexts/UserContext";
 import { LanguageToggle } from "../components/LanguageToggle";
 import { ThemeToggle } from "../components/ThemeToggle";
-import { AuthModal } from "../components/auth/AuthModal";
+import { MobileNavDrawer } from "../components/layout/MobileNavDrawer";
 import { getLastCompletedSession, canGuestStartNewSession } from "../utils/sessionRoute";
 import { GuestGalaxyHero } from "../components/landing/GuestGalaxyHero";
 import { ArchetypeStickyScrollBand } from "../components/landing/ArchetypeStickyScrollBand";
@@ -30,13 +31,15 @@ interface GuestLandingPageProps {
 
 export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }) => {
   const { locale, t } = useLocale();
-  const { login, openAuthModal, closeAuthModal, isAuthModalOpen } = useUser();
+  const { openAuthModal } = useUser();
   const isEn = String(locale).toLowerCase().startsWith("en");
 
   const [unclaimedRecord, setUnclaimedRecord] = useState<{
     sessionId: string;
     timestamp: number;
   } | null>(() => getLastCompletedSession());
+
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // 供首屏星系点击某个化身时联动滚入第 3 屏画卷
   const [selectedCodeFromHero, setSelectedCodeFromHero] = useState<string | null>(null);
@@ -68,7 +71,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex flex-col selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] overflow-x-clip font-sans">
+    <div className="min-h-screen min-h-dvh bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex flex-col selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] overflow-x-clip font-sans pb-[env(safe-area-inset-bottom)]">
       {/* Floating Official Website Navigation Header */}
       <header className="sticky top-0 z-40 backdrop-blur-md bg-[#FFFDF8]/90 dark:bg-[#08080C]/95 border-b-2 border-stone-900/10 dark:border-white/15 px-4 sm:px-8 py-3.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -108,10 +111,12 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
             </a>
           </nav>
 
-          {/* Right Action Controls: 顶部常驻登录按钮 */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
-            <LanguageToggle />
+          {/* Right Action Controls: 顶部操作与移动端抽屉入口 */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="hidden sm:flex items-center gap-2 sm:gap-3">
+              <ThemeToggle />
+              <LanguageToggle />
+            </div>
 
             <button
               type="button"
@@ -132,14 +137,55 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
             <button
               type="button"
               onClick={openAuthModal}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] text-xs sm:text-sm font-black border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2.5px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+              data-testid="header-signin-btn"
+              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] text-xs sm:text-sm font-black border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2.5px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>{t.auth?.signIn || (isEn ? "Sign In" : "探索者登录")}</span>
             </button>
+
+            {/* Mobile Hamburger Drawer Menu Button */}
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label={isEn ? "Open navigation drawer" : "展开导航菜单"}
+              className="sm:hidden w-9 h-9 rounded-xl bg-white dark:bg-[#0E0E16] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white flex items-center justify-center shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none transition-all cursor-pointer shrink-0"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </header>
+
+      {/* Mobile Navigation Drawer */}
+      <MobileNavDrawer
+        isOpen={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        onNavigate={onNavigate}
+        extraLinks={[
+          {
+            label: isEn ? "How It Works" : "三步看懂玩法",
+            href: "#how-it-works",
+            onClick: () => {
+              document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+            },
+          },
+          {
+            label: isEn ? "8 Mind Archetypes" : "八大心智化身画卷",
+            href: "#archetypes",
+            onClick: () => {
+              document.getElementById("archetypes")?.scrollIntoView({ behavior: "smooth" });
+            },
+          },
+          {
+            label: isEn ? "Mind Growth Map" : "专属心智星轨",
+            href: "#manifold",
+            onClick: () => {
+              document.getElementById("manifold")?.scrollIntoView({ behavior: "smooth" });
+            },
+          },
+        ]}
+      />
 
       {/* Main Official Website Content */}
       <main className="relative z-10 flex-1">
@@ -577,13 +623,6 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
           </div>
         </div>
       </footer>
-
-      {/* Auth Modal for Sign-In from Official Website */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={closeAuthModal}
-        onSelectProvider={(provider) => login(provider)}
-      />
     </div>
   );
 };
