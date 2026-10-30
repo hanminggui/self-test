@@ -262,7 +262,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                         ? onNavigate(`/report/${unclaimedRecord.sessionId}`)
                         : openAuthModal()
                     }
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-sm sm:text-base shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] border-[2.5px] border-stone-900 dark:border-[#CCFF00] flex items-center justify-center gap-2.5 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+                    className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] text-stone-950 font-black text-sm sm:text-base shadow-[0_4px_0_#1c1917] border-[2.5px] border-stone-900 flex items-center justify-center gap-2.5 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
                   >
                     <Lock className="w-4 h-4 text-stone-950" />
                     <span>
@@ -278,26 +278,26 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
               {/* 底部三大亮点微标 */}
               <div className="relative z-10 pt-4 grid grid-cols-3 gap-4 border-t-2 border-stone-900/10 dark:border-white/15 text-left">
                 <div>
-                  <div className="text-sm sm:text-base font-black text-stone-900 dark:text-[#CCFF00]">
+                  <div className="text-sm sm:text-base font-black text-stone-950 dark:text-[#CCFF00]">
                     {isEn ? "5 Mins" : "5 分钟沉浸"}
                   </div>
-                  <div className="text-[11px] sm:text-xs text-stone-600 dark:text-slate-400 font-bold mt-0.5">
+                  <div className="text-[11px] sm:text-xs text-stone-700 dark:text-slate-300 font-bold mt-0.5">
                     {isEn ? "Dynamic Puzzles" : "难度随实力呼吸"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm sm:text-base font-black text-stone-900 dark:text-[#CCFF00]">
+                  <div className="text-sm sm:text-base font-black text-stone-950 dark:text-[#CCFF00]">
                     {isEn ? "4 Dimensions" : "四大直觉维度"}
                   </div>
-                  <div className="text-[11px] sm:text-xs text-stone-600 dark:text-slate-400 font-bold mt-0.5">
+                  <div className="text-[11px] sm:text-xs text-stone-700 dark:text-slate-300 font-bold mt-0.5">
                     {isEn ? "Power & Clarity" : "硬实力 · 自知 · 果敢 · 借力"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm sm:text-base font-black text-stone-900 dark:text-[#CCFF00]">
+                  <div className="text-sm sm:text-base font-black text-stone-950 dark:text-[#CCFF00]">
                     {isEn ? "8 Totems" : "八大本命化身"}
                   </div>
-                  <div className="text-[11px] sm:text-xs text-stone-600 dark:text-slate-400 font-bold mt-0.5">
+                  <div className="text-[11px] sm:text-xs text-stone-700 dark:text-slate-300 font-bold mt-0.5">
                     {isEn ? "Collectible Cards" : "神兽图鉴与性格名片"}
                   </div>
                 </div>
@@ -311,11 +311,11 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
         {/* ================================================================= */}
         <section
           id="how-it-works"
-          className="py-16 lg:py-24 border-t-2 border-stone-900/10 dark:border-white/15 bg-amber-50/20 dark:bg-[#08080C]"
+          className="py-16 lg:py-24 border-t-2 border-stone-900/10 dark:border-white/15 bg-amber-50/20 dark:bg-black/30"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-12">
             <div className="text-center max-w-3xl mx-auto space-y-3">
-              <div className="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-[#CCFF00]">
+              <div className="text-xs font-bold uppercase tracking-widest text-amber-400">
                 {isEn ? "HOW IT WORKS · 3 SIMPLE STEPS" : "HOW IT WORKS · 三步看懂核心玩法"}
               </div>
               <h2 className="text-2xl sm:text-4xl font-black text-stone-900 dark:text-white tracking-tight uppercase">
@@ -323,7 +323,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                   ? "Why Can It See Through Your True Decision Style?"
                   : "不问一道性格套路题，它如何看穿你的真实本色？"}
               </h2>
-              <p className="text-xs sm:text-sm text-stone-600 dark:text-slate-200 leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-stone-600 dark:text-slate-300 leading-relaxed">
                 {isEn
                   ? "Anyone can claim to be 'calm and decisive' on a questionnaire. We put you in a real-time intuitive game where every choice naturally reveals your true mind."
                   : "在传统问卷里，谁都可以轻易勾选「我冷静果断」。而在这里，我们用一场充满博弈乐趣的三步闯关，让你在最自然的直觉反应中照见真实的自己。"}
@@ -332,23 +332,23 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Step 1: 眼力与脑力极限挑战 */}
-              <div className="p-7 rounded-3xl bg-white dark:bg-[#0E0E16] border-[2.5px] dark:border-2 border-stone-900 dark:border-[#38BDF8] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#38BDF8] flex flex-col justify-between space-y-5 transition-all">
+              <div className="p-7 rounded-[28px] bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col justify-between space-y-5">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 dark:bg-[#38BDF8]/20 border border-cyan-400/30 dark:border-[#38BDF8] flex items-center justify-center text-cyan-600 dark:text-[#38BDF8]">
-                      <Target className="w-6 h-6" />
+                    <div className="w-12 h-12 rounded-2xl bg-[#E0F2FE] dark:bg-cyan-500/15 border-2 border-stone-900 dark:border-cyan-400/30 flex items-center justify-center text-sky-800 dark:text-cyan-300 shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                      <Target className="w-6 h-6 stroke-[2.5]" />
                     </div>
-                    <span className="text-xs font-black px-3 py-1 rounded-full bg-cyan-500/10 dark:bg-[#38BDF8]/20 border border-cyan-400/25 dark:border-[#38BDF8] text-cyan-700 dark:text-[#38BDF8]">
+                    <span className="text-xs font-black px-3.5 py-1 rounded-full bg-[#E0F2FE] dark:bg-cyan-500/10 border-2 border-stone-900 dark:border-cyan-400/25 text-sky-950 dark:text-cyan-300 shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
                       {isEn ? "Step 01 · Real Prowess" : "第 1 步 · 测解题硬实力"}
                     </span>
                   </div>
 
-                  <h3 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
+                  <h3 className="text-lg sm:text-xl font-black text-stone-950 dark:text-white">
                     {isEn
                       ? "Smart Difficulty That Breathes With You"
                       : "遇强则强的动态图形与规律闯关"}
                   </h3>
-                  <p className="text-xs sm:text-sm text-stone-600 dark:text-slate-200 leading-relaxed font-medium">
+                  <p className="text-xs sm:text-sm text-stone-700 dark:text-slate-300 leading-relaxed font-medium">
                     {isEn
                       ? "Solve visual pattern, density, and sequence puzzles. Answer right and the challenge levels up; slip up and it eases back—finding your exact ceiling."
                       : "告别死板题库！你将面对图形旋转、星点疏密与规律推演挑战。答对自动升级难度，答错智能回落，精准摸清你的脑力天花板。"}
@@ -356,10 +356,10 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                 </div>
 
                 {/* 微视觉示意：动态难度阶梯条 */}
-                <div className="p-3.5 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900/15 dark:border-white/20 space-y-2">
-                  <div className="flex items-center justify-between text-[11px] text-stone-600 dark:text-slate-300 font-bold">
+                <div className="p-3.5 rounded-2xl bg-[#FFFBEB] dark:bg-black/40 border-2 border-stone-900/20 dark:border-white/10 space-y-2 shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                  <div className="flex items-center justify-between text-[11px] text-stone-700 dark:text-slate-400 font-bold">
                     <span>{isEn ? "Auto-Matching Your Limit" : "实时自适应难度追踪"}</span>
-                    <span className="text-cyan-600 dark:text-[#38BDF8] font-black">
+                    <span className="text-sky-800 dark:text-cyan-300 font-black">
                       {isEn ? "Level Up ↑" : "遇强则强 ↑"}
                     </span>
                   </div>
@@ -367,7 +367,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                     {[35, 50, 68, 55, 74, 88, 80, 95].map((h, i) => (
                       <div
                         key={i}
-                        className="flex-1 rounded-t bg-cyan-500/70 dark:bg-gradient-to-t dark:from-[#38BDF8]/40 dark:to-[#38BDF8] transition-all"
+                        className="flex-1 rounded-t bg-[#38BDF8] border-t-2 border-x border-stone-900 dark:border-none dark:bg-gradient-to-t dark:from-cyan-600/40 dark:to-cyan-300 transition-all"
                         style={{ height: `${h}%` }}
                       />
                     ))}
@@ -376,23 +376,23 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
               </div>
 
               {/* Step 2: 直觉底气押注（带可点击交互体验） */}
-              <div className="p-7 rounded-3xl bg-white dark:bg-[#0E0E16] border-[2.5px] dark:border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col justify-between space-y-5 transition-all">
+              <div className="p-7 rounded-[28px] bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col justify-between space-y-5">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/15 dark:bg-[#CCFF00]/20 border border-amber-400/30 dark:border-[#CCFF00] flex items-center justify-center text-amber-600 dark:text-[#CCFF00]">
-                      <Zap className="w-6 h-6" />
+                    <div className="w-12 h-12 rounded-2xl bg-[#FEF3C7] dark:bg-amber-500/15 border-2 border-stone-900 dark:border-amber-400/30 flex items-center justify-center text-amber-800 dark:text-amber-300 shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                      <Zap className="w-6 h-6 stroke-[2.5]" />
                     </div>
-                    <span className="text-xs font-black px-3 py-1 rounded-full bg-amber-500/10 dark:bg-[#CCFF00]/20 border border-amber-400/25 dark:border-[#CCFF00] text-amber-700 dark:text-[#CCFF00]">
+                    <span className="text-xs font-black px-3.5 py-1 rounded-full bg-[#FEF3C7] dark:bg-amber-500/10 border-2 border-stone-900 dark:border-amber-400/25 text-amber-950 dark:text-amber-300 shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
                       {isEn ? "Step 02 · Self-Awareness" : "第 2 步 · 测清醒自知力"}
                     </span>
                   </div>
 
-                  <h3 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
+                  <h3 className="text-lg sm:text-xl font-black text-stone-950 dark:text-white">
                     {isEn
                       ? "How Sure Are You? Bet on Your Intuition"
                       : "这题有几分把握？全额强攻还是稳健防守"}
                   </h3>
-                  <p className="text-xs sm:text-sm text-stone-600 dark:text-slate-200 leading-relaxed font-medium">
+                  <p className="text-xs sm:text-sm text-stone-700 dark:text-slate-300 leading-relaxed font-medium">
                     {isEn
                       ? "After each answer, choose whether to go All-In or Play Safe. Do you strike hard when right and hold back when unsure, or charge blindly?"
                       : "每选完一题，系统不会立刻剧透对错，而是让你为刚才的决定押注：胜券在握时敢不敢「全额强攻」？拿不准时懂不懂「稳健防守」？"}
@@ -400,10 +400,10 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                 </div>
 
                 {/* 可点击微交互演示：点击体验强攻 vs 稳守 */}
-                <div className="p-3.5 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900/15 dark:border-white/20 space-y-2.5">
-                  <div className="text-[11px] text-stone-600 dark:text-slate-300 font-bold flex items-center justify-between">
+                <div className="p-3.5 rounded-2xl bg-[#FFFBEB] dark:bg-black/40 border-2 border-stone-900/20 dark:border-white/10 space-y-2.5 shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                  <div className="text-[11px] text-stone-700 dark:text-slate-400 font-bold flex items-center justify-between">
                     <span>{isEn ? "Click to try wagering:" : "点击下方按钮体验抉择："}</span>
-                    <span className="text-amber-700 dark:text-[#CCFF00] font-black">
+                    <span className="text-amber-900 dark:text-amber-300 font-black">
                       {demoWagerMode === "BOLD"
                         ? isEn
                           ? "High Reward / High Risk"
@@ -413,29 +413,29 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                         : "心存疑虑 · 稳守底线"}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={() => setDemoWagerMode("BOLD")}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border-2 transition-all cursor-pointer ${
                         demoWagerMode === "BOLD"
-                          ? "bg-[#FEF3C7] dark:bg-[#CCFF00] border-stone-900 dark:border-[#CCFF00] text-stone-950 dark:text-[#08080C] shadow-sm dark:shadow-[2px_2px_0px_#FFFFFF] font-black"
-                          : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/20 text-stone-600 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
+                          ? "bg-[#FFE4E6] dark:bg-[#FF3366] border-stone-900 dark:border-[#FF3366] text-stone-950 dark:text-white shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]"
+                          : "bg-white dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:border-stone-900 hover:text-stone-950 dark:hover:text-white"
                       }`}
                     >
-                      <Flame className="w-3.5 h-3.5 text-amber-500 dark:text-current" />
+                      <Flame className="w-3.5 h-3.5 text-rose-600 dark:text-white" />
                       <span>{isEn ? "All-In Attack" : "全额强攻"}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setDemoWagerMode("SAFE")}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 border-2 transition-all cursor-pointer ${
                         demoWagerMode === "SAFE"
-                          ? "bg-[#D1FAE5] dark:bg-[#38BDF8] border-stone-900 dark:border-[#38BDF8] text-stone-950 dark:text-[#08080C] shadow-sm dark:shadow-[2px_2px_0px_#FFFFFF] font-black"
-                          : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/20 text-stone-600 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
+                          ? "bg-[#E0F2FE] dark:bg-[#38BDF8] border-stone-900 dark:border-[#38BDF8] text-stone-950 dark:text-[#08080C] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]"
+                          : "bg-white dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-700 dark:text-slate-400 hover:border-stone-900 hover:text-stone-950 dark:hover:text-white"
                       }`}
                     >
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-current" />
+                      <ShieldCheck className="w-3.5 h-3.5 text-sky-700 dark:text-[#08080C]" />
                       <span>{isEn ? "Safe Guard" : "稳健防守"}</span>
                     </button>
                   </div>
@@ -443,23 +443,23 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
               </div>
 
               {/* Step 3: 锦囊线索借力（带可点击交互体验） */}
-              <div className="p-7 rounded-3xl bg-white dark:bg-[#0E0E16] border-[2.5px] dark:border-2 border-stone-900 dark:border-[#FF3366] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#FF3366] flex flex-col justify-between space-y-5 transition-all">
+              <div className="p-7 rounded-[28px] bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col justify-between space-y-5">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/15 dark:bg-[#FF3366]/20 border border-purple-400/30 dark:border-[#FF3366] flex items-center justify-center text-purple-600 dark:text-[#FF3366]">
-                      <Layers className="w-6 h-6" />
+                    <div className="w-12 h-12 rounded-2xl bg-[#EDE9FE] dark:bg-purple-500/15 border-2 border-stone-900 dark:border-purple-400/30 flex items-center justify-center text-purple-800 dark:text-purple-300 shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                      <Layers className="w-6 h-6 stroke-[2.5]" />
                     </div>
-                    <span className="text-xs font-black px-3 py-1 rounded-full bg-purple-500/10 dark:bg-[#FF3366]/20 border border-purple-400/25 dark:border-[#FF3366] text-purple-700 dark:text-[#FF3366]">
+                    <span className="text-xs font-black px-3.5 py-1 rounded-full bg-[#EDE9FE] dark:bg-purple-500/10 border-2 border-stone-900 dark:border-purple-400/25 text-purple-950 dark:text-purple-300 shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
                       {isEn ? "Step 03 · Clue Leverage" : "第 3 步 · 测借力破局智慧"}
                     </span>
                   </div>
 
-                  <h3 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
+                  <h3 className="text-lg sm:text-xl font-black text-stone-950 dark:text-white">
                     {isEn
                       ? "Stuck in a Fog? Unlock a Strategic Clue"
                       : "遇到盲区死磕到底，还是巧借锦囊一击制胜？"}
                   </h3>
-                  <p className="text-xs sm:text-sm text-stone-600 dark:text-slate-200 leading-relaxed font-medium">
+                  <p className="text-xs sm:text-sm text-stone-700 dark:text-slate-300 leading-relaxed font-medium">
                     {isEn
                       ? "When facing a tough puzzle, you can spend a tiny bit of energy to unlock a clue. Knowing when to borrow external wisdom separates stubbornness from true strategy."
                       : "面对棘手迷局，硬撑蛮干往往满盘皆输。你可以随时消耗微弱能量翻开「线索锦囊」排除干扰——懂得在关键时刻借力打力，才是真正的智者。"}
@@ -467,12 +467,12 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                 </div>
 
                 {/* 可点击微交互演示：解锁锦囊 */}
-                <div className="p-3.5 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900/15 dark:border-white/20 space-y-2.5">
+                <div className="p-3.5 rounded-2xl bg-[#FFFBEB] dark:bg-black/40 border-2 border-stone-900/20 dark:border-white/10 space-y-2.5 shadow-[0_2px_0_#1c1917] dark:shadow-none">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-stone-600 dark:text-slate-300 font-bold">
+                    <span className="text-stone-700 dark:text-slate-400 font-bold">
                       {isEn ? "Interactive Clue Demo:" : "点击体验锦囊妙计："}
                     </span>
-                    <span className="text-purple-700 dark:text-[#FF3366] font-black">
+                    <span className="text-purple-900 dark:text-purple-300 font-black">
                       {demoHintRevealed
                         ? isEn
                           ? "2 Wrong Options Eliminated!"
@@ -485,15 +485,15 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                   <button
                     type="button"
                     onClick={() => setDemoHintRevealed((prev) => !prev)}
-                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
                       demoHintRevealed
-                        ? "bg-[#EDE9FE] dark:bg-[#FF3366] border-stone-900 dark:border-[#FF3366] text-purple-900 dark:text-white font-black shadow-sm dark:shadow-[2px_2px_0px_#CCFF00]"
-                        : "bg-white dark:bg-[#0E0E16] hover:bg-amber-50 dark:hover:bg-white/10 border-stone-300 dark:border-white/20 text-stone-800 dark:text-slate-200"
+                        ? "bg-[#EDE9FE] dark:bg-purple-500/25 border-stone-900 dark:border-purple-400 text-purple-950 dark:text-purple-200 shadow-[0_3px_0_#1c1917] active:translate-y-0.5 active:shadow-none"
+                        : "bg-white dark:bg-white/5 hover:bg-amber-50 dark:hover:bg-white/10 border-stone-300 dark:border-white/10 text-stone-800 dark:text-slate-200 hover:border-stone-900"
                     }`}
                   >
                     {demoHintRevealed ? (
                       <>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-[#CCFF00]" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                         <span>
                           {isEn
                             ? "Clue Active: Target Locked (Click to Reset)"
@@ -502,7 +502,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
                       </>
                     ) : (
                       <>
-                        <Eye className="w-3.5 h-3.5 text-purple-600 dark:text-[#FF3366]" />
+                        <Eye className="w-3.5 h-3.5 text-purple-700 dark:text-purple-400" />
                         <span>
                           {isEn
                             ? "Unlock Strategic Clue Card"
