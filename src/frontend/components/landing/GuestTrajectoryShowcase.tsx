@@ -397,26 +397,26 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
               </div>
             </div>
 
-            {/* 下半卡：东方泥金 / 西方奥术高定分享名片预览与一键登录 CTA */}
-            <div className="flex-1 rounded-3xl p-6 bg-gradient-to-br from-indigo-950/45 via-slate-900/95 to-purple-950/40 border border-indigo-400/30 shadow-xl flex flex-col justify-between space-y-5 relative overflow-hidden">
+            {/* 下半卡：多巴胺解压分享名片与一键登录 CTA */}
+            <div className="flex-1 rounded-[28px] p-6 bg-white dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col justify-between space-y-5 relative overflow-hidden">
               <div className="space-y-2 relative z-10">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
-                  <Share2 className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-xs font-black text-stone-900 dark:text-[#CCFF00]">
+                  <Share2 className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" />
                   <span>
                     {isEn
                       ? "Exclusive High-Fantasy Share Cards"
-                      : "生成专属泥金朱印 / 奥术分享名片"}
+                      : "生成专属多巴胺解压分享名片"}
                   </span>
                 </div>
-                <h4 className="text-lg font-black text-white">
+                <h4 className="text-lg font-black text-stone-900 dark:text-white">
                   {isEn
                     ? "Auto-Claim Guest Record & Unlock Unlimited Tests"
                     : "本机游客记录自动认领，解锁无限次挑战"}
                 </h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-stone-600 dark:text-slate-300 leading-relaxed font-medium">
                   {isEn
                     ? "Your guest assessment on this device is automatically bound to your account upon sign-in. Export HD posters to share your innate skills with friends."
-                    : "无需繁琐注册，使用常用账号一键登录，本机已完成的游客画像将自动归入你的名下，并可随时导出高清国风泥金名片与好友比拼。"}
+                    : "无需繁琐注册，使用常用账号一键登录，本机已完成的游客画像将自动归入你的名下，并可随时导出高清多巴胺名片与好友比拼。"}
                 </p>
               </div>
 
@@ -424,7 +424,7 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
                 <button
                   type="button"
                   onClick={onSignIn}
-                  className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 hover:brightness-110 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="flex-1 py-3.5 px-5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>
@@ -435,9 +435,9 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
                 <button
                   type="button"
                   onClick={onStartTest}
-                  className="py-3 px-4 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 text-slate-200 hover:text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  className="py-3.5 px-4 rounded-2xl bg-white hover:bg-amber-50 dark:bg-[#12121C] dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-900 dark:text-white font-bold text-xs sm:text-sm shadow-[0_2px_0_#1c1917] dark:shadow-none active:translate-y-0.5 active:shadow-none flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                 >
-                  <Compass className="w-4 h-4 text-amber-400" />
+                  <Compass className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" />
                   <span>{isEn ? "Try Now" : "先测一次"}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>

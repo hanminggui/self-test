@@ -12,6 +12,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import { LocaleProvider } from "./contexts/LocaleContext";
 import { UserProvider, useUser } from "./contexts/UserContext";
 import { GameEffectsProvider } from "./contexts/GameEffectsContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { resolveRouteView } from "./utils/sessionRoute";
 import "./index.css";
 
@@ -130,13 +131,15 @@ const AppRouter: React.FC = () => {
 
 const Root: React.FC = () => {
   return (
-    <LocaleProvider>
-      <UserProvider>
-        <GameEffectsProvider>
-          <AppRouter />
-        </GameEffectsProvider>
-      </UserProvider>
-    </LocaleProvider>
+    <ThemeProvider>
+      <LocaleProvider>
+        <UserProvider>
+          <GameEffectsProvider>
+            <AppRouter />
+          </GameEffectsProvider>
+        </UserProvider>
+      </LocaleProvider>
+    </ThemeProvider>
   );
 };
 

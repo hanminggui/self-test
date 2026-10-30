@@ -72,7 +72,7 @@ const PRESET_AVATARS = [
   { id: "totem-sovereign", name: "应龙 (Sovereign)", gradient: "from-amber-500 to-yellow-600", symbol: "🐉" },
   { id: "totem-wanderer", name: "鲲鹏 (Wanderer)", gradient: "from-blue-600 to-cyan-400", symbol: "🐋" },
   { id: "totem-sage", name: "白泽 (Sage)", gradient: "from-emerald-500 to-teal-600", symbol: "🦌" },
-  { id: "totem-oracle", name: "天机 (Oracle)", gradient: "from-purple-600 to-indigo-500", symbol: "🔮" },
+  { id: "totem-oracle", name: "天机 (Oracle)", gradient: "from-sky-500 to-teal-500", symbol: "🔮" },
   { id: "totem-sentinel", name: "玄武 (Sentinel)", gradient: "from-slate-600 to-stone-500", symbol: "🐢" },
   { id: "totem-vanguard", name: "麒麟 (Vanguard)", gradient: "from-rose-500 to-orange-500", symbol: "🔥" },
 ];
@@ -317,7 +317,7 @@ export const ProfileSettings: React.FC = () => {
                     className="w-16 h-16 rounded-2xl object-cover ring-2 ring-indigo-500/50 shadow-lg"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                  <div className="w-16 h-16 rounded-2xl bg-[#FBBF24] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black flex items-center justify-center text-stone-950 dark:text-[#08080C] text-2xl font-black shadow-[0_3px_0_#1c1917] dark:shadow-none">
                     {displayName.charAt(0).toUpperCase() || "?"}
                   </div>
                 )}
