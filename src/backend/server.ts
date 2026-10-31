@@ -470,6 +470,9 @@ app.get("/api/cohort/scatter", async (c) => {
   const currentSessionId = c.req.query("current_session_id");
   const scope = (c.req.query("scope") || "global").toLowerCase();
   const locale = c.get("locale");
+  const budgetParam = c.req.query("budget_per_octant") || c.req.query("budget");
+  const parsedBudget = budgetParam ? parseInt(budgetParam, 10) : undefined;
+  const budgetPerOctant = Number.isFinite(parsedBudget) ? parsedBudget : undefined;
   const sm = getSessionManagerForContext(c);
   const user = c.get("user");
   const um = getUserManagerForContext(c);
@@ -496,6 +499,7 @@ app.get("/api/cohort/scatter", async (c) => {
       currentUserId: user?.id || null,
       filterUserIds,
       friendUserIds,
+      budgetPerOctant,
     })
   );
 });
@@ -1001,8 +1005,8 @@ app.get("/api/admin/sessions", async (c) => {
   }
   const locale = c.get("locale");
   const sm = getSessionManagerForContext(c);
-  const data = await sm.getCohortScatterDataAsync(undefined, locale);
-  return c.json({ sessions: data.subjects });
+  const sessions = await sm.getAllCompletedSessionsAsync(locale);
+  return c.json({ sessions });
 });
 
 // 11. Admin Delete Session
