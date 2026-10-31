@@ -219,6 +219,7 @@ export interface FinalAssessmentReport {
   session_id: string;
   subject_name: string;
   subject_type: string;
+  avatar_url?: string | null;
   locale: SupportedLocale;
   created_at: string;
   total_trials: number;
@@ -297,6 +298,23 @@ export interface SubjectDataPoint {
   metadata?: SessionExecutionMetadata;
 }
 
+export interface OctantDensityMetrics {
+  quadrant_code: string;
+  count: number;
+  percentage: string;
+  avg_d_star: number;
+  avg_m_ratio: number;
+  avg_score: number;
+  variance_d_star: number;
+  variance_m_ratio: number;
+  variance_score: number;
+
+  // Frontend display aliases
+  avgDStar: string;
+  avgMRatio: string;
+  avgScore: number;
+}
+
 export interface CohortScatterResponse {
   baseline_x: number;
   baseline_y: number;
@@ -304,5 +322,15 @@ export interface CohortScatterResponse {
   median_y: number;
   mean_x: number;
   mean_y: number;
+  total_count: number;
+  octants: Record<string, OctantDensityMetrics>;
+  octant_stats: Record<string, OctantDensityMetrics>;
+  density_summary?: {
+    total_count: number;
+    mean_x: number;
+    mean_y: number;
+    variance_x?: number;
+    variance_y?: number;
+  };
   subjects: SubjectDataPoint[];
 }
