@@ -1307,8 +1307,21 @@ app.get("/share/:sessionId/", handleSharePage);
 
 // Cognitive Twin Duel Landing Page with Dynamic OG & Twitter Card Meta Tags
 const handleDuelPage = async (c: any) => {
-  const sessionIdA = c.req.param("sessionIdA");
-  const sessionIdB = c.req.param("sessionIdB");
+  let sessionIdA = c.req.param("sessionIdA");
+  let sessionIdB = c.req.param("sessionIdB");
+
+  if (!sessionIdB && (sessionIdA || c.req.param("pair"))) {
+    const raw = sessionIdA || c.req.param("pair") || "";
+    let tokens: string[] = [];
+    if (raw.includes("_vs_")) tokens = raw.split("_vs_");
+    else if (raw.includes(",")) tokens = raw.split(",");
+    else if (raw.includes(":")) tokens = raw.split(":");
+    if (tokens.length >= 2) {
+      sessionIdA = tokens[0].trim();
+      sessionIdB = tokens[1].trim();
+    }
+  }
+
   const locale = c.get("locale");
   const sm = getSessionManagerForContext(c);
   const origin = getOrigin(c);
@@ -1389,6 +1402,8 @@ const handleDuelPage = async (c: any) => {
 
 app.get("/duel/:sessionIdA/:sessionIdB", handleDuelPage);
 app.get("/duel/:sessionIdA/:sessionIdB/", handleDuelPage);
+app.get("/duel/:pair", handleDuelPage);
+app.get("/duel/:pair/", handleDuelPage);
 app.get("/duel", serveAsset({ path: "./dist/index.html" }));
 app.get("/duel/*", serveAsset({ path: "./dist/index.html" }));
 

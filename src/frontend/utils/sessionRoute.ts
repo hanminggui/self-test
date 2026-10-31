@@ -190,23 +190,52 @@ export function extractDuelSessionIdsFromUrl(
   search: string = typeof window !== "undefined" ? window.location.search : "",
   hash: string = typeof window !== "undefined" ? window.location.hash : ""
 ): { sessionIdA: string; sessionIdB: string } | null {
-  // 1. 优先解析专用路径路由: /duel/:idA/:idB
+  // 1. 优先解析专用路径路由: /duel/:idA/:idB 或 /duel/:idA_vs_:idB / /duel/:idA,:idB
   if (pathname) {
     const parts = pathname.split("/").filter(Boolean);
     const duelIdx = parts.indexOf("duel");
-    if (duelIdx !== -1 && parts[duelIdx + 1] && parts[duelIdx + 2]) {
-      return {
-        sessionIdA: parts[duelIdx + 1].trim(),
-        sessionIdB: parts[duelIdx + 2].trim(),
-      };
+    if (duelIdx !== -1) {
+      if (parts[duelIdx + 1] && parts[duelIdx + 2]) {
+        return {
+          sessionIdA: parts[duelIdx + 1].trim(),
+          sessionIdB: parts[duelIdx + 2].trim(),
+        };
+      }
+      if (parts[duelIdx + 1]) {
+        const token = parts[duelIdx + 1];
+        let subTokens: string[] = [];
+        if (token.includes("_vs_")) subTokens = token.split("_vs_");
+        else if (token.includes(",")) subTokens = token.split(",");
+        else if (token.includes(":")) subTokens = token.split(":");
+        if (subTokens.length >= 2 && subTokens[0] && subTokens[1]) {
+          return {
+            sessionIdA: subTokens[0].trim(),
+            sessionIdB: subTokens[1].trim(),
+          };
+        }
+      }
     }
   }
 
-  // 2. 解析 Query 参数: ?duel_a=xxx&duel_b=yyy 或 ?duel=xxx,yyy / ?duel=xxx_vs_yyy
+  // 2. 解析 Query 参数: ?duel_a=xxx&duel_b=yyy, ?a=xxx&b=yyy, ?sessionIdA=xxx&sessionIdB=yyy, ?duel=xxx,yyy
   if (search) {
     const sp = new URLSearchParams(search);
-    const a = sp.get("duel_a") || sp.get("a") || sp.get("session_a") || sp.get("id_a");
-    const b = sp.get("duel_b") || sp.get("b") || sp.get("session_b") || sp.get("id_b");
+    const a =
+      sp.get("duel_a") ||
+      sp.get("a") ||
+      sp.get("session_a") ||
+      sp.get("sessionIdA") ||
+      sp.get("session_id_a") ||
+      sp.get("id_a") ||
+      sp.get("idA");
+    const b =
+      sp.get("duel_b") ||
+      sp.get("b") ||
+      sp.get("session_b") ||
+      sp.get("sessionIdB") ||
+      sp.get("session_id_b") ||
+      sp.get("id_b") ||
+      sp.get("idB");
     if (a && b) {
       return { sessionIdA: a.trim(), sessionIdB: b.trim() };
     }
@@ -236,6 +265,19 @@ export function extractDuelSessionIdsFromUrl(
       const parts = cleanHash.split("/").filter(Boolean);
       if (parts[1] && parts[2]) {
         return { sessionIdA: parts[1].trim(), sessionIdB: parts[2].trim() };
+      }
+      if (parts[1]) {
+        const token = parts[1];
+        let subTokens: string[] = [];
+        if (token.includes("_vs_")) subTokens = token.split("_vs_");
+        else if (token.includes(",")) subTokens = token.split(",");
+        else if (token.includes(":")) subTokens = token.split(":");
+        if (subTokens.length >= 2 && subTokens[0] && subTokens[1]) {
+          return {
+            sessionIdA: subTokens[0].trim(),
+            sessionIdB: subTokens[1].trim(),
+          };
+        }
       }
     }
   }
@@ -327,7 +369,11 @@ export function resolveRouteView(
   if (cleanPath === "/share" || cleanPath.startsWith("/share/")) {
     return { view: "share", inAppLayout: false };
   }
-  if (cleanPath === "/duel" || cleanPath.startsWith("/duel/")) {
+  if (
+    cleanPath === "/duel" ||
+    cleanPath.startsWith("/duel/") ||
+    Boolean(extractDuelSessionIdsFromUrl(cleanPath, search, hash))
+  ) {
     return { view: "duel", inAppLayout: false };
   }
 

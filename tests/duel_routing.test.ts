@@ -45,6 +45,14 @@ describe("Seam 4: Duel Routing & Session Referrer Persistence", () => {
       });
     });
 
+    it("extracts session IDs from /duel/:idA_vs_:idB format", () => {
+      const res = extractDuelSessionIdsFromUrl("/duel/sess_111_vs_sess_222");
+      expect(res).toEqual({
+        sessionIdA: "sess_111",
+        sessionIdB: "sess_222",
+      });
+    });
+
     it("extracts session IDs from query parameters (?duel_a=...&duel_b=...)", () => {
       const res = extractDuelSessionIdsFromUrl("/duel", "?duel_a=sess_aaa&duel_b=sess_bbb");
       expect(res).toEqual({
@@ -81,6 +89,12 @@ describe("Seam 4: Duel Routing & Session Referrer Persistence", () => {
 
     it("routes /duel (standalone) to view 'duel' outside AppLayout", () => {
       const resolved = resolveRouteView("/duel", false);
+      expect(resolved.view).toBe("duel");
+      expect(resolved.inAppLayout).toBe(false);
+    });
+
+    it("routes /?duel=... to view 'duel' outside AppLayout", () => {
+      const resolved = resolveRouteView("/", false, "?duel=sess_1,sess_2");
       expect(resolved.view).toBe("duel");
       expect(resolved.inAppLayout).toBe(false);
     });
