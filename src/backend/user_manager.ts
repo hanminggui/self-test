@@ -657,11 +657,11 @@ export class UserManager {
     const commonIds = friends1.filter((id) => friends2.includes(id));
     if (commonIds.length === 0) return [];
 
-    const users: User[] = [];
-    for (const id of commonIds) {
-      const u = await this.getUserById(id);
-      if (u) users.push(u);
-    }
-    return users;
+    const placeholders = commonIds.map(() => "?").join(",");
+    const rows = await this.storage.query<UserRow>(
+      `SELECT * FROM users WHERE id IN (${placeholders})`,
+      commonIds
+    );
+    return (rows || []).map(parseUserRow);
   }
 }
