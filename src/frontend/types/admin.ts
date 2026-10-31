@@ -49,6 +49,16 @@ export interface ScatterData {
   median_y: number;
   mean_x: number;
   mean_y: number;
+  total_count?: number;
+  octants?: OctantStatsMap;
+  octant_stats?: OctantStatsMap;
+  density_summary?: {
+    total_count: number;
+    mean_x: number;
+    mean_y: number;
+    variance_x?: number;
+    variance_y?: number;
+  };
   subjects: SubjectPoint[];
 }
 
@@ -101,6 +111,17 @@ export interface OctantStatItem {
   avgDStar: string;
   avgMRatio: string;
   avgScore: number;
+  varianceDStar?: number;
+  varianceMRatio?: number;
+  varianceScore?: number;
+  avg_d_star?: number;
+  avg_m_ratio?: number;
+  avg_score?: number;
+  variance_d_star?: number;
+  variance_m_ratio?: number;
+  mean_d_star?: number;
+  mean_m_ratio?: number;
+  mean_score?: number;
 }
 
 export type OctantStatsMap = Record<string, OctantStatItem>;

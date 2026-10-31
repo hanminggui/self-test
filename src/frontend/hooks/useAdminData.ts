@@ -157,6 +157,17 @@ export function useAdminData() {
 
   // 各标签频次统计
   const tagCounts = useMemo(() => {
+    if (scatterData?.octant_stats || scatterData?.octants) {
+      const stats = scatterData.octant_stats || scatterData.octants!;
+      const total =
+        scatterData.total_count ??
+        Object.values(stats).reduce((acc, curr) => acc + (curr.count || 0), 0);
+      const counts: Record<string, number> = { ALL: total };
+      Object.entries(stats).forEach(([code, stat]) => {
+        counts[code] = stat.count || 0;
+      });
+      return counts;
+    }
     const counts: Record<string, number> = { ALL: subjects.length };
     subjects.forEach((s) => {
       const code = s.quadrant_code;
@@ -165,10 +176,16 @@ export function useAdminData() {
       }
     });
     return counts;
-  }, [subjects]);
+  }, [scatterData, subjects]);
 
   // 8 象区详尽统计指标 Map
   const octantStatsMap = useMemo(() => {
+    if (scatterData?.octant_stats) {
+      return scatterData.octant_stats;
+    }
+    if (scatterData?.octants) {
+      return scatterData.octants;
+    }
     const total = subjects.length || 1;
     const stats: OctantStatsMap = {};
 
@@ -186,7 +203,7 @@ export function useAdminData() {
     });
 
     return stats;
-  }, [subjects]);
+  }, [scatterData, subjects]);
 
   // 象区标题映射 (支持当前语言预设与动态覆盖)
   const quadrantTitles = useMemo(() => {

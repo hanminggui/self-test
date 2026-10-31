@@ -181,6 +181,7 @@ export interface AssessmentMetrics {
   calibration_bias: number;
   brier_score: number;
   ive: number;
+  info_buying_efficiency?: number;
   coachability_index: number;
   risk_attitude: RiskAttitude;
   formal_score?: number;
@@ -240,6 +241,9 @@ export interface FinalAssessmentReport {
     total_trials: number;
     first_order_accuracy: number;
     final_score: number;
+    formal_score?: number;
+    composite_cognitive_score?: number;
+    ccs?: number;
     reversals_count: number;
     d_star: number;
   };
@@ -250,7 +254,7 @@ export interface FinalAssessmentReport {
     calibration_bias: number;
     brier_score: number;
     ive: number;
-    info_buying_efficiency: number;
+    info_buying_efficiency?: number;
     d_star: number;
   };
   metadata?: SessionExecutionMetadata;
@@ -295,6 +299,28 @@ export interface SubjectDataPoint {
   metadata?: SessionExecutionMetadata;
 }
 
+export interface OctantDensityMetrics {
+  quadrant_code: string;
+  count: number;
+  percentage: string;
+  avg_d_star: number;
+  avg_m_ratio: number;
+  avg_score: number;
+  variance_d_star: number;
+  variance_m_ratio: number;
+  variance_score?: number;
+
+  // Frontend & backward-compatible aliases
+  avgDStar: string;
+  avgMRatio: string;
+  avgScore: number;
+  mean_d_star: number;
+  mean_m_ratio: number;
+  mean_score: number;
+  var_d_star: number;
+  var_m_ratio: number;
+}
+
 export interface CohortScatterResponse {
   baseline_x: number;
   baseline_y: number;
@@ -302,5 +328,15 @@ export interface CohortScatterResponse {
   median_y: number;
   mean_x: number;
   mean_y: number;
+  total_count: number;
+  octants: Record<string, OctantDensityMetrics>;
+  octant_stats: Record<string, OctantDensityMetrics>;
+  density_summary?: {
+    total_count: number;
+    mean_x: number;
+    mean_y: number;
+    variance_x?: number;
+    variance_y?: number;
+  };
   subjects: SubjectDataPoint[];
 }
