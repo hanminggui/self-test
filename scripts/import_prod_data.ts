@@ -7,9 +7,17 @@ const dbPath = path.join(process.cwd(), "data", "sessions.sqlite");
 const storage = new LocalSqliteAdapter(dbPath);
 const db = (storage as any).db as Database;
 
+const sessionsFile = "/tmp/prod_sessions.json";
+const recordsFile = "/tmp/prod_records.json";
+
+if (!fs.existsSync(sessionsFile) || !fs.existsSync(recordsFile)) {
+  console.log("ℹ️ Production JSON export files not found in /tmp. Skipping seed.");
+  process.exit(0);
+}
+
 // Load exported prod data
-const sessionsData = JSON.parse(fs.readFileSync("/tmp/prod_sessions.json", "utf-8"))[0].results;
-const recordsData = JSON.parse(fs.readFileSync("/tmp/prod_records.json", "utf-8"))[0].results;
+const sessionsData = JSON.parse(fs.readFileSync(sessionsFile, "utf-8"))[0].results;
+const recordsData = JSON.parse(fs.readFileSync(recordsFile, "utf-8"))[0].results;
 
 console.log(`Importing ${sessionsData.length} sessions and ${recordsData.length} records into ${dbPath}...`);
 

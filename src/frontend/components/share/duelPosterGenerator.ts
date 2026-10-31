@@ -7,11 +7,13 @@
  */
 
 import * as QRCodeModule from "qrcode";
+// QRCode interop across Vite ESM and CJS bundle formats
 const QRCode: any = (QRCodeModule as any).default || QRCodeModule;
-import { CognitiveArchetype } from "../../../backend/models";
+import { CognitiveArchetype, AssessmentMetrics } from "../../../backend/models";
 import { getMythicArchetype } from "./mythicArchetypes";
 import { getArcaneArchetype } from "./arcaneArchetypes";
 import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
+import { buildDuelUrl } from "../../utils/sessionRoute";
 
 export interface DuelParticipantData {
   sessionId: string;
@@ -22,7 +24,7 @@ export interface DuelParticipantData {
   totemOrOrder?: string;
   aphorism?: string;
   badgeText?: string;
-  metrics?: any;
+  metrics?: Partial<AssessmentMetrics> | Record<string, unknown>;
 }
 
 export interface DuelPosterData {
@@ -85,7 +87,7 @@ export function generateDuelShareText(data: DuelPosterData): string {
   const pA = data.participantA;
   const pB = data.participantB;
   const comp = data.comparison;
-  const url = data.entryUrl || `http://localhost:8000/duel/${pA.sessionId}/${pB.sessionId}`;
+  const url = data.entryUrl || buildDuelUrl(pA.sessionId, pB.sessionId);
 
   if (isEn) {
     const roleA = pA.roleTitle || "The Explorer";

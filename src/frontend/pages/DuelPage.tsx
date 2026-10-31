@@ -29,6 +29,25 @@ import {
   saveReferrerSessionId,
 } from "../utils/sessionRoute";
 import { DuelPosterData } from "../components/share/duelPosterGenerator";
+import { DuelComparisonResult } from "../../backend/duel_engine";
+
+interface DuelSessionSummary {
+  id: string;
+  subject_name: string;
+  archetype: string;
+  quadrant_code: string;
+  diagnostic_profile?: {
+    role_title?: string;
+    praise_tagline?: string;
+  };
+  metrics?: Record<string, unknown>;
+}
+
+interface DuelDataResponse {
+  sessionA: DuelSessionSummary;
+  sessionB: DuelSessionSummary;
+  comparison: DuelComparisonResult;
+}
 
 export const DuelPage: React.FC = () => {
   const { locale } = useLocale();
@@ -40,7 +59,7 @@ export const DuelPage: React.FC = () => {
     }
   );
 
-  const [duelData, setDuelData] = useState<any | null>(null);
+  const [duelData, setDuelData] = useState<DuelDataResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
