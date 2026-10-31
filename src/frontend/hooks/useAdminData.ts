@@ -27,7 +27,7 @@ export function useAdminData() {
     setCurrentPage(1);
   }, [searchQuery, selectedTag, pageSize]);
 
-  // 加载数据
+  // 加载数据（管理员查看全量群体数据）
   const loadData = useCallback(async () => {
     setLoadingData(true);
     try {
@@ -42,6 +42,13 @@ export function useAdminData() {
       setLoadingData(false);
     }
   }, [locale]);
+
+  // 认证通过后加载全量数据
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated, loadData]);
 
   // 令牌校验（纯鉴权，解耦 loadData）
   const verifyToken = useCallback(async (token: string) => {

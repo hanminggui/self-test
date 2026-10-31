@@ -682,8 +682,8 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     setErrorMsg("");
     const finalName = subjectName.trim() || user?.display_name || placeholderCodename;
     const sp = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-    const refParam = sp?.get("referrer") || sp?.get("ref") || sp?.get("duel");
-    const referrerId = (refParam && refParam !== "1" ? refParam : null) || getReferrerSessionId();
+    const refSession = sp?.get("ref_session") || sp?.get("source_session_id") || sp?.get("referrer") || getReferrerSessionId() || null;
+    const referrerId = sp?.get("ref") || sp?.get("referrer_id") || sp?.get("invite") || null;
 
     try {
       const res = await fetch(`/api/sessions/start?lang=${encodeURIComponent(locale)}`, {
@@ -696,7 +696,8 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           subject_name: finalName,
           total_trials: totalTrials,
           warmup_trials: Math.max(5, Math.floor(totalTrials / 3)),
-          referrer_session_id: referrerId || undefined,
+          ...(refSession ? { source_session_id: refSession, referrer_session_id: refSession } : {}),
+          ...(referrerId ? { referrer_id: referrerId } : {}),
         }),
       });
       if (!res.ok) throw new Error(t.app.startErrorFallback);

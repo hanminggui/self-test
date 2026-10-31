@@ -159,13 +159,13 @@ export const SharePage: React.FC = () => {
     if (sessionId) {
       saveReferrerSessionId(sessionId);
     }
-    window.location.href = sessionId ? `/?referrer=${encodeURIComponent(sessionId)}` : "/";
+    window.location.href = sessionId ? `/?referrer=${encodeURIComponent(sessionId)}&ref_session=${encodeURIComponent(sessionId)}` : "/";
   };
 
   const handleStartDuel = () => {
     if (sessionId) {
       saveReferrerSessionId(sessionId);
-      window.location.href = `/?referrer=${encodeURIComponent(sessionId)}&duel=1`;
+      window.location.href = `/?referrer=${encodeURIComponent(sessionId)}&ref_session=${encodeURIComponent(sessionId)}&duel=1`;
     } else {
       window.location.href = "/";
     }

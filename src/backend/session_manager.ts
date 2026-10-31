@@ -36,6 +36,15 @@ import { mapLegacyArchetype, getArchetypeDefinition, classifyCognitiveArchetype 
 import { compute4AFCdPrime } from "./math";
 import { generateSubjectCodename } from "./codename_generator";
 import { getLocale, type SupportedLocale } from "../i18n";
+import { computeCognitiveSimilarity } from "../frontend/utils/manifoldUtils";
+
+export interface CohortScatterOptions {
+  budgetPerOctant?: number;
+  scope?: string;
+  currentUserId?: string | null;
+  filterUserIds?: string[];
+  friendUserIds?: string[];
+}
 
 export interface SessionState {
   sessionId: string;
@@ -450,6 +459,7 @@ export class SessionManager {
       sessionMetadata = {
         locale: params.metadata?.locale || getLocale(),
         ...(referrerId ? { referrer_session_id: referrerId } : {}),
+        ...(params.metadata || {}),
       };
     }
 
@@ -1518,6 +1528,8 @@ export class SessionManager {
   private static readonly FALLBACK_SESSIONS_SQL = `
     SELECT 
       c.*,
+      u.display_name as user_display_name,
+      u.avatar_url as user_avatar_url,
       a.model_name as agent_model,
       a.persona as agent_persona,
       a.thinking_effort as agent_effort,
@@ -1528,6 +1540,7 @@ export class SessionManager {
       a.reasoning_tokens,
       a.total_tokens
     FROM completed_sessions c
+    LEFT JOIN users u ON c.user_id = u.id
     LEFT JOIN session_agent_metadata a ON c.id = a.session_id
     ORDER BY c.created_at DESC
   `;
@@ -1556,6 +1569,8 @@ export class SessionManager {
     )
     SELECT 
       r.*,
+      u.display_name as user_display_name,
+      u.avatar_url as user_avatar_url,
       a.model_name as agent_model,
       a.persona as agent_persona,
       a.thinking_effort as agent_effort,
@@ -1566,6 +1581,7 @@ export class SessionManager {
       a.reasoning_tokens,
       a.total_tokens
     FROM RankedWithinBucket r
+    LEFT JOIN users u ON r.user_id = u.id
     LEFT JOIN session_agent_metadata a ON r.id = a.session_id
     WHERE r.bucket_rank = 1
     ORDER BY r.norm_quadrant_code ASC, r.spatial_bucket ASC
@@ -1574,7 +1590,7 @@ export class SessionManager {
   getCohortScatterData(
     currentSessionId?: string,
     locale?: SupportedLocale,
-    options?: { budgetPerOctant?: number }
+    options?: CohortScatterOptions
   ): CohortScatterResponse {
     const targetLocale = locale || getLocale();
     const rawBudget = options?.budgetPerOctant;
@@ -1582,6 +1598,35 @@ export class SessionManager {
       typeof rawBudget === "number" && Number.isFinite(rawBudget)
         ? Math.max(8, Math.min(12, Math.floor(rawBudget)))
         : 10;
+
+    if (options?.filterUserIds) {
+      if (options.filterUserIds.length === 0) {
+        return this.buildCohortScatterResponse([], [], currentSessionId, targetLocale, budget, false, options);
+      }
+      const placeholders = options.filterUserIds.map(() => "?").join(",");
+      const filterSql = `
+        SELECT 
+          c.*,
+          u.display_name as user_display_name,
+          u.avatar_url as user_avatar_url,
+          a.model_name as agent_model,
+          a.persona as agent_persona,
+          a.thinking_effort as agent_effort,
+          a.evaluation_mode as agent_eval_mode,
+          a.prompt_tokens,
+          a.completion_tokens,
+          a.cached_tokens,
+          a.reasoning_tokens,
+          a.total_tokens
+        FROM completed_sessions c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+        WHERE c.user_id IN (${placeholders})
+        ORDER BY c.created_at DESC
+      `;
+      const rows = (this.storage.querySync ? this.storage.querySync(filterSql, options.filterUserIds) : []) || [];
+      return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, budget, false, options);
+    }
 
     let aggRows: any[] = [];
     let sampledRows: any[] = [];
@@ -1598,13 +1643,13 @@ export class SessionManager {
       }
     }
 
-    return this.buildCohortScatterResponse(aggRows, sampledRows, currentSessionId, targetLocale, budget, usedSqlSampling);
+    return this.buildCohortScatterResponse(aggRows, sampledRows, currentSessionId, targetLocale, budget, usedSqlSampling, options);
   }
 
   async getCohortScatterDataAsync(
     currentSessionId?: string,
     locale?: SupportedLocale,
-    options?: { budgetPerOctant?: number }
+    options?: CohortScatterOptions
   ): Promise<CohortScatterResponse> {
     const targetLocale = locale || getLocale();
     const rawBudget = options?.budgetPerOctant;
@@ -1612,6 +1657,35 @@ export class SessionManager {
       typeof rawBudget === "number" && Number.isFinite(rawBudget)
         ? Math.max(8, Math.min(12, Math.floor(rawBudget)))
         : 10;
+
+    if (options?.filterUserIds) {
+      if (options.filterUserIds.length === 0) {
+        return this.buildCohortScatterResponse([], [], currentSessionId, targetLocale, budget, false, options);
+      }
+      const placeholders = options.filterUserIds.map(() => "?").join(",");
+      const filterSql = `
+        SELECT 
+          c.*,
+          u.display_name as user_display_name,
+          u.avatar_url as user_avatar_url,
+          a.model_name as agent_model,
+          a.persona as agent_persona,
+          a.thinking_effort as agent_effort,
+          a.evaluation_mode as agent_eval_mode,
+          a.prompt_tokens,
+          a.completion_tokens,
+          a.cached_tokens,
+          a.reasoning_tokens,
+          a.total_tokens
+        FROM completed_sessions c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+        WHERE c.user_id IN (${placeholders})
+        ORDER BY c.created_at DESC
+      `;
+      const rows = (await this.storage.query(filterSql, options.filterUserIds)) || [];
+      return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, budget, false, options);
+    }
 
     let aggRows: any[] = [];
     let sampledRows: any[] = [];
@@ -1633,7 +1707,7 @@ export class SessionManager {
       }
     }
 
-    return this.buildCohortScatterResponse(aggRows, sampledRows, currentSessionId, targetLocale, budget, usedSqlSampling);
+    return this.buildCohortScatterResponse(aggRows, sampledRows, currentSessionId, targetLocale, budget, usedSqlSampling, options);
   }
 
   public getAllCompletedSessions(locale?: SupportedLocale): SubjectDataPoint[] {
@@ -1655,7 +1729,8 @@ export class SessionManager {
     currentSessionId: string | undefined,
     targetLocale: SupportedLocale,
     budgetPerOctant: number,
-    usedSqlSampling: boolean
+    usedSqlSampling: boolean,
+    options?: CohortScatterOptions
   ): CohortScatterResponse {
     let subjects = this.mapRowsToSubjects(rows, currentSessionId, targetLocale);
 
@@ -1686,8 +1761,10 @@ export class SessionManager {
       meanX = inMem.meanX;
       meanY = inMem.meanY;
 
-      // In-memory spatial sampling if not pre-sampled by SQL
-      subjects = this.sampleSubjectsInMemory(subjects, budgetPerOctant, currentSessionId);
+      // In-memory spatial sampling if not pre-sampled by SQL and not scoped
+      if (!options?.filterUserIds) {
+        subjects = this.sampleSubjectsInMemory(subjects, budgetPerOctant, currentSessionId);
+      }
     }
 
     // Check if current session is active in memory and not yet saved
@@ -1714,6 +1791,34 @@ export class SessionManager {
       }
     }
 
+    // Compute mutual cognitive similarities & friendship flags
+    const currentUserId = options?.currentUserId;
+    const friendUserIds = options?.friendUserIds || [];
+
+    let selfVector: [number, number, number, number] | undefined;
+    if (currentUserId) {
+      const selfSub = subjects.find((s) => s.user_id === currentUserId);
+      if (selfSub && selfSub.cognitive_manifold_vector) {
+        selfVector = selfSub.cognitive_manifold_vector;
+      }
+    }
+
+    subjects.forEach((s) => {
+      const isSelf = Boolean(currentUserId && s.user_id === currentUserId);
+      const isFriend = Boolean(s.user_id && friendUserIds.includes(s.user_id));
+      s.is_self = isSelf;
+      s.is_friend = isFriend;
+
+      if (isSelf) {
+        s.similarity = 100;
+        s.similarity_percentage = 100;
+      } else if (selfVector && s.cognitive_manifold_vector) {
+        const sim = computeCognitiveSimilarity(selfVector, s.cognitive_manifold_vector);
+        s.similarity = sim;
+        s.similarity_percentage = sim;
+      }
+    });
+
     const octantStats = this.buildOctantDensityStats(aggRows, totalCount);
 
     let varX = 0;
@@ -1734,12 +1839,14 @@ export class SessionManager {
       varY = Math.max(0, Math.round((sumYSq / totalCount - meanY * meanY) * 10000) / 10000);
     }
 
-    if (subjects.length > 96) {
+    if (subjects.length > 96 && !options?.filterUserIds) {
       subjects = subjects.slice(0, 96);
     }
 
     const xVals = subjects.map((s) => s.metrics.d_star);
     const yVals = subjects.map((s) => s.metrics.m_ratio);
+
+
 
     const median = (arr: number[]): number => {
       if (arr.length === 0) return 0.5;
@@ -1831,9 +1938,14 @@ export class SessionManager {
       };
     }
 
+    const displayName = r.user_display_name || r.subject_name || r.name || "受测者";
+    const avatarUrl = r.user_avatar_url || null;
+
     return {
       id: r.id,
-      name: r.subject_name || r.name || "受测者",
+      name: displayName,
+      nickname: displayName,
+      avatar_url: avatarUrl,
       subject_type: r.subject_type,
       locale: (r.locale as SupportedLocale) || targetLocale,
       created_at: r.created_at,

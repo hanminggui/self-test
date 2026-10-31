@@ -75,3 +75,39 @@ export function getSectorAnnulusPath(
 export function formatBias(bias: number): string {
   return bias > 0 ? `+${bias}` : `${bias}`;
 }
+
+/**
+ * 计算两人之间的四维元认知流形契合度/相似度百分比 (0 ~ 100%)
+ * 向量维度: [d_star (0~1), m_ratio (0~2), calibration_bias (-1~1), ive (0~1)]
+ */
+export function computeCognitiveSimilarity(
+  v1: [number, number, number, number] | number[] = [0.5, 0.9, 0.0, 0.5],
+  v2: [number, number, number, number] | number[] = [0.5, 0.9, 0.0, 0.5]
+): number {
+  if (!v1 || !v2) return 100;
+  
+  const dStar1 = v1[0] ?? 0.5;
+  const dStar2 = v2[0] ?? 0.5;
+  const diffDStar = Math.abs(dStar1 - dStar2); // range ~1
+
+  const mRatio1 = Math.max(0, Math.min(2.5, v1[1] ?? 0.9));
+  const mRatio2 = Math.max(0, Math.min(2.5, v2[1] ?? 0.9));
+  const diffMRatio = Math.abs(mRatio1 - mRatio2) / 2.0; // normalized ~1
+
+  const bias1 = Math.max(-1, Math.min(1, v1[2] ?? 0.0));
+  const bias2 = Math.max(-1, Math.min(1, v2[2] ?? 0.0));
+  const diffBias = Math.abs(bias1 - bias2) / 2.0; // normalized ~1
+
+  const ive1 = Math.max(0, Math.min(1, v1[3] ?? 0.5));
+  const ive2 = Math.max(0, Math.min(1, v2[3] ?? 0.5));
+  const diffIve = Math.abs(ive1 - ive2); // range ~1
+
+  // 4D 归一化欧氏距离
+  const normalizedDistance = Math.sqrt(
+    (Math.pow(diffDStar, 2) + Math.pow(diffMRatio, 2) + Math.pow(diffBias, 2) + Math.pow(diffIve, 2)) / 4
+  );
+
+  const similarity = Math.round(Math.max(0, Math.min(100, (1 - normalizedDistance) * 100)));
+  return similarity;
+}
+
