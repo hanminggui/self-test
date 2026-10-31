@@ -27,6 +27,9 @@ import {
   ChevronUp,
   LayoutGrid,
   List,
+  Lock,
+  EyeOff,
+  Globe,
 } from "lucide-react";
 import { useUser } from "./contexts/UserContext";
 import { useLocale } from "./contexts/LocaleContext";
@@ -42,6 +45,7 @@ import type { SubjectPoint } from "./types/admin";
 export const ProfileDashboard: React.FC = () => {
   const { user, loading: userLoading, openAuthModal, sessionSyncVersion } = useUser();
   const { locale, t } = useLocale();
+  const isEn = locale === "en-US";
 
   const [sessions, setSessions] = useState<SubjectPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +101,28 @@ export const ProfileDashboard: React.FC = () => {
       setLoading(false);
     }
   }, [user, locale, t]);
+
+  // Retroactively change session visibility (GitHub Issue #15)
+  const handleUpdateSessionVisibility = async (
+    sessionId: string,
+    newVis: "private" | "anonymous" | "public"
+  ) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, visibility: newVis } : s))
+    );
+    try {
+      const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/visibility`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibility: newVis }),
+      });
+      if (!res.ok) {
+        fetchSessions();
+      }
+    } catch {
+      fetchSessions();
+    }
+  };
 
   useEffect(() => {
     fetchSessions();
@@ -781,10 +807,70 @@ export const ProfileDashboard: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Right: Action Buttons (>=44px touch targets) */}
-                          <div className={`flex items-center gap-2 ${
+                          {/* Right: Action Buttons (>=44px touch targets) & Visibility Switcher */}
+                          <div className={`flex items-center flex-wrap gap-2 ${
                             timelineLayout === "single" ? "self-end lg:self-center" : "self-end"
                           } shrink-0`}>
+                            {/* Three-Tier Visibility Switcher (GitHub Issue #15) */}
+                            <div
+                              data-testid={`session-visibility-switcher-${session.id}`}
+                              className="flex items-center rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900/20 dark:border-white/20 p-0.5 shrink-0"
+                            >
+                              <button
+                                type="button"
+                                data-testid={`session-visibility-${session.id}-private`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateSessionVisibility(session.id, "private");
+                                }}
+                                title={isEn ? "Private (L1): Visible only to you" : "私密保护 (L1)：仅自己可见"}
+                                className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 transition-all cursor-pointer ${
+                                  session.visibility === "private"
+                                    ? "bg-[#FEF3C7] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border border-stone-900 dark:border-black shadow-[0_1px_0_#1c1917] dark:shadow-none"
+                                    : "text-stone-500 hover:text-stone-900 dark:text-slate-400 dark:hover:text-white"
+                                }`}
+                              >
+                                <Lock className="w-3 h-3" />
+                                <span className="text-[10px] sm:text-xs">{isEn ? "L1" : "私密"}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                data-testid={`session-visibility-${session.id}-anonymous`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateSessionVisibility(session.id, "anonymous");
+                                }}
+                                title={isEn ? "Anonymous (L2): Projected onto scatter with masked codename" : "匿名代号 (L2)：以匿名代号投影至大盘"}
+                                className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 transition-all cursor-pointer ${
+                                  (session.visibility || "anonymous") === "anonymous"
+                                    ? "bg-[#FEF3C7] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border border-stone-900 dark:border-black shadow-[0_1px_0_#1c1917] dark:shadow-none"
+                                    : "text-stone-500 hover:text-stone-900 dark:text-slate-400 dark:hover:text-white"
+                                }`}
+                              >
+                                <EyeOff className="w-3 h-3" />
+                                <span className="text-[10px] sm:text-xs">{isEn ? "L2" : "匿名"}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                data-testid={`session-visibility-${session.id}-public`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateSessionVisibility(session.id, "public");
+                                }}
+                                title={isEn ? "Public (L3): Shows verified avatar, name & profile" : "公开名片 (L3)：在大盘展示头像与主页"}
+                                className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 transition-all cursor-pointer ${
+                                  session.visibility === "public"
+                                    ? "bg-[#FEF3C7] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border border-stone-900 dark:border-black shadow-[0_1px_0_#1c1917] dark:shadow-none"
+                                    : "text-stone-500 hover:text-stone-900 dark:text-slate-400 dark:hover:text-white"
+                                }`}
+                              >
+                                <Globe className="w-3 h-3" />
+                                <span className="text-[10px] sm:text-xs">{isEn ? "L3" : "公开"}</span>
+                              </button>
+                            </div>
+
                             <button
                               type="button"
                               onClick={() => handleOpenPoster(session)}

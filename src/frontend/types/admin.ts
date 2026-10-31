@@ -26,7 +26,17 @@ export interface SubjectPoint {
   metrics: AssessmentMetrics;
   agent_metadata?: AgentExecutionMetadata;
   user_id?: string | null;
+  visibility?: "private" | "anonymous" | "public";
   avatar_url?: string | null;
+  profile_url?: string;
+  social?: {
+    user_id?: string;
+    display_name?: string;
+    avatar_url?: string | null;
+    profile_url?: string;
+    bio?: string;
+    social_links?: Record<string, string | undefined>;
+  };
   nickname?: string;
   similarity?: number;
   similarity_percentage?: number;

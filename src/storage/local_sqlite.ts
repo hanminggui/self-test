@@ -123,7 +123,8 @@ export class LocalSqliteAdapter implements StorageAdapter {
             coachability_index INTEGER NOT NULL,
             risk_attitude TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            user_id TEXT
+            user_id TEXT,
+            visibility TEXT NOT NULL DEFAULT 'anonymous'
           );
           CREATE TABLE IF NOT EXISTS session_records (
             session_id TEXT NOT NULL,
@@ -179,7 +180,8 @@ export class LocalSqliteAdapter implements StorageAdapter {
             start_time_ms INTEGER NOT NULL,
             agent_metadata_json TEXT,
             updated_at TEXT NOT NULL,
-            user_id TEXT
+            user_id TEXT,
+            visibility TEXT NOT NULL DEFAULT 'anonymous'
           );
           CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
@@ -292,6 +294,15 @@ export class LocalSqliteAdapter implements StorageAdapter {
     } catch {}
     try {
       this.db.exec("UPDATE completed_sessions SET subject_name = name WHERE subject_name IS NULL AND name IS NOT NULL;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN visibility TEXT;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE active_sessions ADD COLUMN visibility TEXT;");
+    } catch {}
+    try {
+      this.db.exec("CREATE INDEX IF NOT EXISTS idx_completed_sessions_visibility ON completed_sessions(visibility);");
     } catch {}
 
     // Auto-migrate historical records and metadata from legacy full_report_json

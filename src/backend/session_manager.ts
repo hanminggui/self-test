@@ -17,6 +17,7 @@ import {
   TrialRecord,
   FinalAssessmentReport,
   SubjectDataPoint,
+  SubjectSocialProfile,
   CohortScatterResponse,
   OctantDensityMetrics,
   TrialResponse,
@@ -34,8 +35,10 @@ import { PsychometricScorer } from "./metrics";
 import { ReportGenerator } from "./report_generator";
 import { mapLegacyArchetype, getArchetypeDefinition, classifyCognitiveArchetype } from "./archetype_matrix";
 import { compute4AFCdPrime } from "./math";
-import { generateSubjectCodename } from "./codename_generator";
+import { generateSubjectCodename, generateMaskedCodename } from "./codename_generator";
 import { getLocale, type SupportedLocale } from "../i18n";
+import type { SessionVisibilityPreference } from "../storage/user";
+import { validateVisibility } from "./user_validation";
 import { computeCognitiveSimilarity } from "../frontend/utils/manifoldUtils";
 
 export interface CohortScatterOptions {
@@ -49,6 +52,7 @@ export interface CohortScatterOptions {
 export interface SessionState {
   sessionId: string;
   userId?: string | null;
+  visibility: SessionVisibilityPreference;
   subjectType: string;
   subjectName: string;
   totalTrials: number;
@@ -189,8 +193,8 @@ export class SessionManager {
         task_generator_state_json, current_task_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        agent_metadata_json, updated_at, user_id, referrer_session_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        agent_metadata_json, updated_at, user_id, referrer_session_id, visibility
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
     const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
@@ -222,6 +226,7 @@ export class SessionManager {
       new Date().toISOString(),
       session.userId ?? null,
       referrerId,
+      session.visibility || "anonymous",
     ];
 
     if (this.storage.runSync) {
@@ -240,8 +245,8 @@ export class SessionManager {
         task_generator_state_json, current_task_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        agent_metadata_json, updated_at, user_id, referrer_session_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        agent_metadata_json, updated_at, user_id, referrer_session_id, visibility
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
     const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
@@ -273,6 +278,7 @@ export class SessionManager {
       new Date().toISOString(),
       session.userId ?? null,
       referrerId,
+      session.visibility || "anonymous",
     ];
     await this.storage.run(sql, params);
   }
@@ -345,6 +351,7 @@ export class SessionManager {
     const restored: SessionState = {
       sessionId: row.id,
       userId: row.user_id ?? null,
+      visibility: (row.visibility as SessionVisibilityPreference) || "anonymous",
       subjectType: row.subject_type,
       subjectName: row.subject_name,
       totalTrials: row.total_trials,
@@ -407,6 +414,7 @@ export class SessionManager {
   createSession(params: {
     sessionId?: string;
     userId?: string | null;
+    visibility?: SessionVisibilityPreference;
     referrerSessionId?: string | null;
     subjectName?: string;
     subjectType?: string;
@@ -421,6 +429,7 @@ export class SessionManager {
     const sid = params.sessionId || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const sName = params.subjectName?.trim() || SessionManager.generateRandomCodename();
     const subjectType = params.subjectType || SubjectType.HUMAN;
+    const visibility: SessionVisibilityPreference = params.visibility || params.metadata?.visibility || "anonymous";
     const totalTrials = params.totalTrials ?? 30;
     const warmupTrials = params.warmupTrials ?? 10;
     const initialDelta = params.initialDelta ?? 0.50;
@@ -452,12 +461,14 @@ export class SessionManager {
           total_tokens: 0,
         },
         locale: params.metadata?.locale || getLocale(),
+        visibility,
         ...(referrerId ? { referrer_session_id: referrerId } : {}),
         ...(params.metadata || {}),
       };
-    } else if (params.metadata || referrerId) {
+    } else if (params.metadata || referrerId || visibility) {
       sessionMetadata = {
         locale: params.metadata?.locale || getLocale(),
+        visibility,
         ...(referrerId ? { referrer_session_id: referrerId } : {}),
         ...(params.metadata || {}),
       };
@@ -466,6 +477,7 @@ export class SessionManager {
     const session: SessionState = {
       sessionId: sid,
       userId: params.userId ?? null,
+      visibility,
       subjectType,
       subjectName: sName,
       totalTrials,
@@ -498,6 +510,7 @@ export class SessionManager {
   async createSessionAsync(params: {
     sessionId?: string;
     userId?: string | null;
+    visibility?: SessionVisibilityPreference;
     referrerSessionId?: string | null;
     subjectName?: string;
     subjectType?: string;
@@ -965,6 +978,7 @@ export class SessionManager {
 
     report.total_duration_ms = session.startTimeMs ? Date.now() - session.startTimeMs : (session.metadata?.total_duration_ms ?? 0);
     report.user_id = session.userId ?? null;
+    report.visibility = session.visibility || "anonymous";
     report.avatar_url = (session.metadata as any)?.avatar_url ?? null;
     report.referrer_session_id = session.metadata?.referrer_session_id ?? null;
     report.records = session.records;
@@ -1013,8 +1027,8 @@ export class SessionManager {
         completed_trials, total_duration_ms, final_score, quadrant_code,
         first_order_accuracy, second_order_accuracy, reversals_count,
         d_star, d_prime, meta_d_prime, m_ratio, calibration_bias,
-        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, referrer_session_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, referrer_session_id, visibility
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       report.session_id,
@@ -1042,6 +1056,7 @@ export class SessionManager {
       session.createdAt,
       session.userId ?? null,
       referrerId,
+      session.visibility || "anonymous",
     ];
 
     if (this.storage.runSync) {
@@ -1111,8 +1126,8 @@ export class SessionManager {
         completed_trials, total_duration_ms, final_score, quadrant_code,
         first_order_accuracy, second_order_accuracy, reversals_count,
         d_star, d_prime, meta_d_prime, m_ratio, calibration_bias,
-        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, referrer_session_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, referrer_session_id, visibility
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       report.session_id,
@@ -1140,6 +1155,7 @@ export class SessionManager {
       session.createdAt,
       session.userId ?? null,
       referrerId,
+      session.visibility || "anonymous",
     ];
     await this.storage.run(insertSql, params);
 
@@ -1270,8 +1286,24 @@ export class SessionManager {
             this.storage.run(locSql, [metadata.locale, sessionId]).catch(() => {});
           }
         }
+        if (metadata.visibility) {
+          session.visibility = metadata.visibility;
+          session.finalReport.visibility = metadata.visibility;
+          const visSql = "UPDATE completed_sessions SET visibility = ? WHERE id = ?";
+          const actVisSql = "UPDATE active_sessions SET visibility = ? WHERE id = ?";
+          if (this.storage.runSync) {
+            this.storage.runSync(visSql, [metadata.visibility, sessionId]);
+            this.storage.runSync(actVisSql, [metadata.visibility, sessionId]);
+          } else {
+            this.storage.run(visSql, [metadata.visibility, sessionId]).catch(() => {});
+            this.storage.run(actVisSql, [metadata.visibility, sessionId]).catch(() => {});
+          }
+        }
         return session.finalReport;
       } else {
+        if (metadata.visibility) {
+          session.visibility = metadata.visibility;
+        }
         this.saveActiveSession(session);
         return undefined;
       }
@@ -1281,6 +1313,141 @@ export class SessionManager {
 
   async updateSessionMetadataAsync(sessionId: string, metadata: Partial<SessionExecutionMetadata>): Promise<FinalAssessmentReport | undefined> {
     return this.updateSessionMetadata(sessionId, metadata);
+  }
+
+  updateSessionVisibility(
+    sessionId: string,
+    visibility: SessionVisibilityPreference,
+    callerUserId?: string | null,
+    isAdmin?: boolean
+  ): { success: boolean; id: string; visibility: SessionVisibilityPreference } {
+    const v = validateVisibility(visibility);
+    if (!v.valid || !visibility) {
+      throw new Error(v.error || "Invalid visibility preference. Must be 'private', 'anonymous', or 'public'.");
+    }
+
+    let existingUserId: string | null = null;
+    let found = false;
+
+    if (this.storage.querySync) {
+      const compRows = this.storage.querySync<any>(
+        "SELECT id, user_id, visibility FROM completed_sessions WHERE id = ?",
+        [sessionId]
+      );
+      if (compRows && compRows.length > 0) {
+        existingUserId = compRows[0].user_id ?? null;
+        found = true;
+      }
+    }
+
+    const memSession = this.sessions.get(sessionId);
+    if (memSession) {
+      existingUserId = memSession.userId ?? existingUserId;
+      found = true;
+    }
+
+    if (!found && this.storage.querySync) {
+      const actRows = this.storage.querySync<any>(
+        "SELECT id, user_id, visibility FROM active_sessions WHERE id = ?",
+        [sessionId]
+      );
+      if (actRows && actRows.length > 0) {
+        existingUserId = actRows[0].user_id ?? null;
+        found = true;
+      }
+    }
+
+    if (!found) {
+      throw new Error(`Session '${sessionId}' not found.`);
+    }
+
+    if (existingUserId && callerUserId && existingUserId !== callerUserId && !isAdmin) {
+      throw new Error("Unauthorized to modify visibility of this session.");
+    }
+    if (existingUserId && !callerUserId && !isAdmin) {
+      throw new Error("Authentication required to modify visibility of an owned session.");
+    }
+
+    if (this.storage.runSync) {
+      this.storage.runSync("UPDATE completed_sessions SET visibility = ? WHERE id = ?", [visibility, sessionId]);
+      this.storage.runSync("UPDATE active_sessions SET visibility = ? WHERE id = ?", [visibility, sessionId]);
+    } else {
+      this.storage.run("UPDATE completed_sessions SET visibility = ? WHERE id = ?", [visibility, sessionId]).catch(() => {});
+      this.storage.run("UPDATE active_sessions SET visibility = ? WHERE id = ?", [visibility, sessionId]).catch(() => {});
+    }
+
+    if (memSession) {
+      memSession.visibility = visibility;
+      if (memSession.finalReport) {
+        memSession.finalReport.visibility = visibility;
+      }
+    }
+
+    return { success: true, id: sessionId, visibility };
+  }
+
+  async updateSessionVisibilityAsync(
+    sessionId: string,
+    visibility: SessionVisibilityPreference,
+    callerUserId?: string | null,
+    isAdmin?: boolean
+  ): Promise<{ success: boolean; id: string; visibility: SessionVisibilityPreference }> {
+    const v = validateVisibility(visibility);
+    if (!v.valid || !visibility) {
+      throw new Error(v.error || "Invalid visibility preference. Must be 'private', 'anonymous', or 'public'.");
+    }
+
+    let existingUserId: string | null = null;
+    let found = false;
+
+    const compRows = (await this.storage.query<any>(
+      "SELECT id, user_id, visibility FROM completed_sessions WHERE id = ?",
+      [sessionId]
+    )) as any[];
+    if (compRows && compRows.length > 0) {
+      existingUserId = compRows[0].user_id ?? null;
+      found = true;
+    }
+
+    const memSession = this.sessions.get(sessionId);
+    if (memSession) {
+      existingUserId = memSession.userId ?? existingUserId;
+      found = true;
+    }
+
+    if (!found) {
+      const actRows = (await this.storage.query<any>(
+        "SELECT id, user_id, visibility FROM active_sessions WHERE id = ?",
+        [sessionId]
+      )) as any[];
+      if (actRows && actRows.length > 0) {
+        existingUserId = actRows[0].user_id ?? null;
+        found = true;
+      }
+    }
+
+    if (!found) {
+      throw new Error(`Session '${sessionId}' not found.`);
+    }
+
+    if (existingUserId && callerUserId && existingUserId !== callerUserId && !isAdmin) {
+      throw new Error("Unauthorized to modify visibility of this session.");
+    }
+    if (existingUserId && !callerUserId && !isAdmin) {
+      throw new Error("Authentication required to modify visibility of an owned session.");
+    }
+
+    await this.storage.run("UPDATE completed_sessions SET visibility = ? WHERE id = ?", [visibility, sessionId]);
+    await this.storage.run("UPDATE active_sessions SET visibility = ? WHERE id = ?", [visibility, sessionId]);
+
+    if (memSession) {
+      memSession.visibility = visibility;
+      if (memSession.finalReport) {
+        memSession.finalReport.visibility = visibility;
+      }
+    }
+
+    return { success: true, id: sessionId, visibility };
   }
 
   deleteSession(sessionId: string): boolean {
@@ -1456,6 +1623,7 @@ export class SessionManager {
       metadata: legacyMetadata,
       records,
       user_id: row.user_id ?? null,
+      visibility: (row.visibility as SessionVisibilityPreference) || "anonymous",
       referrer_session_id: row.referrer_session_id ?? null,
 
       // Transitional wrappers
@@ -1512,7 +1680,7 @@ export class SessionManager {
   ] as const;
 
   private static readonly OCTANT_AGGREGATE_SQL = `
-    SELECT 
+    SELECT
       COALESCE(c.quadrant_code, 'Q1-CAL') as quadrant_code,
       COUNT(*) as count,
       AVG(c.d_star) as avg_d_star,
@@ -1522,14 +1690,16 @@ export class SessionManager {
       MAX(0.0, AVG(c.m_ratio * c.m_ratio) - AVG(c.m_ratio) * AVG(c.m_ratio)) as var_m_ratio,
       MAX(0.0, AVG(c.final_score * c.final_score) - AVG(c.final_score) * AVG(c.final_score)) as var_score
     FROM completed_sessions c
+    WHERE (c.visibility IS NULL OR c.visibility != 'private')
     GROUP BY COALESCE(c.quadrant_code, 'Q1-CAL')
   `;
 
   private static readonly FALLBACK_SESSIONS_SQL = `
-    SELECT 
+    SELECT
       c.*,
       u.display_name as user_display_name,
       u.avatar_url as user_avatar_url,
+      u.metadata_json as user_metadata_json,
       a.model_name as agent_model,
       a.persona as agent_persona,
       a.thinking_effort as agent_effort,
@@ -1547,30 +1717,34 @@ export class SessionManager {
 
   private static readonly SPATIAL_SAMPLING_CTE_SQL = `
     WITH BucketRanked AS (
-      SELECT 
+      SELECT
+        c.rowid as row_id,
         c.*,
         COALESCE(c.quadrant_code, 'Q1-CAL') as norm_quadrant_code,
         NTILE(?) OVER (
-          PARTITION BY COALESCE(c.quadrant_code, 'Q1-CAL') 
+          PARTITION BY COALESCE(c.quadrant_code, 'Q1-CAL')
           ORDER BY COALESCE(c.d_star, 0.5) ASC, COALESCE(c.m_ratio, 0.8) ASC
         ) as spatial_bucket
       FROM completed_sessions c
+      WHERE (c.visibility IS NULL OR c.visibility != 'private')
     ),
     RankedWithinBucket AS (
-      SELECT 
+      SELECT
         b.*,
         ROW_NUMBER() OVER (
-          PARTITION BY b.norm_quadrant_code, b.spatial_bucket 
-          ORDER BY 
+          PARTITION BY b.norm_quadrant_code, b.spatial_bucket
+          ORDER BY
             CASE WHEN b.id = ? THEN 0 ELSE 1 END,
-            b.created_at DESC
+            b.created_at DESC,
+            b.row_id DESC
         ) as bucket_rank
       FROM BucketRanked b
     )
-    SELECT 
+    SELECT
       r.*,
       u.display_name as user_display_name,
       u.avatar_url as user_avatar_url,
+      u.metadata_json as user_metadata_json,
       a.model_name as agent_model,
       a.persona as agent_persona,
       a.thinking_effort as agent_effort,
@@ -1604,11 +1778,13 @@ export class SessionManager {
         return this.buildCohortScatterResponse([], [], currentSessionId, targetLocale, budget, false, options);
       }
       const placeholders = options.filterUserIds.map(() => "?").join(",");
+      const currentUserId = options.currentUserId || "";
       const filterSql = `
-        SELECT 
+        SELECT
           c.*,
           u.display_name as user_display_name,
           u.avatar_url as user_avatar_url,
+          u.metadata_json as user_metadata_json,
           a.model_name as agent_model,
           a.persona as agent_persona,
           a.thinking_effort as agent_effort,
@@ -1622,9 +1798,11 @@ export class SessionManager {
         LEFT JOIN users u ON c.user_id = u.id
         LEFT JOIN session_agent_metadata a ON c.id = a.session_id
         WHERE c.user_id IN (${placeholders})
+          AND (c.visibility IS NULL OR c.visibility != 'private' OR c.user_id = ?)
         ORDER BY c.created_at DESC
       `;
-      const rows = (this.storage.querySync ? this.storage.querySync(filterSql, options.filterUserIds) : []) || [];
+      const queryParams = [...options.filterUserIds, currentUserId];
+      const rows = (this.storage.querySync ? this.storage.querySync(filterSql, queryParams) : []) || [];
       return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, budget, false, options);
     }
 
@@ -1663,11 +1841,13 @@ export class SessionManager {
         return this.buildCohortScatterResponse([], [], currentSessionId, targetLocale, budget, false, options);
       }
       const placeholders = options.filterUserIds.map(() => "?").join(",");
+      const currentUserId = options.currentUserId || "";
       const filterSql = `
-        SELECT 
+        SELECT
           c.*,
           u.display_name as user_display_name,
           u.avatar_url as user_avatar_url,
+          u.metadata_json as user_metadata_json,
           a.model_name as agent_model,
           a.persona as agent_persona,
           a.thinking_effort as agent_effort,
@@ -1681,9 +1861,11 @@ export class SessionManager {
         LEFT JOIN users u ON c.user_id = u.id
         LEFT JOIN session_agent_metadata a ON c.id = a.session_id
         WHERE c.user_id IN (${placeholders})
+          AND (c.visibility IS NULL OR c.visibility != 'private' OR c.user_id = ?)
         ORDER BY c.created_at DESC
       `;
-      const rows = (await this.storage.query(filterSql, options.filterUserIds)) || [];
+      const queryParams = [...options.filterUserIds, currentUserId];
+      const rows = (await this.storage.query(filterSql, queryParams)) || [];
       return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, budget, false, options);
     }
 
@@ -1714,13 +1896,13 @@ export class SessionManager {
     const targetLocale = locale || getLocale();
     if (!this.storage.querySync) return [];
     const rows = (this.storage.querySync(SessionManager.FALLBACK_SESSIONS_SQL) || []) as any[];
-    return this.mapRowsToSubjects(rows, undefined, targetLocale);
+    return this.mapRowsToSubjects(rows, undefined, targetLocale, false);
   }
 
   public async getAllCompletedSessionsAsync(locale?: SupportedLocale): Promise<SubjectDataPoint[]> {
     const targetLocale = locale || getLocale();
     const rows = ((await this.storage.query(SessionManager.FALLBACK_SESSIONS_SQL)) || []) as any[];
-    return this.mapRowsToSubjects(rows, undefined, targetLocale);
+    return this.mapRowsToSubjects(rows, undefined, targetLocale, false);
   }
 
   private buildCohortScatterResponse(
@@ -1730,9 +1912,12 @@ export class SessionManager {
     targetLocale: SupportedLocale,
     budgetPerOctant: number,
     usedSqlSampling: boolean,
-    options?: CohortScatterOptions
+    options?: CohortScatterOptions,
+    isPublicScatter?: boolean
   ): CohortScatterResponse {
-    let subjects = this.mapRowsToSubjects(rows, currentSessionId, targetLocale);
+    const isPublic =
+      isPublicScatter !== undefined ? isPublicScatter : !options?.scope || options.scope === "global";
+    let subjects = this.mapRowsToSubjects(rows, currentSessionId, targetLocale, isPublic, options?.currentUserId);
 
     let totalCount = 0;
     let meanX = 0.5;
@@ -1755,7 +1940,15 @@ export class SessionManager {
       }
     } else {
       // In-memory aggregation fallback
-      const inMem = this.computeInMemoryAggregates(rows);
+      const inMemRows = isPublic
+        ? rows.filter(
+            (r) =>
+              !r.visibility ||
+              r.visibility !== "private" ||
+              (options?.currentUserId && r.user_id === options.currentUserId)
+          )
+        : rows;
+      const inMem = this.computeInMemoryAggregates(inMemRows);
       totalCount = inMem.totalCount;
       aggRows = inMem.aggRows;
       meanX = inMem.meanX;
@@ -1770,8 +1963,9 @@ export class SessionManager {
     // Check if current session is active in memory and not yet saved
     if (currentSessionId && !subjects.some((s) => s.id === currentSessionId)) {
       const active = this.getSession(currentSessionId);
-      if (active && active.records.length > 0) {
-        const activeSubject = this.assembleActiveSubject(active, targetLocale);
+      const isOwner = Boolean(options?.currentUserId && active && active.userId === options.currentUserId);
+      if (active && active.records.length > 0 && (!isPublic || active.visibility !== "private" || isOwner)) {
+        const activeSubject = this.assembleActiveSubject(active, targetLocale, isPublic, isOwner);
         subjects.unshift(activeSubject);
         totalCount += 1;
         const foundAgg = aggRows.find((a) => a.quadrant_code === activeSubject.quadrant_code);
@@ -1879,23 +2073,37 @@ export class SessionManager {
   private assembleCohortScatterFromRows(
     rows: any[],
     currentSessionId: string | undefined,
-    targetLocale: SupportedLocale
+    targetLocale: SupportedLocale,
+    isPublicScatter: boolean = true
   ): CohortScatterResponse {
-    return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, 10, false);
+    return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, 10, false, undefined, isPublicScatter);
   }
 
   private mapRowsToSubjects(
     rows: any[],
     currentSessionId: string | undefined,
-    targetLocale: SupportedLocale
+    targetLocale: SupportedLocale,
+    isPublicScatter: boolean = true,
+    currentUserId?: string | null
   ): SubjectDataPoint[] {
-    return rows.map((r) => this.mapRowToSubjectDataPoint(r, targetLocale, currentSessionId));
+    const list: SubjectDataPoint[] = [];
+    for (const r of rows) {
+      const vis: SessionVisibilityPreference | undefined = r.visibility || undefined;
+      const isOwner = Boolean(currentUserId && r.user_id === currentUserId);
+      if (isPublicScatter && vis === "private" && !isOwner) {
+        continue;
+      }
+      list.push(this.mapRowToSubjectDataPoint(r, targetLocale, currentSessionId, isPublicScatter, isOwner));
+    }
+    return list;
   }
 
   private mapRowToSubjectDataPoint(
     r: any,
     targetLocale: SupportedLocale,
-    currentSessionId?: string
+    currentSessionId?: string,
+    isPublicScatter: boolean = true,
+    isOwner: boolean = false
   ): SubjectDataPoint {
     const quadrantCode = r.quadrant_code || "Q1-CAL";
     const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
@@ -1938,14 +2146,68 @@ export class SessionManager {
       };
     }
 
-    const displayName = r.user_display_name || r.subject_name || r.name || "受测者";
-    const avatarUrl = r.user_avatar_url || null;
+    const vis: SessionVisibilityPreference | undefined = r.visibility || undefined;
+    let displayName = r.subject_name || r.name || "受测者";
+    let userId: string | null = r.user_id ?? null;
+    let avatarUrl: string | null | undefined = undefined;
+    let profileUrl: string | undefined = undefined;
+    let social: SubjectSocialProfile | undefined = undefined;
+
+    if (isPublicScatter && !isOwner) {
+      if (vis === "anonymous") {
+        if (r.subject_type === SubjectType.HUMAN) {
+          displayName = generateMaskedCodename(r.id, targetLocale);
+        }
+        userId = null;
+        avatarUrl = undefined;
+      } else if (vis === "public") {
+        let userMeta: any;
+        if (r.user_metadata_json) {
+          try {
+            userMeta = typeof r.user_metadata_json === "string" ? JSON.parse(r.user_metadata_json) : r.user_metadata_json;
+          } catch {}
+        }
+        displayName = r.user_display_name || userMeta?.display_name || r.subject_name || "受测者";
+        avatarUrl = userMeta?.custom_avatar || r.user_avatar_url || null;
+        profileUrl = r.user_id ? `/user/${r.user_id}` : undefined;
+        social = {
+          user_id: r.user_id || "",
+          display_name: displayName,
+          avatar_url: avatarUrl,
+          profile_url: profileUrl,
+          bio: userMeta?.bio,
+          social_links: userMeta?.social_links,
+        };
+      }
+    } else {
+      let userMeta: any;
+      if (r.user_metadata_json) {
+        try {
+          userMeta = typeof r.user_metadata_json === "string" ? JSON.parse(r.user_metadata_json) : r.user_metadata_json;
+        } catch {}
+      }
+      displayName = r.user_display_name || userMeta?.display_name || r.subject_name || r.name || "受测者";
+      avatarUrl = userMeta?.custom_avatar || r.user_avatar_url || null;
+      if (r.user_id) {
+        profileUrl = `/user/${r.user_id}`;
+        social = {
+          user_id: r.user_id,
+          display_name: displayName,
+          avatar_url: avatarUrl,
+          profile_url: profileUrl,
+          bio: userMeta?.bio,
+          social_links: userMeta?.social_links,
+        };
+      }
+    }
 
     return {
       id: r.id,
       name: displayName,
       nickname: displayName,
       avatar_url: avatarUrl,
+      profile_url: profileUrl,
+      social,
       subject_type: r.subject_type,
       locale: (r.locale as SupportedLocale) || targetLocale,
       created_at: r.created_at,
@@ -1960,11 +2222,13 @@ export class SessionManager {
       is_current: r.id === currentSessionId,
       metrics,
       agent_metadata: agentMetadata,
-      user_id: r.user_id ?? null,
+      user_id: userId,
+      visibility: vis,
 
       // Legacy fields for backward compatibility
       metadata: {
         locale: (r.locale as SupportedLocale) || targetLocale,
+        visibility: vis,
         ...(agentMetadata || {}),
       },
       first_order_accuracy: r.first_order_accuracy,
@@ -1985,7 +2249,12 @@ export class SessionManager {
     };
   }
 
-  private assembleActiveSubject(active: SessionState, targetLocale: SupportedLocale): SubjectDataPoint {
+  private assembleActiveSubject(
+    active: SessionState,
+    targetLocale: SupportedLocale,
+    isPublicScatter: boolean = true,
+    isOwner: boolean = false
+  ): SubjectDataPoint {
     const evalRecords = active.records.filter((r) => !r.is_warmup);
     const target = evalRecords.length > 0 ? evalRecords : active.records;
     const firstAcc = target.filter((r) => r.is_correct_first_order).length / (target.length || 1);
@@ -2029,9 +2298,37 @@ export class SessionManager {
       ccs,
     };
 
+    let activeDisplayName = active.subjectName;
+    let activeUserId: string | null = active.userId ?? null;
+    let activeAvatarUrl: string | null | undefined = (active.metadata as any)?.avatar_url || undefined;
+    let activeProfileUrl: string | undefined = undefined;
+    let activeSocial: SubjectSocialProfile | undefined = undefined;
+
+    if (isPublicScatter && !isOwner) {
+      if (active.visibility === "anonymous") {
+        if (active.subjectType === SubjectType.HUMAN) {
+          activeDisplayName = generateMaskedCodename(active.sessionId, targetLocale);
+        }
+        activeUserId = null;
+        activeAvatarUrl = undefined;
+      } else if (active.visibility === "public" && active.userId) {
+        activeProfileUrl = `/user/${active.userId}`;
+        activeSocial = {
+          user_id: active.userId,
+          display_name: activeDisplayName,
+          avatar_url: activeAvatarUrl,
+          profile_url: activeProfileUrl,
+        };
+      }
+    }
+
     return {
       id: active.sessionId,
-      name: active.subjectName,
+      name: activeDisplayName,
+      nickname: activeDisplayName,
+      avatar_url: activeAvatarUrl,
+      profile_url: activeProfileUrl,
+      social: activeSocial,
       subject_type: active.subjectType,
       locale: targetLocale,
       created_at: active.createdAt,
@@ -2045,9 +2342,14 @@ export class SessionManager {
       quadrant_code: def.quadrant_code,
       is_current: true,
       metrics: activeMetrics,
-      user_id: active.userId ?? null,
+      user_id: activeUserId,
+      visibility: active.visibility || "anonymous",
 
       // Legacy fields
+      metadata: {
+        locale: targetLocale,
+        visibility: active.visibility || "anonymous",
+      },
       first_order_accuracy: activeMetrics.first_order_accuracy,
       second_order_accuracy: activeMetrics.second_order_accuracy,
       d_prime: activeMetrics.d_prime,
@@ -2237,7 +2539,7 @@ export class SessionManager {
     const targetLocale = locale || getLocale();
     if (!this.storage.querySync) return [];
     const sql = `
-      SELECT 
+      SELECT
         c.*,
         a.model_name as agent_model,
         a.persona as agent_persona,
@@ -2254,13 +2556,13 @@ export class SessionManager {
       ORDER BY c.created_at DESC
     `;
     const rows = this.storage.querySync(sql, [userId]) as any[];
-    return this.assembleCohortScatterFromRows(rows, undefined, targetLocale).subjects;
+    return this.assembleCohortScatterFromRows(rows, undefined, targetLocale, false).subjects;
   }
 
   public async getUserSessionsAsync(userId: string, locale?: SupportedLocale): Promise<SubjectDataPoint[]> {
     const targetLocale = locale || getLocale();
     const sql = `
-      SELECT 
+      SELECT
         c.*,
         a.model_name as agent_model,
         a.persona as agent_persona,
@@ -2277,7 +2579,7 @@ export class SessionManager {
       ORDER BY c.created_at DESC
     `;
     const rows = (await this.storage.query(sql, [userId])) as any[];
-    return this.assembleCohortScatterFromRows(rows, undefined, targetLocale).subjects;
+    return this.assembleCohortScatterFromRows(rows, undefined, targetLocale, false).subjects;
   }
 
   public async claimGuestSessionsAsync(

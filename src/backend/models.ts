@@ -5,6 +5,18 @@
  */
 
 import type { SupportedLocale } from "../i18n";
+import type { SessionVisibilityPreference } from "../storage/user";
+
+export type SessionVisibility = SessionVisibilityPreference;
+
+export interface SubjectSocialProfile {
+  user_id: string;
+  display_name: string;
+  avatar_url?: string | null;
+  profile_url?: string;
+  bio?: string;
+  social_links?: Record<string, string | undefined>;
+}
 
 export enum PhaseType {
   PHASE_1_FIRST_ORDER = "PHASE_1_FIRST_ORDER",
@@ -127,6 +139,7 @@ export interface SessionExecutionMetadata {
   warmup_trials?: number;
   token_usage?: TokenUsageStats;
   locale?: SupportedLocale;
+  visibility?: SessionVisibility;
   referrer_id?: string;
   source_session_id?: string;
   referrer_session_id?: string;
@@ -238,6 +251,7 @@ export interface FinalAssessmentReport {
   agent_metadata?: AgentExecutionMetadata;
   records?: TrialRecord[];
   user_id?: string | null;
+  visibility?: SessionVisibility;
   referrer_session_id?: string | null;
 
   // Transitional optional getters/properties for backwards compatibility until Issue #35
@@ -280,7 +294,10 @@ export interface SubjectDataPoint {
   metrics: AssessmentMetrics;
   agent_metadata?: AgentExecutionMetadata;
   user_id?: string | null;
+  visibility?: SessionVisibility;
   avatar_url?: string | null;
+  profile_url?: string;
+  social?: SubjectSocialProfile;
   nickname?: string;
   similarity?: number;
   similarity_percentage?: number;
