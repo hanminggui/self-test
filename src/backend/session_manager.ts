@@ -182,7 +182,8 @@ export class SessionManager {
         agent_metadata_json, updated_at, user_id, referrer_session_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const agentMetadata = session.metadata ? JSON.stringify(session.metadata) : null;
+    const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
+    const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
     const locale = session.metadata?.locale || getLocale();
     const referrerId = session.metadata?.referrer_session_id || null;
 
@@ -232,7 +233,8 @@ export class SessionManager {
         agent_metadata_json, updated_at, user_id, referrer_session_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const agentMetadata = session.metadata ? JSON.stringify(session.metadata) : null;
+    const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
+    const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
     const locale = session.metadata?.locale || getLocale();
     const referrerId = session.metadata?.referrer_session_id || null;
 
@@ -423,7 +425,7 @@ export class SessionManager {
     const startTimeMs = Date.now();
 
     let sessionMetadata: SessionExecutionMetadata | undefined = undefined;
-    if (subjectType !== SubjectType.HUMAN || params.persona || params.thinkingEffort || params.metadata || referrerId) {
+    if (subjectType !== SubjectType.HUMAN || params.persona || params.thinkingEffort) {
       sessionMetadata = {
         model_name: params.metadata?.model_name || (subjectType !== SubjectType.HUMAN ? sName : undefined),
         persona: params.persona || params.metadata?.persona,
@@ -442,6 +444,11 @@ export class SessionManager {
         locale: params.metadata?.locale || getLocale(),
         ...(referrerId ? { referrer_session_id: referrerId } : {}),
         ...(params.metadata || {}),
+      };
+    } else if (params.metadata || referrerId) {
+      sessionMetadata = {
+        locale: params.metadata?.locale || getLocale(),
+        ...(referrerId ? { referrer_session_id: referrerId } : {}),
       };
     }
 

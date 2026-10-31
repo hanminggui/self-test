@@ -217,7 +217,7 @@ export const SharePage: React.FC = () => {
                 onClick={handleStartDuel}
                 type="button"
                 data-testid="header-duel-btn"
-                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl text-xs sm:text-sm font-black bg-rose-500 hover:bg-rose-600 dark:bg-rose-500 dark:hover:brightness-110 text-white border-2 border-stone-900 dark:border-rose-400 shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] flex items-center gap-1 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer min-h-[38px] sm:min-h-[40px]"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl text-xs sm:text-sm font-black bg-rose-500 hover:bg-rose-600 dark:bg-rose-500 dark:hover:brightness-110 text-white border-2 border-stone-900 dark:border-rose-400 shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] flex items-center gap-1 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer min-h-[44px]"
               >
                 <Swords className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                 <span className="hidden sm:inline">{isEn ? `Duel with ${friendName}` : `与 ${friendName} 对决`}</span>
@@ -229,7 +229,7 @@ export const SharePage: React.FC = () => {
             <button
               onClick={handleStartMyTest}
               type="button"
-              className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl text-xs sm:text-sm font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] flex items-center gap-1 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer min-h-[38px] sm:min-h-[40px]"
+              className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl text-xs sm:text-sm font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] flex items-center gap-1 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer min-h-[44px]"
             >
               <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-stone-950 dark:text-[#08080C]" />
               <span className="hidden xs:inline">{isEn ? "Test Now" : "测测我的认知"}</span>
@@ -555,7 +555,7 @@ export const SharePage: React.FC = () => {
                 <button
                   onClick={handleStartMyTest}
                   type="button"
-                  className="w-full sm:w-auto px-6 py-3 rounded-2xl text-sm font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] inline-flex items-center justify-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer min-h-[40px]"
+                  className="w-full sm:w-auto px-6 py-3 rounded-2xl text-sm font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] inline-flex items-center justify-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer min-h-[44px]"
                 >
                   <Sparkles className="w-4 h-4 text-stone-950 dark:text-[#08080C]" />
                   <span>{isEn ? "Test My Metacognition Now" : "测测我的认知 · 自主评测"}</span>

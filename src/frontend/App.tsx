@@ -49,6 +49,7 @@ import {
   getLastCompletedSession,
   canGuestStartNewSession,
   getReferrerSessionId,
+  clearReferrerSessionId,
   buildDuelUrl,
 } from "./utils/sessionRoute";
 import { triggerNativeShare } from "./utils/shareUtils";
@@ -619,6 +620,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     (repData: ReportData, targetSessionId: string) => {
       setReport(repData);
       setStage("REPORT");
+      clearReferrerSessionId();
       playSound("report_reveal");
       if (!user) {
         saveLastCompletedSession(targetSessionId);
@@ -1678,12 +1680,49 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 </p>
               </div>
 
+              {/* 双星对决应战成功提示横幅 */}
+              {(() => {
+                const duelReferrerId = displayReport.referrer_session_id || getReferrerSessionId();
+                if (!duelReferrerId || duelReferrerId === displayReport.session_id) return null;
+                return (
+                  <div className="w-full max-w-xl mx-auto p-4 rounded-2xl bg-gradient-to-r from-rose-500/15 via-amber-500/10 to-rose-500/15 border-2 border-rose-500/40 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <Swords className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs sm:text-sm font-black text-rose-600 dark:text-rose-400">
+                          {isEn ? "Cognitive Twin Duel Ready!" : "双星对决战报已就绪！"}
+                        </div>
+                        <div className="text-[11px] text-stone-600 dark:text-slate-300">
+                          {isEn
+                            ? "Compare your 4D cognitive manifold against your challenger and export the joint poster."
+                            : "你已完成应战！立即比对双方 4D 认知流形并生成双星联名战报海报。"}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const duelPath = buildDuelUrl(duelReferrerId, displayReport.session_id);
+                        navigateTo(duelPath);
+                      }}
+                      className="w-full sm:w-auto shrink-0 min-h-[44px] px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm cursor-pointer transition-all active:scale-95"
+                    >
+                      <Swords className="w-4 h-4" />
+                      <span>{isEn ? "Open Duel Report" : "开启双星战报"}</span>
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* 按钮区 */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 pt-4 w-full max-w-xl mx-auto">
                 {user ? (
                   <button
                     type="button"
                     onClick={() => {
+                      clearReferrerSessionId();
                       setStage("WELCOME");
                       setReport(null);
                       setTrialData(null);

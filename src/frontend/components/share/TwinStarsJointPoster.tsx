@@ -186,7 +186,10 @@ export const TwinStarsJointPoster: React.FC<TwinStarsJointPosterProps> = ({
                   {nameA}
                 </h3>
               </div>
-              <span className="text-2xl">{mythicA.baguaSymbol || "☰"}</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-mono text-xs font-bold shadow-sm">
+                <span className="text-sm">{isEn ? (arcaneA.crestSymbol || "⚔️") : "✦"}</span>
+                <span className="tracking-wider">{isEn ? arcaneA.sealText : mythicA.sealText}</span>
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -223,7 +226,10 @@ export const TwinStarsJointPoster: React.FC<TwinStarsJointPosterProps> = ({
                   {nameB}
                 </h3>
               </div>
-              <span className="text-2xl">{mythicB.baguaSymbol || "☷"}</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 font-mono text-xs font-bold shadow-sm">
+                <span className="text-sm">{isEn ? (arcaneB.crestSymbol || "🛡️") : "✦"}</span>
+                <span className="tracking-wider">{isEn ? arcaneB.sealText : mythicB.sealText}</span>
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -318,7 +324,7 @@ export const TwinStarsJointPoster: React.FC<TwinStarsJointPosterProps> = ({
           type="button"
           onClick={handleDownload}
           disabled={downloading}
-          className="px-5 py-3 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all disabled:opacity-60"
+          className="min-h-[44px] px-5 py-3 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all disabled:opacity-60"
         >
           <Download className="w-4 h-4" />
           <span>{downloading ? (isEn ? "Generating..." : "生成中...") : (isEn ? "Download Joint Poster" : "保存双星海报 (PNG)")}</span>
@@ -328,7 +334,7 @@ export const TwinStarsJointPoster: React.FC<TwinStarsJointPosterProps> = ({
         <button
           type="button"
           onClick={handleCopyLink}
-          className="px-4 py-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all"
+          className="min-h-[44px] px-4 py-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all"
         >
           {copiedLink ? <Check className="w-4 h-4 text-emerald-600 dark:text-[#CCFF00]" /> : <Copy className="w-4 h-4" />}
           <span>{copiedLink ? (isEn ? "Link Copied!" : "链接已复制！") : (isEn ? "Copy Duel Link" : "复制对决链接")}</span>
@@ -338,7 +344,7 @@ export const TwinStarsJointPoster: React.FC<TwinStarsJointPosterProps> = ({
         <button
           type="button"
           onClick={handleCopyShareText}
-          className="px-4 py-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all"
+          className="min-h-[44px] px-4 py-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all"
         >
           {copiedText ? <Check className="w-4 h-4 text-emerald-600 dark:text-[#CCFF00]" /> : <Share2 className="w-4 h-4" />}
           <span>{copiedText ? (isEn ? "Report Copied!" : "战报文案已复制！") : (isEn ? "Copy Forum Text" : "复制论坛战报")}</span>
@@ -348,7 +354,7 @@ export const TwinStarsJointPoster: React.FC<TwinStarsJointPosterProps> = ({
         <button
           type="button"
           onClick={handleCopyImage}
-          className="px-4 py-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all"
+          className="min-h-[44px] px-4 py-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all"
         >
           {copiedImage ? <Check className="w-4 h-4 text-emerald-600 dark:text-[#CCFF00]" /> : <Copy className="w-4 h-4" />}
           <span>{copiedImage ? (isEn ? "Image Copied!" : "海报已复制！") : (isEn ? "Copy Image" : "复制海报图")}</span>
@@ -358,7 +364,7 @@ export const TwinStarsJointPoster: React.FC<TwinStarsJointPosterProps> = ({
         <button
           type="button"
           onClick={handleNativeShare}
-          className="px-4 py-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all sm:hidden"
+          className="min-h-[44px] px-4 py-3 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none flex items-center gap-2 cursor-pointer transition-all sm:hidden"
         >
           <Share2 className="w-4 h-4" />
           <span>{isEn ? "Share" : "系统分享"}</span>
@@ -374,7 +380,7 @@ export const TwinStarsJointPoster: React.FC<TwinStarsJointPosterProps> = ({
           <button
             type="button"
             onClick={onChallenge}
-            className="px-6 py-3.5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] inline-flex items-center gap-2 cursor-pointer active:translate-y-0.5 active:shadow-none transition-all"
+            className="min-h-[44px] px-6 py-3.5 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] inline-flex items-center gap-2 cursor-pointer active:translate-y-0.5 active:shadow-none transition-all"
           >
             <Sparkles className="w-4 h-4" />
             <span>{isEn ? "Start Free Assessment Now" : "立即开启我的认知测试"}</span>

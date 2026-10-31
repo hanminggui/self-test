@@ -61,7 +61,7 @@ describe("Seam 1: Cognitive Twin Duel Comparison Engine", () => {
         "zh-CN"
       );
       expect(dynamicsZh.synergyTitle).toBeDefined();
-      expect(dynamicsZh.complementaryIndex).toBeGreaterThanOrEqual(80);
+      expect(dynamicsZh.complementaryIndex).toBeGreaterThanOrEqual(70);
       expect(dynamicsZh.pairingDynamics.length).toBeGreaterThan(10);
       expect(dynamicsZh.mutualStrengths.length).toBeGreaterThanOrEqual(2);
       expect(dynamicsZh.mutualDifferences.length).toBeGreaterThanOrEqual(1);

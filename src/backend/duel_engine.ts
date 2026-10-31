@@ -119,9 +119,9 @@ interface PairingMeta {
  * Pre-calibrated pairing metadata for key cognitive pairings
  */
 const PAIRING_CATALOG: Record<string, PairingMeta> = {
-  // 1. Same-Archetype Symmetric Pairings
+  // 1. Same-Archetype Symmetric Pairings (high similarity/resonance, moderate functional complementarity ~65-72%)
   [`${CognitiveArchetype.SOVEREIGN}__${CognitiveArchetype.SOVEREIGN}`]: {
-    complementaryIndex: 95,
+    complementaryIndex: 72,
     zh: {
       synergyTitle: "天元双璧 · 算力共振",
       pairingDynamics: "双核人形外挂同时参战，逻辑推演深度与元认知自省边界高度同频，构成无懈可击的高维思维力场。",
@@ -136,7 +136,7 @@ const PAIRING_CATALOG: Record<string, PairingMeta> = {
     },
   },
   [`${CognitiveArchetype.ADAPTIVE_LEARNER}__${CognitiveArchetype.ADAPTIVE_LEARNER}`]: {
-    complementaryIndex: 92,
+    complementaryIndex: 70,
     zh: {
       synergyTitle: "灵境共鸣 · 顿悟双星",
       pairingDynamics: "极高悟性与谦逊自省者的相逢，双方皆能敏锐感知盲区并借助线索极速跃迁，学习吸收效率倍增。",
@@ -151,7 +151,7 @@ const PAIRING_CATALOG: Record<string, PairingMeta> = {
     },
   },
   [`${CognitiveArchetype.VIGILANT_SENTINEL}__${CognitiveArchetype.VIGILANT_SENTINEL}`]: {
-    complementaryIndex: 88,
+    complementaryIndex: 68,
     zh: {
       synergyTitle: "双岳磐石 · 永恒秩序",
       pairingDynamics: "双重极度严谨守序组合，零失误率与审慎对冲策略构筑起坚不可摧的防线。",
@@ -166,7 +166,7 @@ const PAIRING_CATALOG: Record<string, PairingMeta> = {
     },
   },
   [`${CognitiveArchetype.AUDACIOUS_PIONEER}__${CognitiveArchetype.AUDACIOUS_PIONEER}`]: {
-    complementaryIndex: 85,
+    complementaryIndex: 65,
     zh: {
       synergyTitle: "双龙破晓 · 烈火燎原",
       pairingDynamics: "双高魄力开拓者并肩冲锋，敢于在未知荒原发起雷霆决断，破局爆发力冠绝全场。",
@@ -320,7 +320,7 @@ export function computeArchetypePairingDynamics(
 
   // Procedural fallback for other combinations
   const isSame = archA === archB;
-  const compIndex = isSame ? 88 : 82;
+  const compIndex = isSame ? 70 : 85;
 
   if (isEn) {
     return {

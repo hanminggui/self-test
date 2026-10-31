@@ -162,6 +162,49 @@ export async function copyDuelShareTextToClipboard(data: DuelPosterData): Promis
 }
 
 /**
+ * Helper to render multi-line text with wrapping and truncation ellipsis
+ */
+function renderWrappedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number = 3
+): void {
+  if (!ctx.measureText) {
+    ctx.fillText(text, x, y);
+    return;
+  }
+  const chars = Array.from(text);
+  let line = "";
+  let currentY = y;
+  let linesDrawn = 0;
+
+  for (let i = 0; i < chars.length; i++) {
+    const testLine = line + chars[i];
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && i > 0) {
+      if (linesDrawn >= maxLines - 1) {
+        ctx.fillText(line.slice(0, -1) + "…", x, currentY);
+        return;
+      }
+      ctx.fillText(line, x, currentY);
+      line = chars[i];
+      currentY += lineHeight;
+      linesDrawn++;
+    } else {
+      line = testLine;
+    }
+  }
+
+  if (line.length > 0 && linesDrawn < maxLines) {
+    ctx.fillText(line, x, currentY);
+  }
+}
+
+/**
  * High-definition Canvas 2D Twin Stars Joint Poster Renderer
  */
 export async function renderTwinStarsPosterToCanvas(
@@ -345,6 +388,22 @@ export async function renderTwinStarsPosterToCanvas(
   ctx.font = "bold 13px system-ui, sans-serif";
   ctx.fillText(isEn ? "PARTICIPANT A" : "受测选手 A", cardAX + 32, cardY + 80);
 
+  // Seal badge
+  const sealA = isEn ? arcaneA.sealText : mythicA.sealText;
+  ctx.font = "bold 11px monospace";
+  const sealW_A = ctx.measureText ? ctx.measureText(sealA).width + 16 : 80;
+  ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
+  ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+  ctx.lineWidth = 1;
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(cardAX + cardW - 32 - sealW_A, cardY + 36, sealW_A, 24, 6);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#38BDF8";
+  ctx.fillText(sealA, cardAX + cardW - 32 - sealW_A + 8, cardY + 52);
+
   // Role Title & Totem/Order
   ctx.fillStyle = "#FFFFFF";
   ctx.font = "bold 22px system-ui, sans-serif";
@@ -365,12 +424,12 @@ export async function renderTwinStarsPosterToCanvas(
   }
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-  ctx.font = "italic 16px system-ui, sans-serif";
-  ctx.fillText(`“${aphorismA}”`, cardAX + 40, cardY + 240);
+  ctx.font = "italic 15px system-ui, sans-serif";
+  renderWrappedText(ctx, `“${aphorismA}”`, cardAX + 40, cardY + 230, cardW - 80, 22, 3);
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
   ctx.font = "13px system-ui, sans-serif";
-  ctx.fillText(isEn ? "Praise & Totem Aphorism" : "象辞与认知图腾箴言", cardAX + 40, cardY + 280);
+  ctx.fillText(isEn ? "Praise & Totem Aphorism" : "象辞与认知图腾箴言", cardAX + 40, cardY + 300);
   ctx.restore();
 
   // VS Bridge in the center
@@ -407,6 +466,22 @@ export async function renderTwinStarsPosterToCanvas(
   ctx.font = "bold 13px system-ui, sans-serif";
   ctx.fillText(isEn ? "PARTICIPANT B" : "受测选手 B", cardBX + 32, cardY + 80);
 
+  // Seal badge
+  const sealB = isEn ? arcaneB.sealText : mythicB.sealText;
+  ctx.font = "bold 11px monospace";
+  const sealW_B = ctx.measureText ? ctx.measureText(sealB).width + 16 : 80;
+  ctx.fillStyle = "rgba(251, 191, 36, 0.12)";
+  ctx.strokeStyle = "rgba(251, 191, 36, 0.35)";
+  ctx.lineWidth = 1;
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(cardBX + cardW - 32 - sealW_B, cardY + 36, sealW_B, 24, 6);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#FBBF24";
+  ctx.fillText(sealB, cardBX + cardW - 32 - sealW_B + 8, cardY + 52);
+
   // Role Title & Totem/Order
   ctx.fillStyle = "#FFFFFF";
   ctx.font = "bold 22px system-ui, sans-serif";
@@ -427,12 +502,12 @@ export async function renderTwinStarsPosterToCanvas(
   }
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-  ctx.font = "italic 16px system-ui, sans-serif";
-  ctx.fillText(`“${aphorismB}”`, cardBX + 40, cardY + 240);
+  ctx.font = "italic 15px system-ui, sans-serif";
+  renderWrappedText(ctx, `“${aphorismB}”`, cardBX + 40, cardY + 230, cardW - 80, 22, 3);
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
   ctx.font = "13px system-ui, sans-serif";
-  ctx.fillText(isEn ? "Praise & Totem Aphorism" : "象辞与认知图腾箴言", cardBX + 40, cardY + 280);
+  ctx.fillText(isEn ? "Praise & Totem Aphorism" : "象辞与认知图腾箴言", cardBX + 40, cardY + 300);
   ctx.restore();
 
   // 6. Synergy & Mutual Strengths Card
