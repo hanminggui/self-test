@@ -129,6 +129,7 @@ export interface SessionExecutionMetadata {
   locale?: SupportedLocale;
   referrer_id?: string;
   source_session_id?: string;
+  referrer_session_id?: string;
 }
 
 export interface AgentExecutionMetadata {
@@ -237,6 +238,7 @@ export interface FinalAssessmentReport {
   agent_metadata?: AgentExecutionMetadata;
   records?: TrialRecord[];
   user_id?: string | null;
+  referrer_session_id?: string | null;
 
   // Transitional optional getters/properties for backwards compatibility until Issue #35
   summary?: {
