@@ -15,7 +15,6 @@ import AdminSidebar from "./components/admin/AdminSidebar";
 import SubjectDetailDrawer from "./components/admin/SubjectDetailDrawer";
 import AdminLoginModal from "./components/admin/AdminLoginModal";
 import ViewLoadingSkeleton from "./components/admin/ViewLoadingSkeleton";
-import { ScopeSwitcherCapsule } from "./components/common/ScopeSwitcherCapsule";
 
 // 3. 动态代码分割与按需懒加载 (Code-Splitting via React.lazy)
 // 当前展示方案用不到的视图，代码包完全不会加载，仅在首次切换到该内容视图时异步加载对应 chunk
@@ -50,8 +49,6 @@ export default function Admin() {
 
     scatterData,
     subjects,
-    scope,
-    setScope,
     tagCounts,
     octantStatsMap,
     quadrantTitles,
@@ -114,15 +111,6 @@ export default function Admin() {
       <div className="relative flex-1 h-full min-w-0 glass-panel rounded-2xl border border-white/5 overflow-hidden">
         {/* 左上角悬浮视图切换 Tabs */}
         <AdminNavTabs viewMode={viewMode} onSelectViewMode={setViewMode} />
-
-        {/* 右上角范围切换胶囊 (全域宏观星系 | 好友社交圈 | 唯我本体) (GitHub Issue #20) */}
-        <div className="absolute top-3 right-3 z-30 flex items-center">
-          <ScopeSwitcherCapsule
-            scope={scope}
-            onScopeChange={setScope}
-            friendCount={subjects.filter((s) => s.is_friend).length}
-          />
-        </div>
 
         {/* 动态懒加载视图区：配备微光骨架屏，按需加载 Chunk，零冗余开销 */}
         <Suspense fallback={<ViewLoadingSkeleton viewName={viewMode} />}>

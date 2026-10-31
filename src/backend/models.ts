@@ -129,7 +129,6 @@ export interface SessionExecutionMetadata {
   locale?: SupportedLocale;
   referrer_id?: string;
   source_session_id?: string;
-  [key: string]: any;
 }
 
 export interface AgentExecutionMetadata {
