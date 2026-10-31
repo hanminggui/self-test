@@ -18,6 +18,7 @@ import {
   FinalAssessmentReport,
   SubjectDataPoint,
   CohortScatterResponse,
+  OctantDensityMetrics,
   TrialResponse,
   SessionExecutionMetadata,
   TokenUsageStats,
@@ -1463,243 +1464,635 @@ export class SessionManager {
     return report;
   }
 
-  getCohortScatterData(currentSessionId?: string, locale?: SupportedLocale): CohortScatterResponse {
-    const targetLocale = locale || getLocale();
-    const sql = `
+  public static readonly ALL_OCTANT_CODES = [
+    "Q1-CAL",
+    "Q2-EVO",
+    "Q3-SEN",
+    "Q4-PIO",
+    "Q5-RET",
+    "Q6-GAM",
+    "Q7-ARB",
+    "Q8-DRI",
+  ] as const;
+
+  private static readonly OCTANT_AGGREGATE_SQL = `
+    SELECT 
+      COALESCE(c.quadrant_code, 'Q1-CAL') as quadrant_code,
+      COUNT(*) as count,
+      AVG(c.d_star) as avg_d_star,
+      AVG(c.m_ratio) as avg_m_ratio,
+      AVG(c.final_score) as avg_score,
+      MAX(0.0, AVG(c.d_star * c.d_star) - AVG(c.d_star) * AVG(c.d_star)) as var_d_star,
+      MAX(0.0, AVG(c.m_ratio * c.m_ratio) - AVG(c.m_ratio) * AVG(c.m_ratio)) as var_m_ratio,
+      MAX(0.0, AVG(c.final_score * c.final_score) - AVG(c.final_score) * AVG(c.final_score)) as var_score
+    FROM completed_sessions c
+    GROUP BY COALESCE(c.quadrant_code, 'Q1-CAL')
+  `;
+
+  private static readonly FALLBACK_SESSIONS_SQL = `
+    SELECT 
+      c.*,
+      a.model_name as agent_model,
+      a.persona as agent_persona,
+      a.thinking_effort as agent_effort,
+      a.evaluation_mode as agent_eval_mode,
+      a.prompt_tokens,
+      a.completion_tokens,
+      a.cached_tokens,
+      a.reasoning_tokens,
+      a.total_tokens
+    FROM completed_sessions c
+    LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+    ORDER BY c.created_at DESC
+  `;
+
+  private static readonly SPATIAL_SAMPLING_CTE_SQL = `
+    WITH BucketRanked AS (
       SELECT 
         c.*,
-        a.model_name as agent_model,
-        a.persona as agent_persona,
-        a.thinking_effort as agent_effort,
-        a.evaluation_mode as agent_eval_mode,
-        a.prompt_tokens,
-        a.completion_tokens,
-        a.cached_tokens,
-        a.reasoning_tokens,
-        a.total_tokens
+        COALESCE(c.quadrant_code, 'Q1-CAL') as norm_quadrant_code,
+        NTILE(?) OVER (
+          PARTITION BY COALESCE(c.quadrant_code, 'Q1-CAL') 
+          ORDER BY COALESCE(c.d_star, 0.5) ASC, COALESCE(c.m_ratio, 0.8) ASC
+        ) as spatial_bucket
       FROM completed_sessions c
-      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
-      ORDER BY c.created_at DESC
-    `;
-    const rows = (this.storage.querySync ? this.storage.querySync(sql) : []) as any[];
-    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale);
-  }
-
-  async getCohortScatterDataAsync(currentSessionId?: string, locale?: SupportedLocale): Promise<CohortScatterResponse> {
-    const targetLocale = locale || getLocale();
-    const sql = `
+    ),
+    RankedWithinBucket AS (
       SELECT 
-        c.*,
-        a.model_name as agent_model,
-        a.persona as agent_persona,
-        a.thinking_effort as agent_effort,
-        a.evaluation_mode as agent_eval_mode,
-        a.prompt_tokens,
-        a.completion_tokens,
-        a.cached_tokens,
-        a.reasoning_tokens,
-        a.total_tokens
-      FROM completed_sessions c
-      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
-      ORDER BY c.created_at DESC
-    `;
-    const rows = (await this.storage.query(sql)) as any[];
-    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale);
-  }
+        b.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY b.norm_quadrant_code, b.spatial_bucket 
+          ORDER BY 
+            CASE WHEN b.id = ? THEN 0 ELSE 1 END,
+            b.created_at DESC
+        ) as bucket_rank
+      FROM BucketRanked b
+    )
+    SELECT 
+      r.*,
+      a.model_name as agent_model,
+      a.persona as agent_persona,
+      a.thinking_effort as agent_effort,
+      a.evaluation_mode as agent_eval_mode,
+      a.prompt_tokens,
+      a.completion_tokens,
+      a.cached_tokens,
+      a.reasoning_tokens,
+      a.total_tokens
+    FROM RankedWithinBucket r
+    LEFT JOIN session_agent_metadata a ON r.id = a.session_id
+    WHERE r.bucket_rank = 1
+    ORDER BY r.norm_quadrant_code ASC, r.spatial_bucket ASC
+  `;
 
-  private assembleCohortScatterFromRows(rows: any[], currentSessionId: string | undefined, targetLocale: SupportedLocale): CohortScatterResponse {
-    const subjects: SubjectDataPoint[] = rows.map(r => {
-      const quadrantCode = r.quadrant_code || "Q1-CAL";
-      const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
-      const dStarVal = r.d_star ?? 0.5;
-      const formalScore = r.final_score ?? 0;
-      const ccs = Math.round(dStarVal * formalScore * 100) / 100;
+  getCohortScatterData(
+    currentSessionId?: string,
+    locale?: SupportedLocale,
+    options?: { budgetPerOctant?: number }
+  ): CohortScatterResponse {
+    const targetLocale = locale || getLocale();
+    const rawBudget = options?.budgetPerOctant;
+    const budget =
+      typeof rawBudget === "number" && Number.isFinite(rawBudget)
+        ? Math.max(8, Math.min(12, Math.floor(rawBudget)))
+        : 10;
 
-      const metrics: AssessmentMetrics = {
-        first_order_accuracy: r.first_order_accuracy ?? 0.7,
-        second_order_accuracy: r.second_order_accuracy ?? 0.7,
-        reversals_count: r.reversals_count ?? 0,
-        d_star: dStarVal,
-        d_prime: r.d_prime ?? 1.2,
-        meta_d_prime: r.meta_d_prime ?? 1.1,
-        m_ratio: r.m_ratio ?? 0.9,
-        calibration_bias: r.calibration_bias ?? 0.0,
-        brier_score: r.brier_score ?? 0.20,
-        ive: r.ive ?? 0.50,
-        coachability_index: r.coachability_index ?? 50,
-        risk_attitude: (r.risk_attitude as RiskAttitude) || RiskAttitude.MODERATE_RATIONAL,
-        formal_score: formalScore,
-        composite_cognitive_score: ccs,
-        ccs,
-      };
+    let aggRows: any[] = [];
+    let sampledRows: any[] = [];
+    let usedSqlSampling = false;
 
-      let agentMetadata: AgentExecutionMetadata | undefined = undefined;
-      if (r.subject_type !== SubjectType.HUMAN && r.agent_model) {
-        agentMetadata = {
-          model_name: r.agent_model,
-          persona: r.agent_persona,
-          thinking_effort: r.agent_effort,
-          evaluation_mode: r.agent_eval_mode,
-          token_usage: {
-            prompt_tokens: r.prompt_tokens ?? 0,
-            completion_tokens: r.completion_tokens ?? 0,
-            cached_tokens: r.cached_tokens ?? 0,
-            reasoning_tokens: r.reasoning_tokens ?? 0,
-            total_tokens: r.total_tokens ?? 0,
-          },
-        };
-      }
-
-      return {
-        id: r.id,
-        name: r.subject_name || r.name || "受测者",
-        subject_type: r.subject_type,
-        locale: (r.locale as SupportedLocale) || targetLocale,
-        created_at: r.created_at,
-        total_trials: r.total_trials ?? 30,
-        warmup_trials: r.warmup_trials ?? 10,
-        total_duration_ms: r.total_duration_ms ?? 0,
-        final_score: formalScore,
-        formal_score: formalScore,
-        composite_cognitive_score: ccs,
-        ccs,
-        quadrant_code: quadrantCode,
-        is_current: r.id === currentSessionId,
-        metrics,
-        agent_metadata: agentMetadata,
-        user_id: r.user_id ?? null,
-
-        // Legacy fields for backward compatibility
-        metadata: {
-          locale: (r.locale as SupportedLocale) || targetLocale,
-          ...(agentMetadata || {}),
-        },
-        first_order_accuracy: r.first_order_accuracy,
-        second_order_accuracy: r.second_order_accuracy,
-        d_prime: r.d_prime,
-        meta_d_prime: r.meta_d_prime,
-        m_ratio: r.m_ratio,
-        calibration_bias: r.calibration_bias,
-        d_star: r.d_star,
-        ive: r.ive,
-        info_buying_efficiency: r.ive,
-        brier_score: r.brier_score,
-        coachability_index: r.coachability_index,
-        role_title: archetypeDef.role_title,
-        praise_tagline: archetypeDef.praise_tagline,
-        cognitive_manifold_vector: [r.d_star ?? 0.5, r.m_ratio ?? 0.9, r.calibration_bias ?? 0.0, r.ive ?? 0.5],
-        clinical_summary: archetypeDef.clinical_summary,
-      };
-    });
-
-    // If current session is active and not yet saved
-    if (currentSessionId && !subjects.some(s => s.id === currentSessionId)) {
-      const active = this.getSession(currentSessionId);
-      if (active && active.records.length > 0) {
-        const evalRecords = active.records.filter(r => !r.is_warmup);
-        const target = evalRecords.length > 0 ? evalRecords : active.records;
-        const firstAcc = target.filter(r => r.is_correct_first_order).length / target.length;
-        const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
-        const dStar = active.staircase.computeDStar(undefined, active.warmupTrials);
-        const metrics = PsychometricScorer.evaluate(active.records, true, dStar);
-        const hintsCount = ReportGenerator.countHintTrials(active.records, true);
-
-        const archetype = classifyCognitiveArchetype({
-          dStar: metrics.d_star,
-          dPrime: metrics.d_prime,
-          mRatio: metrics.m_ratio,
-          bias: metrics.calibration_bias,
-          brier: metrics.brier_score,
-          ive: metrics.info_buying_efficiency ?? (metrics as any).ive ?? 0.50,
-          hintsCount,
-        });
-        const def = getArchetypeDefinition(archetype, targetLocale);
-
-        const formalScore = active.records
-          .filter(r => !r.is_warmup)
-          .reduce((sum, r) => sum + (r.score_delta || 0), 0);
-        const ccs = Math.round(metrics.d_star * formalScore * 100) / 100;
-
-        const activeMetrics: AssessmentMetrics = {
-          first_order_accuracy: Math.round(firstAcc * 1000) / 1000,
-          second_order_accuracy: Math.round(secondAcc * 1000) / 1000,
-          reversals_count: active.staircase.reversalCount,
-          d_star: metrics.d_star,
-          d_prime: metrics.d_prime,
-          meta_d_prime: metrics.meta_d_prime,
-          m_ratio: metrics.m_ratio,
-          calibration_bias: metrics.calibration_bias,
-          brier_score: metrics.brier_score,
-          ive: metrics.info_buying_efficiency,
-          coachability_index: 50,
-          risk_attitude: RiskAttitude.MODERATE_RATIONAL,
-          formal_score: formalScore,
-          composite_cognitive_score: ccs,
-          ccs,
-        };
-
-        subjects.unshift({
-          id: active.sessionId,
-          name: active.subjectName,
-          subject_type: active.subjectType,
-          locale: targetLocale,
-          created_at: active.createdAt,
-          total_trials: active.totalTrials,
-          warmup_trials: active.warmupTrials,
-          total_duration_ms: Date.now() - active.startTimeMs,
-          final_score: formalScore,
-          formal_score: formalScore,
-          composite_cognitive_score: ccs,
-          ccs,
-          quadrant_code: def.quadrant_code,
-          is_current: true,
-          metrics: activeMetrics,
-          user_id: active.userId ?? null,
-
-          // Legacy fields
-          first_order_accuracy: activeMetrics.first_order_accuracy,
-          second_order_accuracy: activeMetrics.second_order_accuracy,
-          d_prime: activeMetrics.d_prime,
-          meta_d_prime: activeMetrics.meta_d_prime,
-          m_ratio: activeMetrics.m_ratio,
-          calibration_bias: activeMetrics.calibration_bias,
-          d_star: activeMetrics.d_star,
-          ive: activeMetrics.ive,
-          info_buying_efficiency: activeMetrics.ive,
-          brier_score: activeMetrics.brier_score,
-          coachability_index: 50,
-          role_title: def.role_title,
-          praise_tagline: def.praise_tagline,
-          cognitive_manifold_vector: [activeMetrics.d_star, activeMetrics.m_ratio, activeMetrics.calibration_bias, activeMetrics.ive],
-          clinical_summary: def.clinical_summary,
-        });
+    if (this.storage.querySync) {
+      try {
+        aggRows = this.storage.querySync(SessionManager.OCTANT_AGGREGATE_SQL) || [];
+        sampledRows =
+          this.storage.querySync(SessionManager.SPATIAL_SAMPLING_CTE_SQL, [budget, currentSessionId || ""]) || [];
+        usedSqlSampling = true;
+      } catch {
+        sampledRows = (this.storage.querySync ? this.storage.querySync(SessionManager.FALLBACK_SESSIONS_SQL) : []) || [];
       }
     }
 
-    const xVals = subjects.map(s => s.metrics.d_star);
-    const yVals = subjects.map(s => s.metrics.m_ratio);
+    return this.buildCohortScatterResponse(aggRows, sampledRows, currentSessionId, targetLocale, budget, usedSqlSampling);
+  }
+
+  async getCohortScatterDataAsync(
+    currentSessionId?: string,
+    locale?: SupportedLocale,
+    options?: { budgetPerOctant?: number }
+  ): Promise<CohortScatterResponse> {
+    const targetLocale = locale || getLocale();
+    const rawBudget = options?.budgetPerOctant;
+    const budget =
+      typeof rawBudget === "number" && Number.isFinite(rawBudget)
+        ? Math.max(8, Math.min(12, Math.floor(rawBudget)))
+        : 10;
+
+    let aggRows: any[] = [];
+    let sampledRows: any[] = [];
+    let usedSqlSampling = false;
+
+    try {
+      const [aggs, sampled] = await Promise.all([
+        this.storage.query(SessionManager.OCTANT_AGGREGATE_SQL),
+        this.storage.query(SessionManager.SPATIAL_SAMPLING_CTE_SQL, [budget, currentSessionId || ""]),
+      ]);
+      aggRows = aggs || [];
+      sampledRows = sampled || [];
+      usedSqlSampling = true;
+    } catch {
+      try {
+        sampledRows = (await this.storage.query(SessionManager.FALLBACK_SESSIONS_SQL)) || [];
+      } catch {
+        sampledRows = [];
+      }
+    }
+
+    return this.buildCohortScatterResponse(aggRows, sampledRows, currentSessionId, targetLocale, budget, usedSqlSampling);
+  }
+
+  public getAllCompletedSessions(locale?: SupportedLocale): SubjectDataPoint[] {
+    const targetLocale = locale || getLocale();
+    if (!this.storage.querySync) return [];
+    const rows = (this.storage.querySync(SessionManager.FALLBACK_SESSIONS_SQL) || []) as any[];
+    return this.mapRowsToSubjects(rows, undefined, targetLocale);
+  }
+
+  public async getAllCompletedSessionsAsync(locale?: SupportedLocale): Promise<SubjectDataPoint[]> {
+    const targetLocale = locale || getLocale();
+    const rows = ((await this.storage.query(SessionManager.FALLBACK_SESSIONS_SQL)) || []) as any[];
+    return this.mapRowsToSubjects(rows, undefined, targetLocale);
+  }
+
+  private buildCohortScatterResponse(
+    aggRows: any[],
+    rows: any[],
+    currentSessionId: string | undefined,
+    targetLocale: SupportedLocale,
+    budgetPerOctant: number,
+    usedSqlSampling: boolean
+  ): CohortScatterResponse {
+    let subjects = this.mapRowsToSubjects(rows, currentSessionId, targetLocale);
+
+    let totalCount = 0;
+    let meanX = 0.5;
+    let meanY = 0.5;
+
+    if (usedSqlSampling && aggRows.length > 0) {
+      for (const r of aggRows) {
+        totalCount += Number(r.count || 0);
+      }
+      if (totalCount > 0) {
+        let sumX = 0;
+        let sumY = 0;
+        for (const r of aggRows) {
+          const c = Number(r.count || 0);
+          sumX += c * Number(r.avg_d_star ?? 0.5);
+          sumY += c * Number(r.avg_m_ratio ?? 0.8);
+        }
+        meanX = Math.round((sumX / totalCount) * 1000) / 1000;
+        meanY = Math.round((sumY / totalCount) * 1000) / 1000;
+      }
+    } else {
+      // In-memory aggregation fallback
+      const inMem = this.computeInMemoryAggregates(rows);
+      totalCount = inMem.totalCount;
+      aggRows = inMem.aggRows;
+      meanX = inMem.meanX;
+      meanY = inMem.meanY;
+
+      // In-memory spatial sampling if not pre-sampled by SQL
+      subjects = this.sampleSubjectsInMemory(subjects, budgetPerOctant, currentSessionId);
+    }
+
+    // Check if current session is active in memory and not yet saved
+    if (currentSessionId && !subjects.some((s) => s.id === currentSessionId)) {
+      const active = this.getSession(currentSessionId);
+      if (active && active.records.length > 0) {
+        const activeSubject = this.assembleActiveSubject(active, targetLocale);
+        subjects.unshift(activeSubject);
+        totalCount += 1;
+        const foundAgg = aggRows.find((a) => a.quadrant_code === activeSubject.quadrant_code);
+        if (foundAgg) {
+          foundAgg.count = Number(foundAgg.count || 0) + 1;
+        } else {
+          aggRows.push({
+            quadrant_code: activeSubject.quadrant_code,
+            count: 1,
+            avg_d_star: activeSubject.metrics.d_star,
+            avg_m_ratio: activeSubject.metrics.m_ratio,
+            avg_score: activeSubject.final_score,
+            var_d_star: 0,
+            var_m_ratio: 0,
+          });
+        }
+      }
+    }
+
+    const octantStats = this.buildOctantDensityStats(aggRows, totalCount);
+
+    let varX = 0;
+    let varY = 0;
+    if (totalCount > 0) {
+      let sumXSq = 0;
+      let sumYSq = 0;
+      for (const r of aggRows) {
+        const c = Number(r.count || 0);
+        const meanD = Number(r.avg_d_star ?? 0.5);
+        const varD = Number(r.var_d_star ?? 0);
+        const meanM = Number(r.avg_m_ratio ?? 0.8);
+        const varM = Number(r.var_m_ratio ?? 0);
+        sumXSq += c * (varD + meanD * meanD);
+        sumYSq += c * (varM + meanM * meanM);
+      }
+      varX = Math.max(0, Math.round((sumXSq / totalCount - meanX * meanX) * 10000) / 10000);
+      varY = Math.max(0, Math.round((sumYSq / totalCount - meanY * meanY) * 10000) / 10000);
+    }
+
+    if (subjects.length > 96) {
+      subjects = subjects.slice(0, 96);
+    }
+
+    const xVals = subjects.map((s) => s.metrics.d_star);
+    const yVals = subjects.map((s) => s.metrics.m_ratio);
 
     const median = (arr: number[]): number => {
-      if (arr.length === 0) return 0.50;
+      if (arr.length === 0) return 0.5;
       const sorted = [...arr].sort((a, b) => a - b);
       const mid = Math.floor(sorted.length / 2);
       return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
     };
 
-    const mean = (arr: number[]): number => {
-      if (arr.length === 0) return 0.50;
-      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    return {
+      baseline_x: 0.6,
+      baseline_y: 0.8,
+      median_x: Math.round(median(xVals) * 1000) / 1000,
+      median_y: Math.round(median(yVals) * 1000) / 1000,
+      mean_x: meanX,
+      mean_y: meanY,
+      total_count: totalCount,
+      octants: octantStats,
+      octant_stats: octantStats,
+      density_summary: {
+        total_count: totalCount,
+        mean_x: meanX,
+        mean_y: meanY,
+        variance_x: varX,
+        variance_y: varY,
+      },
+      subjects,
+    };
+  }
+
+  private assembleCohortScatterFromRows(
+    rows: any[],
+    currentSessionId: string | undefined,
+    targetLocale: SupportedLocale
+  ): CohortScatterResponse {
+    return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, 10, false);
+  }
+
+  private mapRowsToSubjects(
+    rows: any[],
+    currentSessionId: string | undefined,
+    targetLocale: SupportedLocale
+  ): SubjectDataPoint[] {
+    return rows.map((r) => this.mapRowToSubjectDataPoint(r, targetLocale, currentSessionId));
+  }
+
+  private mapRowToSubjectDataPoint(
+    r: any,
+    targetLocale: SupportedLocale,
+    currentSessionId?: string
+  ): SubjectDataPoint {
+    const quadrantCode = r.quadrant_code || "Q1-CAL";
+    const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
+    const dStarVal = r.d_star ?? 0.5;
+    const formalScore = r.final_score ?? 0;
+    const ccs = Math.round(dStarVal * formalScore * 100) / 100;
+
+    const metrics: AssessmentMetrics = {
+      first_order_accuracy: r.first_order_accuracy ?? 0.7,
+      second_order_accuracy: r.second_order_accuracy ?? 0.7,
+      reversals_count: r.reversals_count ?? 0,
+      d_star: dStarVal,
+      d_prime: r.d_prime ?? 1.2,
+      meta_d_prime: r.meta_d_prime ?? 1.1,
+      m_ratio: r.m_ratio ?? 0.9,
+      calibration_bias: r.calibration_bias ?? 0.0,
+      brier_score: r.brier_score ?? 0.2,
+      ive: r.ive ?? 0.5,
+      coachability_index: r.coachability_index ?? 50,
+      risk_attitude: (r.risk_attitude as RiskAttitude) || RiskAttitude.MODERATE_RATIONAL,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
+    };
+
+    let agentMetadata: AgentExecutionMetadata | undefined = undefined;
+    if (r.subject_type !== SubjectType.HUMAN && r.agent_model) {
+      agentMetadata = {
+        model_name: r.agent_model,
+        persona: r.agent_persona,
+        thinking_effort: r.agent_effort,
+        evaluation_mode: r.agent_eval_mode,
+        token_usage: {
+          prompt_tokens: r.prompt_tokens ?? 0,
+          completion_tokens: r.completion_tokens ?? 0,
+          cached_tokens: r.cached_tokens ?? 0,
+          reasoning_tokens: r.reasoning_tokens ?? 0,
+          total_tokens: r.total_tokens ?? 0,
+        },
+      };
+    }
+
+    return {
+      id: r.id,
+      name: r.subject_name || r.name || "受测者",
+      subject_type: r.subject_type,
+      locale: (r.locale as SupportedLocale) || targetLocale,
+      created_at: r.created_at,
+      total_trials: r.total_trials ?? 30,
+      warmup_trials: r.warmup_trials ?? 10,
+      total_duration_ms: r.total_duration_ms ?? 0,
+      final_score: formalScore,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
+      quadrant_code: quadrantCode,
+      is_current: r.id === currentSessionId,
+      metrics,
+      agent_metadata: agentMetadata,
+      user_id: r.user_id ?? null,
+
+      // Legacy fields for backward compatibility
+      metadata: {
+        locale: (r.locale as SupportedLocale) || targetLocale,
+        ...(agentMetadata || {}),
+      },
+      first_order_accuracy: r.first_order_accuracy,
+      second_order_accuracy: r.second_order_accuracy,
+      d_prime: r.d_prime,
+      meta_d_prime: r.meta_d_prime,
+      m_ratio: r.m_ratio,
+      calibration_bias: r.calibration_bias,
+      d_star: r.d_star,
+      ive: r.ive,
+      info_buying_efficiency: r.ive,
+      brier_score: r.brier_score,
+      coachability_index: r.coachability_index,
+      role_title: archetypeDef.role_title,
+      praise_tagline: archetypeDef.praise_tagline,
+      cognitive_manifold_vector: [r.d_star ?? 0.5, r.m_ratio ?? 0.9, r.calibration_bias ?? 0.0, r.ive ?? 0.5],
+      clinical_summary: archetypeDef.clinical_summary,
+    };
+  }
+
+  private assembleActiveSubject(active: SessionState, targetLocale: SupportedLocale): SubjectDataPoint {
+    const evalRecords = active.records.filter((r) => !r.is_warmup);
+    const target = evalRecords.length > 0 ? evalRecords : active.records;
+    const firstAcc = target.filter((r) => r.is_correct_first_order).length / (target.length || 1);
+    const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
+    const dStar = active.staircase.computeDStar(undefined, active.warmupTrials);
+    const metrics = PsychometricScorer.evaluate(active.records, true, dStar);
+    const hintsCount = ReportGenerator.countHintTrials(active.records, true);
+
+    const archetype = classifyCognitiveArchetype({
+      dStar: metrics.d_star,
+      dPrime: metrics.d_prime,
+      mRatio: metrics.m_ratio,
+      bias: metrics.calibration_bias,
+      brier: metrics.brier_score,
+      ive: metrics.ive ?? 0.5,
+      hintsCount,
+    });
+    const def = getArchetypeDefinition(archetype, targetLocale);
+
+    const formalScore = active.records
+      .filter((r) => !r.is_warmup)
+      .reduce((sum, r) => sum + (r.score_delta || 0), 0);
+    const ccs = Math.round(metrics.d_star * formalScore * 100) / 100;
+
+    const activeMetrics: AssessmentMetrics = {
+      first_order_accuracy: Math.round(firstAcc * 1000) / 1000,
+      second_order_accuracy: Math.round(secondAcc * 1000) / 1000,
+      reversals_count: active.staircase.reversalCount,
+      d_star: metrics.d_star,
+      d_prime: metrics.d_prime,
+      meta_d_prime: metrics.meta_d_prime,
+      m_ratio: metrics.m_ratio,
+      calibration_bias: metrics.calibration_bias,
+      brier_score: metrics.brier_score,
+      ive: metrics.ive,
+      info_buying_efficiency: metrics.ive,
+      coachability_index: 50,
+      risk_attitude: RiskAttitude.MODERATE_RATIONAL,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
     };
 
     return {
-      baseline_x: 0.60,
-      baseline_y: 0.80,
-      median_x: Math.round(median(xVals) * 1000) / 1000,
-      median_y: Math.round(median(yVals) * 1000) / 1000,
-      mean_x: Math.round(mean(xVals) * 1000) / 1000,
-      mean_y: Math.round(mean(yVals) * 1000) / 1000,
-      subjects,
+      id: active.sessionId,
+      name: active.subjectName,
+      subject_type: active.subjectType,
+      locale: targetLocale,
+      created_at: active.createdAt,
+      total_trials: active.totalTrials,
+      warmup_trials: active.warmupTrials,
+      total_duration_ms: Date.now() - active.startTimeMs,
+      final_score: formalScore,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
+      quadrant_code: def.quadrant_code,
+      is_current: true,
+      metrics: activeMetrics,
+      user_id: active.userId ?? null,
+
+      // Legacy fields
+      first_order_accuracy: activeMetrics.first_order_accuracy,
+      second_order_accuracy: activeMetrics.second_order_accuracy,
+      d_prime: activeMetrics.d_prime,
+      meta_d_prime: activeMetrics.meta_d_prime,
+      m_ratio: activeMetrics.m_ratio,
+      calibration_bias: activeMetrics.calibration_bias,
+      d_star: activeMetrics.d_star,
+      ive: activeMetrics.ive,
+      info_buying_efficiency: activeMetrics.ive,
+      brier_score: activeMetrics.brier_score,
+      coachability_index: 50,
+      role_title: def.role_title,
+      praise_tagline: def.praise_tagline,
+      cognitive_manifold_vector: [activeMetrics.d_star, activeMetrics.m_ratio, activeMetrics.calibration_bias, activeMetrics.ive],
+      clinical_summary: def.clinical_summary,
     };
+  }
+
+  private buildOctantDensityStats(
+    aggRows: any[],
+    totalCount: number
+  ): Record<string, OctantDensityMetrics> {
+    const stats: Record<string, OctantDensityMetrics> = {};
+    for (const code of SessionManager.ALL_OCTANT_CODES) {
+      stats[code] = {
+        quadrant_code: code,
+        count: 0,
+        percentage: "0.0%",
+        avg_d_star: 0.5,
+        avg_m_ratio: 0.8,
+        avg_score: 0,
+        variance_d_star: 0,
+        variance_m_ratio: 0,
+        variance_score: 0,
+        avgDStar: "--",
+        avgMRatio: "--",
+        avgScore: 0,
+      };
+    }
+
+    for (const r of aggRows) {
+      const code = r.quadrant_code || "Q1-CAL";
+      const count = Number(r.count || 0);
+      const avgDStar = Number(r.avg_d_star ?? 0.5);
+      const avgMRatio = Number(r.avg_m_ratio ?? 0.8);
+      const avgScore = Math.round(Number(r.avg_score ?? 0));
+      const varDStar = Math.max(0, Number(r.var_d_star ?? 0));
+      const varMRatio = Math.max(0, Number(r.var_m_ratio ?? 0));
+      const varScore = Math.max(0, Number(r.var_score ?? 0));
+      const pct = totalCount > 0 ? `${((count / totalCount) * 100).toFixed(1)}%` : "0.0%";
+
+      stats[code] = {
+        quadrant_code: code,
+        count,
+        percentage: pct,
+        avg_d_star: Math.round(avgDStar * 10000) / 10000,
+        avg_m_ratio: Math.round(avgMRatio * 10000) / 10000,
+        avg_score: avgScore,
+        variance_d_star: Math.round(varDStar * 10000) / 10000,
+        variance_m_ratio: Math.round(varMRatio * 10000) / 10000,
+        variance_score: Math.round(varScore * 100) / 100,
+        avgDStar: count > 0 ? avgDStar.toFixed(3) : "--",
+        avgMRatio: count > 0 ? avgMRatio.toFixed(2) : "--",
+        avgScore,
+      };
+    }
+
+    return stats;
+  }
+
+  private computeInMemoryAggregates(rows: any[]): {
+    totalCount: number;
+    aggRows: any[];
+    meanX: number;
+    meanY: number;
+  } {
+    const groups: Record<
+      string,
+      { dStarSum: number; dStarSqSum: number; mRatioSum: number; mRatioSqSum: number; scoreSum: number; scoreSqSum: number; count: number }
+    > = {};
+    for (const code of SessionManager.ALL_OCTANT_CODES) {
+      groups[code] = { dStarSum: 0, dStarSqSum: 0, mRatioSum: 0, mRatioSqSum: 0, scoreSum: 0, scoreSqSum: 0, count: 0 };
+    }
+
+    let totalCount = 0;
+    let totalDStar = 0;
+    let totalMRatio = 0;
+
+    for (const r of rows) {
+      const code = r.quadrant_code || "Q1-CAL";
+      if (!groups[code]) {
+        groups[code] = { dStarSum: 0, dStarSqSum: 0, mRatioSum: 0, mRatioSqSum: 0, scoreSum: 0, scoreSqSum: 0, count: 0 };
+      }
+      const dStar = Number(r.d_star ?? 0.5);
+      const mRatio = Number(r.m_ratio ?? 0.8);
+      const score = Number(r.final_score ?? 0);
+      const g = groups[code];
+      g.count += 1;
+      g.dStarSum += dStar;
+      g.dStarSqSum += dStar * dStar;
+      g.mRatioSum += mRatio;
+      g.mRatioSqSum += mRatio * mRatio;
+      g.scoreSum += score;
+      g.scoreSqSum += score * score;
+
+      totalCount += 1;
+      totalDStar += dStar;
+      totalMRatio += mRatio;
+    }
+
+    const aggRows = Object.entries(groups).map(([code, g]) => {
+      const c = g.count;
+      const avgDStar = c > 0 ? g.dStarSum / c : 0.5;
+      const avgMRatio = c > 0 ? g.mRatioSum / c : 0.8;
+      const avgScore = c > 0 ? g.scoreSum / c : 0;
+      const varDStar = c > 0 ? Math.max(0, g.dStarSqSum / c - avgDStar * avgDStar) : 0;
+      const varMRatio = c > 0 ? Math.max(0, g.mRatioSqSum / c - avgMRatio * avgMRatio) : 0;
+      const varScore = c > 0 ? Math.max(0, g.scoreSqSum / c - avgScore * avgScore) : 0;
+      return {
+        quadrant_code: code,
+        count: c,
+        avg_d_star: avgDStar,
+        avg_m_ratio: avgMRatio,
+        avg_score: avgScore,
+        var_d_star: varDStar,
+        var_m_ratio: varMRatio,
+        var_score: varScore,
+      };
+    });
+
+    return {
+      totalCount,
+      aggRows,
+      meanX: totalCount > 0 ? Math.round((totalDStar / totalCount) * 1000) / 1000 : 0.5,
+      meanY: totalCount > 0 ? Math.round((totalMRatio / totalCount) * 1000) / 1000 : 0.5,
+    };
+  }
+
+  private sampleSubjectsInMemory(
+    subjects: SubjectDataPoint[],
+    budgetPerOctant: number,
+    currentSessionId?: string
+  ): SubjectDataPoint[] {
+    const result: SubjectDataPoint[] = [];
+
+    for (const code of SessionManager.ALL_OCTANT_CODES) {
+      const octSubjects = subjects.filter((s) => (s.quadrant_code || "Q1-CAL") === code);
+      if (octSubjects.length <= budgetPerOctant) {
+        result.push(...octSubjects);
+        continue;
+      }
+
+      // Sort by d_star, m_ratio to prepare quantile spatial buckets
+      octSubjects.sort((a, b) => {
+        const dDiff = (a.metrics.d_star ?? 0.5) - (b.metrics.d_star ?? 0.5);
+        if (Math.abs(dDiff) > 1e-5) return dDiff;
+        return (a.metrics.m_ratio ?? 0.8) - (b.metrics.m_ratio ?? 0.8);
+      });
+
+      const bucketSize = octSubjects.length / budgetPerOctant;
+      for (let b = 0; b < budgetPerOctant; b++) {
+        const startIdx = Math.floor(b * bucketSize);
+        const endIdx = Math.min(octSubjects.length, Math.floor((b + 1) * bucketSize));
+        const slice = octSubjects.slice(startIdx, endIdx);
+        if (slice.length === 0) continue;
+
+        const curr = slice.find((s) => s.id === currentSessionId);
+        if (curr) {
+          result.push(curr);
+        } else {
+          result.push(slice[Math.floor(slice.length / 2)]);
+        }
+      }
+    }
+
+    if (currentSessionId && !result.some((s) => s.id === currentSessionId)) {
+      const found = subjects.find((s) => s.id === currentSessionId);
+      if (found) {
+        result.unshift(found);
+      }
+    }
+
+    return result;
   }
 
   public getUserSessions(userId: string, locale?: SupportedLocale): SubjectDataPoint[] {

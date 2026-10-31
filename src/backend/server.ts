@@ -440,8 +440,11 @@ app.patch("/api/sessions/:id/metadata", async (c) => {
 app.get("/api/cohort/scatter", async (c) => {
   const currentSessionId = c.req.query("current_session_id");
   const locale = c.get("locale");
+  const budgetParam = c.req.query("budget_per_octant") || c.req.query("budget");
+  const parsedBudget = budgetParam ? parseInt(budgetParam, 10) : undefined;
+  const budgetPerOctant = Number.isFinite(parsedBudget) ? parsedBudget : undefined;
   const sm = getSessionManagerForContext(c);
-  return c.json(await sm.getCohortScatterDataAsync(currentSessionId, locale));
+  return c.json(await sm.getCohortScatterDataAsync(currentSessionId, locale, { budgetPerOctant }));
 });
 
 // 8.1 Multi-Dimensional Leaderboard & TOPSIS Overview (ADR 0003 / Spec v2.3)
@@ -881,8 +884,8 @@ app.get("/api/admin/sessions", async (c) => {
   }
   const locale = c.get("locale");
   const sm = getSessionManagerForContext(c);
-  const data = await sm.getCohortScatterDataAsync(undefined, locale);
-  return c.json({ sessions: data.subjects });
+  const sessions = await sm.getAllCompletedSessionsAsync(locale);
+  return c.json({ sessions });
 });
 
 // 11. Admin Delete Session
