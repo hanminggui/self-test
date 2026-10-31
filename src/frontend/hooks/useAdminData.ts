@@ -4,12 +4,17 @@ import { OCTANT_SECTOR_CONFIGS, getQuadrantPresets } from "../constants/adminCon
 import { useLocale } from "../contexts/LocaleContext";
 import { getArchetypeDefinition } from "../../backend/archetype_matrix";
 
+export type ChartScope = "global" | "friends" | "self";
+
 export function useAdminData() {
   const { locale } = useLocale();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [inputPassword, setInputPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // 社交范围过滤器 (全域宏观星系 | 好友社交圈 | 唯我本体)
+  const [scope, setScope] = useState<ChartScope>("global");
 
   // 核心数据
   const [scatterData, setScatterData] = useState<ScatterData | null>(null);
@@ -25,13 +30,13 @@ export function useAdminData() {
   // 过滤或分页尺寸改变时重置为第 1 页
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedTag, pageSize]);
+  }, [searchQuery, selectedTag, pageSize, scope]);
 
   // 加载数据
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (targetScope: ChartScope = scope) => {
     setLoadingData(true);
     try {
-      const res = await fetch(`/api/cohort/scatter?lang=${encodeURIComponent(locale)}`);
+      const res = await fetch(`/api/cohort/scatter?lang=${encodeURIComponent(locale)}&scope=${targetScope}`);
       if (res.ok) {
         const data = await res.json();
         setScatterData(data);
@@ -41,7 +46,14 @@ export function useAdminData() {
     } finally {
       setLoadingData(false);
     }
-  }, [locale]);
+  }, [locale, scope]);
+
+  // 范围切换时重新加载数据
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData(scope);
+    }
+  }, [isAuthenticated, scope, loadData]);
 
   // 令牌校验（纯鉴权，解耦 loadData）
   const verifyToken = useCallback(async (token: string) => {
@@ -259,6 +271,8 @@ export function useAdminData() {
     loadingData,
     loadData,
     subjects,
+    scope,
+    setScope,
 
     tagCounts,
     octantStatsMap,

@@ -152,7 +152,7 @@ export const SharePage: React.FC = () => {
   }, [report, locale]);
 
   const handleStartMyTest = () => {
-    window.location.href = "/";
+    window.location.href = sessionId ? `/?ref_session=${encodeURIComponent(sessionId)}` : "/";
   };
 
   const shareUrl = useMemo(() => {

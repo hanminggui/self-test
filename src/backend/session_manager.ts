@@ -35,6 +35,14 @@ import { mapLegacyArchetype, getArchetypeDefinition, classifyCognitiveArchetype 
 import { compute4AFCdPrime } from "./math";
 import { generateSubjectCodename } from "./codename_generator";
 import { getLocale, type SupportedLocale } from "../i18n";
+import { computeCognitiveSimilarity } from "../frontend/utils/manifoldUtils";
+
+export interface CohortScatterOptions {
+  scope?: string;
+  currentUserId?: string | null;
+  filterUserIds?: string[];
+  friendUserIds?: string[];
+}
 
 export interface SessionState {
   sessionId: string;
@@ -1461,11 +1469,25 @@ export class SessionManager {
     return report;
   }
 
-  getCohortScatterData(currentSessionId?: string, locale?: SupportedLocale): CohortScatterResponse {
+  getCohortScatterData(currentSessionId?: string, locale?: SupportedLocale, options?: CohortScatterOptions): CohortScatterResponse {
     const targetLocale = locale || getLocale();
+    let filterClause = "";
+    const params: any[] = [];
+    if (options?.filterUserIds) {
+      if (options.filterUserIds.length === 0) {
+        filterClause = "WHERE 1=0";
+      } else {
+        const placeholders = options.filterUserIds.map(() => "?").join(",");
+        filterClause = `WHERE c.user_id IN (${placeholders})`;
+        params.push(...options.filterUserIds);
+      }
+    }
+
     const sql = `
       SELECT 
         c.*,
+        u.display_name as user_display_name,
+        u.avatar_url as user_avatar_url,
         a.model_name as agent_model,
         a.persona as agent_persona,
         a.thinking_effort as agent_effort,
@@ -1476,18 +1498,34 @@ export class SessionManager {
         a.reasoning_tokens,
         a.total_tokens
       FROM completed_sessions c
+      LEFT JOIN users u ON c.user_id = u.id
       LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+      ${filterClause}
       ORDER BY c.created_at DESC
     `;
-    const rows = (this.storage.querySync ? this.storage.querySync(sql) : []) as any[];
-    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale);
+    const rows = (this.storage.querySync ? this.storage.querySync(sql, params) : []) as any[];
+    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale, options);
   }
 
-  async getCohortScatterDataAsync(currentSessionId?: string, locale?: SupportedLocale): Promise<CohortScatterResponse> {
+  async getCohortScatterDataAsync(currentSessionId?: string, locale?: SupportedLocale, options?: CohortScatterOptions): Promise<CohortScatterResponse> {
     const targetLocale = locale || getLocale();
+    let filterClause = "";
+    const params: any[] = [];
+    if (options?.filterUserIds) {
+      if (options.filterUserIds.length === 0) {
+        filterClause = "WHERE 1=0";
+      } else {
+        const placeholders = options.filterUserIds.map(() => "?").join(",");
+        filterClause = `WHERE c.user_id IN (${placeholders})`;
+        params.push(...options.filterUserIds);
+      }
+    }
+
     const sql = `
       SELECT 
         c.*,
+        u.display_name as user_display_name,
+        u.avatar_url as user_avatar_url,
         a.model_name as agent_model,
         a.persona as agent_persona,
         a.thinking_effort as agent_effort,
@@ -1498,20 +1536,29 @@ export class SessionManager {
         a.reasoning_tokens,
         a.total_tokens
       FROM completed_sessions c
+      LEFT JOIN users u ON c.user_id = u.id
       LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+      ${filterClause}
       ORDER BY c.created_at DESC
     `;
-    const rows = (await this.storage.query(sql)) as any[];
-    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale);
+    const rows = (await this.storage.query(sql, params)) as any[];
+    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale, options);
   }
 
-  private assembleCohortScatterFromRows(rows: any[], currentSessionId: string | undefined, targetLocale: SupportedLocale): CohortScatterResponse {
+  private assembleCohortScatterFromRows(
+    rows: any[],
+    currentSessionId: string | undefined,
+    targetLocale: SupportedLocale,
+    options?: CohortScatterOptions
+  ): CohortScatterResponse {
     const subjects: SubjectDataPoint[] = rows.map(r => {
       const quadrantCode = r.quadrant_code || "Q1-CAL";
       const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
       const dStarVal = r.d_star ?? 0.5;
       const formalScore = r.final_score ?? 0;
       const ccs = Math.round(dStarVal * formalScore * 100) / 100;
+      const displayName = r.user_display_name || r.subject_name || r.name || "受测者";
+      const avatarUrl = r.user_avatar_url || null;
 
       const metrics: AssessmentMetrics = {
         first_order_accuracy: r.first_order_accuracy ?? 0.7,
@@ -1550,7 +1597,9 @@ export class SessionManager {
 
       return {
         id: r.id,
-        name: r.subject_name || r.name || "受测者",
+        name: displayName,
+        nickname: displayName,
+        avatar_url: avatarUrl,
         subject_type: r.subject_type,
         locale: (r.locale as SupportedLocale) || targetLocale,
         created_at: r.created_at,
@@ -1673,6 +1722,34 @@ export class SessionManager {
         });
       }
     }
+
+    // Compute mutual cognitive similarities & friendship flags
+    const currentUserId = options?.currentUserId;
+    const friendUserIds = options?.friendUserIds || [];
+
+    let selfVector: [number, number, number, number] | undefined;
+    if (currentUserId) {
+      const selfSub = subjects.find(s => s.user_id === currentUserId);
+      if (selfSub && selfSub.cognitive_manifold_vector) {
+        selfVector = selfSub.cognitive_manifold_vector;
+      }
+    }
+
+    subjects.forEach((s) => {
+      const isSelf = Boolean(currentUserId && s.user_id === currentUserId);
+      const isFriend = Boolean(s.user_id && friendUserIds.includes(s.user_id));
+      s.is_self = isSelf;
+      s.is_friend = isFriend;
+
+      if (isSelf) {
+        s.similarity = 100;
+        s.similarity_percentage = 100;
+      } else if (selfVector && s.cognitive_manifold_vector) {
+        const sim = computeCognitiveSimilarity(selfVector, s.cognitive_manifold_vector);
+        s.similarity = sim;
+        s.similarity_percentage = sim;
+      }
+    });
 
     const xVals = subjects.map(s => s.metrics.d_star);
     const yVals = subjects.map(s => s.metrics.m_ratio);

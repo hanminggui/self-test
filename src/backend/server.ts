@@ -289,6 +289,23 @@ app.post("/api/sessions/start", async (c) => {
   const sm = getSessionManagerForContext(c);
   const user = c.get("user");
   const userId = body.user_id || user?.id || null;
+
+  const referrerId = body.referrer_id || c.req.query("ref") || c.req.query("referrer_id") || null;
+  const sourceSessionId = body.source_session_id || c.req.query("source_session_id") || null;
+  let resolvedReferrerId = referrerId;
+
+  if (!resolvedReferrerId && sourceSessionId) {
+    try {
+      const rows = (await sm.storage.query(
+        "SELECT user_id FROM completed_sessions WHERE id = ?",
+        [sourceSessionId]
+      )) as any[];
+      if (rows && rows.length > 0 && rows[0].user_id) {
+        resolvedReferrerId = rows[0].user_id;
+      }
+    } catch {}
+  }
+
   const session = await sm.createSessionAsync({
     sessionId: body.session_id,
     userId,
@@ -303,9 +320,21 @@ app.post("/api/sessions/start", async (c) => {
     metadata: {
       locale,
       ...(user ? { user_id: user.id, user_display_name: user.display_name } : {}),
+      ...(resolvedReferrerId ? { referrer_id: resolvedReferrerId } : {}),
+      ...(sourceSessionId ? { source_session_id: sourceSessionId } : {}),
       ...(body.metadata || {}),
     },
   });
+
+  if (userId && resolvedReferrerId && resolvedReferrerId !== userId) {
+    const um = getUserManagerForContext(c);
+    try {
+      await um.recordReferral(resolvedReferrerId, userId, sourceSessionId);
+    } catch (e) {
+      console.warn("Failed to record referral on session start:", e);
+    }
+  }
+
   return c.json(await sm.getTrialRequestAsync(session.sessionId, locale));
 });
 
@@ -439,9 +468,36 @@ app.patch("/api/sessions/:id/metadata", async (c) => {
 // 8. Cohort Scatter
 app.get("/api/cohort/scatter", async (c) => {
   const currentSessionId = c.req.query("current_session_id");
+  const scope = (c.req.query("scope") || "global").toLowerCase();
   const locale = c.get("locale");
   const sm = getSessionManagerForContext(c);
-  return c.json(await sm.getCohortScatterDataAsync(currentSessionId, locale));
+  const user = c.get("user");
+  const um = getUserManagerForContext(c);
+
+  if (scope === "friends" || scope === "self") {
+    if (!user) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+  }
+
+  let filterUserIds: string[] | undefined = undefined;
+  let friendUserIds: string[] = [];
+
+  if (scope === "friends" && user) {
+    friendUserIds = await um.getFriendUserIds(user.id);
+    filterUserIds = [user.id, ...friendUserIds];
+  } else if (scope === "self" && user) {
+    filterUserIds = [user.id];
+  }
+
+  return c.json(
+    await sm.getCohortScatterDataAsync(currentSessionId, locale, {
+      scope,
+      currentUserId: user?.id || null,
+      filterUserIds,
+      friendUserIds,
+    })
+  );
 });
 
 // 8.1 Multi-Dimensional Leaderboard & TOPSIS Overview (ADR 0003 / Spec v2.3)
@@ -514,11 +570,75 @@ app.post("/api/sessions/claim", async (c) => {
   const locale = c.get("locale");
   const sm = getSessionManagerForContext(c);
   const result = await sm.claimGuestSessionsAsync(user.id, candidateIds, locale);
+
+  // Link referrals if any claimed session had invitation tracking
+  const um = getUserManagerForContext(c);
+  for (const claimedId of result.claimed) {
+    const memSession = sm.getSession(claimedId);
+    let referrerId = memSession?.metadata?.referrer_id;
+    let sourceSessionId = memSession?.metadata?.source_session_id;
+
+    if (!referrerId || !sourceSessionId) {
+      try {
+        const rows = (await sm.storage.query(
+          "SELECT metadata_json FROM active_sessions WHERE id = ?",
+          [claimedId]
+        )) as any[];
+        if (rows && rows.length > 0 && rows[0].metadata_json) {
+          const meta = JSON.parse(rows[0].metadata_json);
+          referrerId = referrerId || meta.referrer_id;
+          sourceSessionId = sourceSessionId || meta.source_session_id;
+        }
+      } catch {}
+    }
+
+    if (!referrerId && sourceSessionId) {
+      try {
+        const sourceRows = (await sm.storage.query(
+          "SELECT user_id FROM completed_sessions WHERE id = ?",
+          [sourceSessionId]
+        )) as any[];
+        if (sourceRows && sourceRows.length > 0 && sourceRows[0].user_id) {
+          referrerId = sourceRows[0].user_id;
+        }
+      } catch {}
+    }
+
+    if (referrerId && referrerId !== user.id) {
+      try {
+        await um.recordReferral(referrerId, user.id, sourceSessionId);
+      } catch (e) {
+        console.warn("Failed to link referral upon claiming:", e);
+      }
+    }
+  }
+
   return c.json({
     success: true,
     claimed: result.claimed,
     sessions: result.sessions,
   });
+});
+
+// Explicit Referral Linking Endpoint (Issue #20)
+app.post("/api/relations/referral", async (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const body = await c.req.json().catch(() => ({}));
+  const referrerId = body.referrer_id;
+  const sourceSessionId = body.source_session_id;
+  if (!referrerId) {
+    return c.json({ error: "referrer_id is required" }, 400);
+  }
+  const um = getUserManagerForContext(c);
+  try {
+    const relation = await um.recordReferral(referrerId, user.id, sourceSessionId);
+    return c.json({ success: true, relation });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 400);
+  }
 });
 
 // Personal Cognitive Assets / Unlocked Archetype Collection

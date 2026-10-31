@@ -676,6 +676,10 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     triggerHaptic("medium");
     setErrorMsg("");
     const finalName = subjectName.trim() || user?.display_name || placeholderCodename;
+    const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const refSession = urlParams?.get("ref_session") || urlParams?.get("source_session_id") || null;
+    const referrerId = urlParams?.get("ref") || urlParams?.get("referrer_id") || urlParams?.get("invite") || null;
+
     try {
       const res = await fetch(`/api/sessions/start?lang=${encodeURIComponent(locale)}`, {
         method: "POST",
@@ -687,6 +691,8 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           subject_name: finalName,
           total_trials: totalTrials,
           warmup_trials: Math.max(5, Math.floor(totalTrials / 3)),
+          ...(refSession ? { source_session_id: refSession } : {}),
+          ...(referrerId ? { referrer_id: referrerId } : {}),
         }),
       });
       if (!res.ok) throw new Error(t.app.startErrorFallback);

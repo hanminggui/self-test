@@ -1025,6 +1025,29 @@ export default function CosmicGalaxyCompass({
                   {/* 16px 扩充透明点击热区 (杜绝脱靶) */}
                   <circle cx={proj.x} cy={proj.y} r={16 * proj.scale} fill="transparent" />
 
+                  {/* 好友/引荐网络高亮光环与自我标记 (GitHub Issue #20) */}
+                  {sub.is_friend && (
+                    <circle
+                      cx={proj.x}
+                      cy={proj.y}
+                      r={planetR * 1.6}
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="1.5"
+                      strokeDasharray="3 3"
+                    />
+                  )}
+                  {sub.is_self && (
+                    <circle
+                      cx={proj.x}
+                      cy={proj.y}
+                      r={planetR * 1.8}
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeWidth="2"
+                    />
+                  )}
+
                   {/* 高选/当前受测者行星导航环 */}
                   {(isHovered || sub.is_current) && (
                     <circle
@@ -1052,24 +1075,50 @@ export default function CosmicGalaxyCompass({
                     />
                   )}
 
-                  {/* 3D 立体行星球体 */}
-                  <circle
-                    cx={proj.x}
-                    cy={proj.y}
-                    r={planetR}
-                    fill={planetGrad}
-                    stroke="rgba(255, 255, 255, 0.4)"
-                    strokeWidth={0.8}
-                  />
-
-                  {/* 行星高光微反射点 */}
-                  <circle
-                    cx={proj.x - planetR * 0.32}
-                    cy={proj.y - planetR * 0.32}
-                    r={planetR * 0.24}
-                    fill="#ffffff"
-                    opacity={0.85}
-                  />
+                  {/* 3D 立体行星球体 / 好友社交头像 */}
+                  {sub.is_friend && sub.avatar_url ? (
+                    <g>
+                      <clipPath id={`galaxy-avatar-clip-${sub.id}`}>
+                        <circle cx={proj.x} cy={proj.y} r={planetR * 1.05} />
+                      </clipPath>
+                      <circle
+                        cx={proj.x}
+                        cy={proj.y}
+                        r={planetR * 1.15}
+                        fill="#10b981"
+                        stroke="#ffffff"
+                        strokeWidth={0.8}
+                      />
+                      <image
+                        href={sub.avatar_url}
+                        x={proj.x - planetR * 1.05}
+                        y={proj.y - planetR * 1.05}
+                        width={planetR * 2.1}
+                        height={planetR * 2.1}
+                        clipPath={`url(#galaxy-avatar-clip-${sub.id})`}
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                    </g>
+                  ) : (
+                    <>
+                      <circle
+                        cx={proj.x}
+                        cy={proj.y}
+                        r={planetR}
+                        fill={planetGrad}
+                        stroke={sub.is_friend ? "#10b981" : "rgba(255, 255, 255, 0.4)"}
+                        strokeWidth={sub.is_friend ? 1.5 : 0.8}
+                      />
+                      {/* 行星高光微反射点 */}
+                      <circle
+                        cx={proj.x - planetR * 0.32}
+                        cy={proj.y - planetR * 0.32}
+                        r={planetR * 0.24}
+                        fill="#ffffff"
+                        opacity={0.85}
+                      />
+                    </>
+                  )}
                 </g>
               );
             })}

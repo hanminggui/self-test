@@ -127,6 +127,9 @@ export interface SessionExecutionMetadata {
   warmup_trials?: number;
   token_usage?: TokenUsageStats;
   locale?: SupportedLocale;
+  referrer_id?: string;
+  source_session_id?: string;
+  [key: string]: any;
 }
 
 export interface AgentExecutionMetadata {
@@ -275,6 +278,12 @@ export interface SubjectDataPoint {
   metrics: AssessmentMetrics;
   agent_metadata?: AgentExecutionMetadata;
   user_id?: string | null;
+  avatar_url?: string | null;
+  nickname?: string;
+  similarity?: number;
+  similarity_percentage?: number;
+  is_friend?: boolean;
+  is_self?: boolean;
 
   // Legacy flat fields for backwards compatibility until views adapt
   first_order_accuracy?: number;

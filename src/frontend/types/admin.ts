@@ -26,6 +26,12 @@ export interface SubjectPoint {
   metrics: AssessmentMetrics;
   agent_metadata?: AgentExecutionMetadata;
   user_id?: string | null;
+  avatar_url?: string | null;
+  nickname?: string;
+  similarity?: number;
+  similarity_percentage?: number;
+  is_friend?: boolean;
+  is_self?: boolean;
 
   // Flattened compatibility properties for direct coordinate access
   first_order_accuracy: number;
