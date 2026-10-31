@@ -42,6 +42,7 @@ import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 export interface ChineseMythicPosterProps {
   report: {
     subject_name?: string;
+    avatar_url?: string | null;
     session_id?: string;
     quadrant_code?: string;
     metrics?: any;
@@ -64,6 +65,7 @@ export interface ChineseMythicPosterProps {
       skills?: SkillDisplayItem[];
     };
   };
+  avatar_url?: string | null;
   entryUrl?: string;
   onClose?: () => void;
   className?: string;
@@ -71,6 +73,7 @@ export interface ChineseMythicPosterProps {
 
 export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   report,
+  avatar_url: propAvatarUrl,
   entryUrl,
   onClose,
   className = "",
@@ -78,7 +81,13 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   const profile = report.diagnostic_profile || {};
   const quadrantCode = report.quadrant_code || profile.quadrant_code || profile.archetype || "Q1-CAL";
   const def = useMemo(() => getArchetypeDefinition(quadrantCode, "zh-CN"), [quadrantCode]);
-  const subjectName = report.subject_name || "探索者";
+  const subjectName = report.subject_name?.trim() || "探索者";
+  const avatarUrl = propAvatarUrl || report.avatar_url || (report as any).avatarUrl || null;
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [avatarUrl]);
 
   // 解析对应的画像配置
   const archetypeConfig: MythicArchetypeConfig = useMemo(() => {
@@ -120,6 +129,8 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   const shareData: PosterShareData = useMemo(() => {
     return {
       subjectName,
+      avatar_url: avatarUrl,
+      avatarUrl,
       archetype: archetypeConfig.archetype,
       roleTitle: profile.role_title || def.role_title || archetypeConfig.roleTitle,
       praiseTagline: profile.praise_tagline || def.praise_tagline || archetypeConfig.praiseTagline,
@@ -131,7 +142,7 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
       locale: "zh-CN",
       entryUrl: resolvedUrl,
     };
-  }, [subjectName, archetypeConfig, profile, skills, empoweringFeedback, resolvedUrl]);
+  }, [subjectName, avatarUrl, archetypeConfig, profile, def, skills, empoweringFeedback, resolvedUrl]);
 
   // 动态渲染二维码 SVG
   useEffect(() => {
@@ -265,23 +276,35 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
               style={{ backgroundColor: colors.glowColor }}
             />
 
-            {/* 图腾外环 */}
+            {/* 图腾/头像外环 (带圆形裁切与边框光效) */}
             <div
-              className="w-24 h-24 rounded-full border-2 flex flex-col items-center justify-center relative shadow-inner"
+              data-avatar-badge="true"
+              className="w-24 h-24 rounded-full border-2 flex items-center justify-center relative shadow-inner overflow-hidden"
               style={{
                 borderColor: colors.primaryGold,
                 backgroundColor: "rgba(0, 0, 0, 0.55)",
+                boxShadow: `0 0 24px ${colors.glowColor}, inset 0 0 12px rgba(0, 0, 0, 0.6)`,
               }}
             >
-              <div
-                className="text-4xl font-black font-serif leading-none select-none drop-shadow-md"
-                style={{ color: colors.secondaryGold }}
-              >
-                {skills[0]?.icon || "✦"}
-              </div>
+              {avatarUrl && !imageError ? (
+                <img
+                  src={avatarUrl}
+                  alt={subjectName}
+                  crossOrigin="anonymous"
+                  onError={() => setImageError(true)}
+                  className="w-full h-full object-cover rounded-full select-none pointer-events-none"
+                />
+              ) : (
+                <div
+                  className="text-4xl font-black font-serif leading-none select-none drop-shadow-md"
+                  style={{ color: colors.secondaryGold }}
+                >
+                  {skills[0]?.icon || (subjectName ? subjectName.charAt(0).toUpperCase() : "✦")}
+                </div>
+              )}
             </div>
 
-            {/* 头像框下方长条徽带 (展示用户真实昵称，如“探索者 · 伏羲042”) */}
+            {/* 头像框下方长条徽带 (展示用户真实昵称，已彻底移除硬编码“探索者 · ”前缀) */}
             <div
               className="mt-3 px-5 py-1 rounded-full border text-xs font-semibold tracking-wider font-serif shadow-md"
               style={{
@@ -290,7 +313,7 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
                 color: colors.secondaryGold,
               }}
             >
-              {`探索者 · ${subjectName}`}
+              {subjectName}
             </div>
           </div>
 

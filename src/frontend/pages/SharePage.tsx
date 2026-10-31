@@ -279,12 +279,14 @@ export const SharePage: React.FC = () => {
                 {isEn ? (
                   <WesternArcanePoster
                     report={localizedReport}
+                    avatar_url={localizedReport?.avatar_url}
                     entryUrl={shareUrl}
                     className="shadow-2xl shadow-purple-950/40"
                   />
                 ) : (
                   <ChineseMythicPoster
                     report={localizedReport}
+                    avatar_url={localizedReport?.avatar_url}
                     entryUrl={shareUrl}
                     className="shadow-2xl shadow-amber-950/40"
                   />

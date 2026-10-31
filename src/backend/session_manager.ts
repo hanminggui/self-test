@@ -934,6 +934,7 @@ export class SessionManager {
 
     report.total_duration_ms = session.startTimeMs ? Date.now() - session.startTimeMs : (session.metadata?.total_duration_ms ?? 0);
     report.user_id = session.userId ?? null;
+    report.avatar_url = (session.metadata as any)?.avatar_url ?? null;
     report.records = session.records;
 
     // Agent metadata: populated ONLY when subjectType !== SubjectType.HUMAN
@@ -1401,6 +1402,7 @@ export class SessionManager {
       session_id: row.id,
       subject_name: row.subject_name || row.name || "受测者",
       subject_type: row.subject_type,
+      avatar_url: row.avatar_url || (legacyMetadata as any)?.avatar_url || null,
       locale: targetLocale,
       created_at: row.created_at,
       total_trials: row.total_trials ?? records.length,
