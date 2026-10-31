@@ -3,7 +3,7 @@
  * Serves REST endpoints, independent admin portal, health probes, and frontend SPA.
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import * as path from "path";
@@ -438,7 +438,7 @@ app.patch("/api/sessions/:id/metadata", async (c) => {
 });
 
 // 7c. Update Session Visibility (GitHub Issue #15: Three-Tier Session Visibility Engine)
-const handleUpdateSessionVisibility = async (c: any) => {
+const handleUpdateSessionVisibility = async (c: Context) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => ({}));
   const visibility = body.visibility;

@@ -602,15 +602,23 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
   const handleUpdateVisibility = async (newVis: "private" | "anonymous" | "public") => {
     const targetSessionId = report?.session_id || sessionId;
     if (!targetSessionId) return;
+    const prevVis = report?.visibility;
     setReport((prev) => (prev ? { ...prev, visibility: newVis } : prev));
     try {
-      await fetch(`/api/sessions/${encodeURIComponent(targetSessionId)}/visibility`, {
+      const res = await fetch(`/api/sessions/${encodeURIComponent(targetSessionId)}/visibility`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ visibility: newVis }),
       });
-      notifySessionChanged();
+      if (!res.ok) {
+        setReport((prev) => (prev ? { ...prev, visibility: prevVis } : prev));
+        const errJson = await res.json().catch(() => ({}));
+        setErrorMsg(errJson.error || "更新可见性失败");
+      } else {
+        notifySessionChanged();
+      }
     } catch (err) {
+      setReport((prev) => (prev ? { ...prev, visibility: prevVis } : prev));
       console.warn("Error updating session visibility:", err);
     }
   };

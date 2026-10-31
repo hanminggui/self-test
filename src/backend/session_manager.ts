@@ -17,6 +17,7 @@ import {
   TrialRecord,
   FinalAssessmentReport,
   SubjectDataPoint,
+  SubjectSocialProfile,
   CohortScatterResponse,
   TrialResponse,
   SessionExecutionMetadata,
@@ -1741,7 +1742,7 @@ export class SessionManager {
       let userId: string | null = r.user_id ?? null;
       let avatarUrl: string | null | undefined = undefined;
       let profileUrl: string | undefined = undefined;
-      let social: any | undefined = undefined;
+      let social: SubjectSocialProfile | undefined = undefined;
 
       if (isPublicScatter) {
         if (vis === "anonymous") {

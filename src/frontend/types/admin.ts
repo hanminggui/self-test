@@ -35,7 +35,7 @@ export interface SubjectPoint {
     avatar_url?: string | null;
     profile_url?: string;
     bio?: string;
-    social_links?: any;
+    social_links?: Record<string, string | undefined>;
   };
 
   // Flattened compatibility properties for direct coordinate access
