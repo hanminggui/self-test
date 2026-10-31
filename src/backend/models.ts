@@ -220,6 +220,7 @@ export interface FinalAssessmentReport {
   session_id: string;
   subject_name: string;
   subject_type: string;
+  avatar_url?: string | null;
   locale: SupportedLocale;
   created_at: string;
   total_trials: number;

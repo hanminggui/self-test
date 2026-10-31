@@ -319,7 +319,7 @@ app.post("/api/sessions/start", async (c) => {
     thinkingEffort: body.thinking_effort,
     metadata: {
       locale,
-      ...(user ? { user_id: user.id, user_display_name: user.display_name } : {}),
+      ...(user ? { user_id: user.id, user_display_name: user.display_name, avatar_url: user.avatar_url } : {}),
       ...(resolvedReferrerId ? { referrer_id: resolvedReferrerId } : {}),
       ...(sourceSessionId ? { source_session_id: sourceSessionId } : {}),
       ...(body.metadata || {}),

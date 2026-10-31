@@ -29,6 +29,8 @@ export interface SkillDisplayItem {
 
 export interface PosterShareData {
   subjectName: string;
+  avatar_url?: string | null;
+  avatarUrl?: string | null;
   archetype: CognitiveArchetype | string;
   roleTitle?: string;
   praiseTagline?: string;
@@ -111,6 +113,36 @@ export async function generatePosterQrCodeDataUrl(
       dark: darkColor,
       light: lightColor,
     },
+  });
+}
+
+/**
+ * 跨域异步加载图片，具备超时与跨域声明 (crossOrigin = "anonymous")
+ */
+export async function loadCrossOriginImage(url: string, timeoutMs: number = 3000): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    if (typeof Image === "undefined") {
+      return reject(new Error("Image constructor is not available in current environment"));
+    }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    let timer: any = null;
+    if (timeoutMs > 0) {
+      timer = setTimeout(() => {
+        img.onload = null;
+        img.onerror = null;
+        reject(new Error("Image load timeout"));
+      }, timeoutMs);
+    }
+    img.onload = () => {
+      if (timer) clearTimeout(timer);
+      resolve(img);
+    };
+    img.onerror = (e) => {
+      if (timer) clearTimeout(timer);
+      reject(e);
+    };
+    img.src = url;
   });
 }
 
@@ -474,18 +506,68 @@ export async function renderPosterToCanvas(
   ctx.arc(W / 2, avatarY, 63, 0, Math.PI * 2);
   ctx.fill();
 
-  // 头像框中心专属图腾图标/字符
-  ctx.fillStyle = colorScheme.secondaryGold;
-  ctx.font = `bold 44px system-ui, -apple-system, sans-serif`;
-  const emblemGlyph = isEn ? arcaneConfig.crestSymbol : (skills[0]?.icon || "✦");
-  ctx.fillText(emblemGlyph, W / 2, avatarY);
+  // 异步跨域加载用户真实头像图片并圆形裁切绘制
+  let avatarLoaded = false;
+  const avatarUrl = data.avatar_url || data.avatarUrl;
+  if (avatarUrl) {
+    try {
+      const avatarImg = await loadCrossOriginImage(avatarUrl);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(W / 2, avatarY, 63, 0, Math.PI * 2);
+      ctx.closePath();
+      if (typeof ctx.clip === "function") {
+        ctx.clip();
+      }
+
+      const imgW = avatarImg.width || 126;
+      const imgH = avatarImg.height || 126;
+      const minDim = Math.min(imgW, imgH);
+      const sx = (imgW - minDim) / 2;
+      const sy = (imgH - minDim) / 2;
+      ctx.drawImage(
+        avatarImg,
+        sx,
+        sy,
+        minDim,
+        minDim,
+        W / 2 - 63,
+        avatarY - 63,
+        126,
+        126
+      );
+      ctx.restore();
+
+      // 圆形边框与微光金环
+      ctx.strokeStyle = `${primaryColor}99`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(W / 2, avatarY, 63, 0, Math.PI * 2);
+      ctx.stroke();
+
+      avatarLoaded = true;
+    } catch {
+      // 跨域或加载失败优雅回退
+      avatarLoaded = false;
+    }
+  }
+
+  // 加载失败或无头像时回退至原本的图腾/字形/首字母
+  if (!avatarLoaded) {
+    ctx.fillStyle = colorScheme.secondaryGold;
+    ctx.font = `bold 44px system-ui, -apple-system, sans-serif`;
+    const fallbackGlyph = isEn
+      ? (arcaneConfig.crestSymbol || (data.subjectName ? data.subjectName.charAt(0).toUpperCase() : "✦"))
+      : (skills[0]?.icon || (data.subjectName ? data.subjectName.charAt(0).toUpperCase() : "✦"));
+    ctx.fillText(fallbackGlyph, W / 2, avatarY);
+  }
 
   // ==========================================
-  // 6. 头像框下方长条徽带 (展示用户真实昵称)
+  // 6. 头像框下方长条徽带 (展示用户真实昵称，已移除硬编码前缀)
   // ==========================================
   const ribbonY = 325;
-  const subjectName = data.subjectName || (isEn ? "Explorer" : "探索者");
-  const nicknameText = isEn ? `Explorer · ${subjectName}` : `探索者 · ${subjectName}`;
+  const subjectName = data.subjectName?.trim() || (isEn ? "Explorer" : "探索者");
+  const nicknameText = subjectName;
 
   ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
   ctx.beginPath();
