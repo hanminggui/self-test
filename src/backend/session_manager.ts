@@ -179,12 +179,12 @@ export class SessionManager {
         task_generator_state_json, current_task_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        agent_metadata_json, updated_at, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        agent_metadata_json, updated_at, user_id, referrer_session_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
-    const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
+    const agentMetadata = session.metadata ? JSON.stringify(session.metadata) : null;
     const locale = session.metadata?.locale || getLocale();
+    const referrerId = session.metadata?.referrer_session_id || null;
 
     const params = [
       session.sessionId,
@@ -210,6 +210,7 @@ export class SessionManager {
       agentMetadata,
       new Date().toISOString(),
       session.userId ?? null,
+      referrerId,
     ];
 
     if (this.storage.runSync) {
@@ -228,12 +229,12 @@ export class SessionManager {
         task_generator_state_json, current_task_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        agent_metadata_json, updated_at, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        agent_metadata_json, updated_at, user_id, referrer_session_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
-    const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
+    const agentMetadata = session.metadata ? JSON.stringify(session.metadata) : null;
     const locale = session.metadata?.locale || getLocale();
+    const referrerId = session.metadata?.referrer_session_id || null;
 
     const params = [
       session.sessionId,
@@ -259,6 +260,7 @@ export class SessionManager {
       agentMetadata,
       new Date().toISOString(),
       session.userId ?? null,
+      referrerId,
     ];
     await this.storage.run(sql, params);
   }
@@ -318,6 +320,13 @@ export class SessionManager {
         metadata = { locale: row.locale };
       } else if (!metadata.locale) {
         metadata.locale = row.locale;
+      }
+    }
+    if (row.referrer_session_id) {
+      if (!metadata) {
+        metadata = { referrer_session_id: row.referrer_session_id };
+      } else {
+        metadata.referrer_session_id = row.referrer_session_id;
       }
     }
 
@@ -386,6 +395,7 @@ export class SessionManager {
   createSession(params: {
     sessionId?: string;
     userId?: string | null;
+    referrerSessionId?: string | null;
     subjectName?: string;
     subjectType?: string;
     totalTrials?: number;
@@ -402,6 +412,7 @@ export class SessionManager {
     const totalTrials = params.totalTrials ?? 30;
     const warmupTrials = params.warmupTrials ?? 10;
     const initialDelta = params.initialDelta ?? 0.50;
+    const referrerId = params.referrerSessionId || params.metadata?.referrer_session_id || null;
 
     const staircase = new StaircaseController(initialDelta, 0.08, 0.05, 0.85, 3, warmupTrials, 0.18);
     const taskGenerator = new TaskGenerator(params.seed);
@@ -412,7 +423,7 @@ export class SessionManager {
     const startTimeMs = Date.now();
 
     let sessionMetadata: SessionExecutionMetadata | undefined = undefined;
-    if (subjectType !== SubjectType.HUMAN || params.persona || params.thinkingEffort || params.metadata) {
+    if (subjectType !== SubjectType.HUMAN || params.persona || params.thinkingEffort || params.metadata || referrerId) {
       sessionMetadata = {
         model_name: params.metadata?.model_name || (subjectType !== SubjectType.HUMAN ? sName : undefined),
         persona: params.persona || params.metadata?.persona,
@@ -429,6 +440,7 @@ export class SessionManager {
           total_tokens: 0,
         },
         locale: params.metadata?.locale || getLocale(),
+        ...(referrerId ? { referrer_session_id: referrerId } : {}),
         ...(params.metadata || {}),
       };
     }
@@ -468,6 +480,7 @@ export class SessionManager {
   async createSessionAsync(params: {
     sessionId?: string;
     userId?: string | null;
+    referrerSessionId?: string | null;
     subjectName?: string;
     subjectType?: string;
     totalTrials?: number;
@@ -934,6 +947,7 @@ export class SessionManager {
 
     report.total_duration_ms = session.startTimeMs ? Date.now() - session.startTimeMs : (session.metadata?.total_duration_ms ?? 0);
     report.user_id = session.userId ?? null;
+    report.referrer_session_id = session.metadata?.referrer_session_id ?? null;
     report.records = session.records;
 
     // Agent metadata: populated ONLY when subjectType !== SubjectType.HUMAN
@@ -972,6 +986,7 @@ export class SessionManager {
   public persistCompletedSession(session: SessionState): void {
     const report = session.finalReport || this.finalizeReport(session);
     const metrics = report.metrics;
+    const referrerId = report.referrer_session_id || session.metadata?.referrer_session_id || null;
 
     const insertSql = `
       INSERT OR REPLACE INTO completed_sessions (
@@ -979,8 +994,8 @@ export class SessionManager {
         completed_trials, total_duration_ms, final_score, quadrant_code,
         first_order_accuracy, second_order_accuracy, reversals_count,
         d_star, d_prime, meta_d_prime, m_ratio, calibration_bias,
-        brier_score, ive, coachability_index, risk_attitude, created_at, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, referrer_session_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       report.session_id,
@@ -1007,6 +1022,7 @@ export class SessionManager {
       metrics.risk_attitude,
       session.createdAt,
       session.userId ?? null,
+      referrerId,
     ];
 
     if (this.storage.runSync) {
@@ -1068,6 +1084,7 @@ export class SessionManager {
   public async persistCompletedSessionAsync(session: SessionState): Promise<void> {
     const report = session.finalReport || this.finalizeReport(session);
     const metrics = report.metrics;
+    const referrerId = report.referrer_session_id || session.metadata?.referrer_session_id || null;
 
     const insertSql = `
       INSERT OR REPLACE INTO completed_sessions (
@@ -1075,8 +1092,8 @@ export class SessionManager {
         completed_trials, total_duration_ms, final_score, quadrant_code,
         first_order_accuracy, second_order_accuracy, reversals_count,
         d_star, d_prime, meta_d_prime, m_ratio, calibration_bias,
-        brier_score, ive, coachability_index, risk_attitude, created_at, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, referrer_session_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       report.session_id,
@@ -1103,6 +1120,7 @@ export class SessionManager {
       metrics.risk_attitude,
       session.createdAt,
       session.userId ?? null,
+      referrerId,
     ];
     await this.storage.run(insertSql, params);
 
@@ -1418,6 +1436,7 @@ export class SessionManager {
       metadata: legacyMetadata,
       records,
       user_id: row.user_id ?? null,
+      referrer_session_id: row.referrer_session_id ?? null,
 
       // Transitional wrappers
       summary: {

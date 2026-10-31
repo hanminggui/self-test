@@ -27,6 +27,7 @@ import { getMythicArchetype } from "../frontend/components/share/mythicArchetype
 import { getArcaneArchetype } from "../frontend/components/share/arcaneArchetypes";
 import { getArchetypeDefinition } from "./archetype_matrix";
 import { generateLeaderboardOverview, subjectDataPointToLeaderboardInput } from "./leaderboard";
+import { computeDuelComparison } from "./duel_engine";
 
 export type CloudflareBindings = {
   DB?: D1Database;
@@ -289,9 +290,11 @@ app.post("/api/sessions/start", async (c) => {
   const sm = getSessionManagerForContext(c);
   const user = c.get("user");
   const userId = body.user_id || user?.id || null;
+  const referrerSessionId = body.referrer_session_id || body.metadata?.referrer_session_id || null;
   const session = await sm.createSessionAsync({
     sessionId: body.session_id,
     userId,
+    referrerSessionId,
     subjectName: body.subject_name || (user ? user.display_name : undefined),
     subjectType: body.subject_type || SubjectType.HUMAN,
     totalTrials: body.total_trials ?? 30,
@@ -302,6 +305,7 @@ app.post("/api/sessions/start", async (c) => {
     thinkingEffort: body.thinking_effort,
     metadata: {
       locale,
+      ...(referrerSessionId ? { referrer_session_id: referrerSessionId } : {}),
       ...(user ? { user_id: user.id, user_display_name: user.display_name } : {}),
       ...(body.metadata || {}),
     },
@@ -1138,6 +1142,62 @@ const handleOgImage = async (c: any) => {
 app.get("/api/share/:sessionId/og-image", handleOgImage);
 app.get("/api/share/:sessionId/og.svg", handleOgImage);
 
+// Cognitive Twin Duel Comparison API
+app.get("/api/duel/:sessionIdA/:sessionIdB", async (c) => {
+  const sessionIdA = c.req.param("sessionIdA");
+  const sessionIdB = c.req.param("sessionIdB");
+  const queryLang = c.req.query("lang") as SupportedLocale | undefined;
+  const locale = queryLang || c.get("locale") || "zh-CN";
+  const sm = getSessionManagerForContext(c);
+
+  let reportA: FinalAssessmentReport | null = null;
+  let reportB: FinalAssessmentReport | null = null;
+
+  try {
+    reportA = await sm.getReportAsync(sessionIdA, locale);
+  } catch {}
+
+  try {
+    reportB = await sm.getReportAsync(sessionIdB, locale);
+  } catch {}
+
+  if (!reportA || !reportB) {
+    const isEn = String(locale).toLowerCase().startsWith("en");
+    return c.json(
+      {
+        error: isEn
+          ? "One or both assessment sessions could not be found or are not completed."
+          : "对决的评测记录不存在或尚未完成。",
+      },
+      404
+    );
+  }
+
+  const comparison = computeDuelComparison(reportA, reportB, locale);
+
+  return c.json({
+    sessionA: {
+      id: reportA.session_id,
+      subject_name: reportA.subject_name,
+      archetype: reportA.archetype,
+      quadrant_code: reportA.quadrant_code,
+      diagnostic_profile: reportA.diagnostic_profile,
+      metrics: reportA.metrics,
+      metacognitive_metrics: reportA.metacognitive_metrics,
+    },
+    sessionB: {
+      id: reportB.session_id,
+      subject_name: reportB.subject_name,
+      archetype: reportB.archetype,
+      quadrant_code: reportB.quadrant_code,
+      diagnostic_profile: reportB.diagnostic_profile,
+      metrics: reportB.metrics,
+      metacognitive_metrics: reportB.metacognitive_metrics,
+    },
+    comparison,
+  });
+});
+
 // Public Share Landing Page with Dynamic OG & Twitter Card Meta Tags (GitHub Issue #8)
 const handleSharePage = async (c: any) => {
   const sessionId = c.req.param("sessionId");
@@ -1244,6 +1304,93 @@ const handleSharePage = async (c: any) => {
 
 app.get("/share/:sessionId", handleSharePage);
 app.get("/share/:sessionId/", handleSharePage);
+
+// Cognitive Twin Duel Landing Page with Dynamic OG & Twitter Card Meta Tags
+const handleDuelPage = async (c: any) => {
+  const sessionIdA = c.req.param("sessionIdA");
+  const sessionIdB = c.req.param("sessionIdB");
+  const locale = c.get("locale");
+  const sm = getSessionManagerForContext(c);
+  const origin = getOrigin(c);
+  const duelUrl = `${origin}/duel/${sessionIdA}/${sessionIdB}`;
+
+  let reportA: FinalAssessmentReport | null = null;
+  let reportB: FinalAssessmentReport | null = null;
+  try {
+    reportA = await sm.getReportAsync(sessionIdA, locale);
+  } catch {}
+  try {
+    reportB = await sm.getReportAsync(sessionIdB, locale);
+  } catch {}
+
+  const isEn = String(locale).toLowerCase().startsWith("en");
+  let ogTitle = isEn
+    ? "Cognitive Twin Duel · Self-Test"
+    : "双星认知对决 · Self-Test 思维星图";
+  let ogDescription = isEn
+    ? "Compare 4D cognitive manifolds, archetype resonance, and decision psychophysics."
+    : "双星认知对决：4D 认知流形欧氏距离、契合度与互补特质全景解析。";
+  let ogImage = `${origin}/logo-1024.png`;
+
+  if (reportA && reportB) {
+    const comparison = computeDuelComparison(reportA, reportB, locale);
+    const nameA = reportA.subject_name || (isEn ? "Player A" : "受测者 A");
+    const nameB = reportB.subject_name || (isEn ? "Player B" : "受测者 B");
+
+    if (isEn) {
+      ogTitle = `Twin Duel: ${nameA} vs ${nameB} · ${comparison.similarity_percentage}% Alignment`;
+      ogDescription = `"${comparison.synergy_title}" · Alignment: ${comparison.similarity_percentage}% | Complementary Index: ${comparison.complementary_index}% | ${comparison.pairing_dynamics}`;
+    } else {
+      ogTitle = `双星对决：${nameA} vs ${nameB} · 契合度 ${comparison.similarity_percentage}%`;
+      ogDescription = `“${comparison.synergy_title}” | 认知契合度 ${comparison.similarity_percentage}% · 互补指数 ${comparison.complementary_index}% | ${comparison.pairing_dynamics}`;
+    }
+  }
+
+  const rawHtml = await getIndexHtmlTemplate(c);
+
+  const metaTags = [
+    `<title>${escapeHtml(ogTitle)}</title>`,
+    `<meta name="description" content="${escapeHtml(ogDescription)}" />`,
+    `<link rel="canonical" href="${escapeHtml(duelUrl)}" />`,
+    `<meta property="og:type" content="article" />`,
+    `<meta property="og:site_name" content="Self-Test · 思维星图" />`,
+    `<meta property="og:url" content="${escapeHtml(duelUrl)}" />`,
+    `<meta property="og:title" content="${escapeHtml(ogTitle)}" />`,
+    `<meta property="og:description" content="${escapeHtml(ogDescription)}" />`,
+    `<meta property="og:image" content="${escapeHtml(ogImage)}" />`,
+    `<meta property="og:image:alt" content="${escapeHtml(ogTitle)}" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:url" content="${escapeHtml(duelUrl)}" />`,
+    `<meta name="twitter:title" content="${escapeHtml(ogTitle)}" />`,
+    `<meta name="twitter:description" content="${escapeHtml(ogDescription)}" />`,
+    `<meta name="twitter:image" content="${escapeHtml(ogImage)}" />`,
+  ].join("\n    ");
+
+  let modifiedHtml = rawHtml
+    .replace(/<title>.*?<\/title>/gi, "")
+    .replace(/<meta\s+property=["']og:title["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:description["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:image["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:image:.*?["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:url["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:site_name["'].*?>/gi, "")
+    .replace(/<meta\s+property=["']og:type["'].*?>/gi, "")
+    .replace(/<meta\s+name=["']description["'].*?>/gi, "")
+    .replace(/<meta\s+name=["']twitter:.*?["'].*?>/gi, "");
+
+  if (modifiedHtml.includes("<head>")) {
+    modifiedHtml = modifiedHtml.replace("<head>", `<head>\n    ${metaTags}`);
+  } else {
+    modifiedHtml = `<head>\n    ${metaTags}\n  </head>\n` + modifiedHtml;
+  }
+
+  return c.html(modifiedHtml);
+};
+
+app.get("/duel/:sessionIdA/:sessionIdB", handleDuelPage);
+app.get("/duel/:sessionIdA/:sessionIdB/", handleDuelPage);
+app.get("/duel", serveAsset({ path: "./dist/index.html" }));
+app.get("/duel/*", serveAsset({ path: "./dist/index.html" }));
 
 app.get("/admin", serveAsset({ path: "./dist/index.html" }));
 app.get("/admin/*", serveAsset({ path: "./dist/index.html" }));

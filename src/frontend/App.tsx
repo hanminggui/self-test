@@ -24,6 +24,7 @@ import {
   LogIn,
   ArrowLeft,
   Menu,
+  Swords,
 } from "lucide-react";
 
 import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
@@ -47,6 +48,8 @@ import {
   saveLastCompletedSession,
   getLastCompletedSession,
   canGuestStartNewSession,
+  getReferrerSessionId,
+  buildDuelUrl,
 } from "./utils/sessionRoute";
 import { triggerNativeShare } from "./utils/shareUtils";
 import { UserNav } from "./components/auth/UserNav";
@@ -676,6 +679,10 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
     triggerHaptic("medium");
     setErrorMsg("");
     const finalName = subjectName.trim() || user?.display_name || placeholderCodename;
+    const sp = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const refParam = sp?.get("referrer") || sp?.get("ref") || sp?.get("duel");
+    const referrerId = (refParam && refParam !== "1" ? refParam : null) || getReferrerSessionId();
+
     try {
       const res = await fetch(`/api/sessions/start?lang=${encodeURIComponent(locale)}`, {
         method: "POST",
@@ -687,6 +694,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           subject_name: finalName,
           total_trials: totalTrials,
           warmup_trials: Math.max(5, Math.floor(totalTrials / 3)),
+          referrer_session_id: referrerId || undefined,
         }),
       });
       if (!res.ok) throw new Error(t.app.startErrorFallback);
@@ -1700,6 +1708,26 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     </span>
                   </button>
                 )}
+
+                {/* 双星对决入口按钮 */}
+                {(() => {
+                  const duelReferrerId = displayReport.referrer_session_id || getReferrerSessionId();
+                  if (!duelReferrerId || duelReferrerId === displayReport.session_id) return null;
+                  return (
+                    <button
+                      type="button"
+                      data-testid="report-view-duel-btn"
+                      onClick={() => {
+                        const duelPath = buildDuelUrl(duelReferrerId, displayReport.session_id);
+                        navigateTo(duelPath);
+                      }}
+                      className="w-full sm:w-auto min-h-[44px] px-6 py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-600 dark:bg-rose-500 dark:hover:brightness-110 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-rose-400 shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-1 active:shadow-none"
+                    >
+                      <Swords className="w-4 h-4 text-white" />
+                      <span>{isEn ? "View Twin Duel" : "查看双星对决战报"}</span>
+                    </button>
+                  );
+                })()}
 
                 {/* 生成海报弹窗 */}
                 <button

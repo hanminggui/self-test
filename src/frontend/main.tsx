@@ -5,6 +5,7 @@ import Admin from "./Admin";
 import ProfileDashboard from "./ProfileDashboard";
 import { LegalPage } from "./legal/LegalPage";
 import { SharePage } from "./pages/SharePage";
+import { DuelPage } from "./pages/DuelPage";
 import { GuestLandingPage } from "./pages/GuestLandingPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AssetsPage } from "./pages/AssetsPage";
@@ -100,6 +101,8 @@ const AppRouter: React.FC = () => {
     content = <LegalPage type="terms" />;
   } else if (resolved.view === "share") {
     content = <SharePage />;
+  } else if (resolved.view === "duel") {
+    content = <DuelPage />;
   } else if (loading && locationState.pathname === "/") {
     // Avoid flashing Guest Landing Page while checking initial auth cookie on "/"
     content = (

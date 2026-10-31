@@ -259,6 +259,15 @@ export class LocalSqliteAdapter implements StorageAdapter {
       this.db.exec("ALTER TABLE completed_sessions ADD COLUMN brier_score REAL DEFAULT 0.20;");
     } catch {}
     try {
+      this.db.exec("ALTER TABLE active_sessions ADD COLUMN referrer_session_id TEXT;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN referrer_session_id TEXT;");
+    } catch {}
+    try {
+      this.db.exec("CREATE INDEX IF NOT EXISTS idx_completed_sessions_referrer ON completed_sessions(referrer_session_id);");
+    } catch {}
+    try {
       this.db.exec("ALTER TABLE completed_sessions ADD COLUMN coachability_index INTEGER DEFAULT 50;");
     } catch {}
     try {

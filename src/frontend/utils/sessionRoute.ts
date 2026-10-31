@@ -11,6 +11,60 @@
 
 const STORAGE_KEY_LAST_SESSION = "metacognitive_last_completed_session_id";
 const STORAGE_KEY_LAST_TIMESTAMP = "metacognitive_last_completed_timestamp";
+const STORAGE_KEY_REFERRER_SESSION = "metacognitive_referrer_session_id";
+
+/**
+ * 将推荐/对决发起者会话 ID 暂存至本地（用于在测完后生成双星对决海报）
+ */
+export function saveReferrerSessionId(sessionId: string): void {
+  if (!sessionId) return;
+  const cleanId = sessionId.trim();
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(STORAGE_KEY_REFERRER_SESSION, cleanId);
+    }
+  } catch {}
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(STORAGE_KEY_REFERRER_SESSION, cleanId);
+    }
+  } catch {}
+}
+
+/**
+ * 读取当前暂存的推荐/对决发起者会话 ID
+ */
+export function getReferrerSessionId(): string | null {
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      const sId = sessionStorage.getItem(STORAGE_KEY_REFERRER_SESSION);
+      if (sId && sId.trim()) return sId.trim();
+    }
+  } catch {}
+  try {
+    if (typeof localStorage !== "undefined") {
+      const lId = localStorage.getItem(STORAGE_KEY_REFERRER_SESSION);
+      if (lId && lId.trim()) return lId.trim();
+    }
+  } catch {}
+  return null;
+}
+
+/**
+ * 清除已处理的推荐/对决发起者会话 ID
+ */
+export function clearReferrerSessionId(): void {
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem(STORAGE_KEY_REFERRER_SESSION);
+    }
+  } catch {}
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY_REFERRER_SESSION);
+    }
+  } catch {}
+}
 
 /**
  * 从当前 URL (pathname, search, hash) 解析目标会话 ID
@@ -113,6 +167,83 @@ export function buildSessionShareUrl(sessionId: string, baseUrl?: string): strin
 }
 
 /**
+ * 组装专属双星认知对决着陆页 (Cognitive Twin Duel) 的绝对或相对永久链接
+ */
+export function buildDuelUrl(sessionIdA: string, sessionIdB: string, baseUrl?: string): string {
+  const idA = encodeURIComponent(sessionIdA.trim());
+  const idB = encodeURIComponent(sessionIdB.trim());
+  if (baseUrl) {
+    const cleanBase = baseUrl.replace(/\/+$/, "");
+    return `${cleanBase}/duel/${idA}/${idB}`;
+  }
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}/duel/${idA}/${idB}`;
+  }
+  return `/duel/${idA}/${idB}`;
+}
+
+/**
+ * 从当前 URL (pathname, search, hash) 解析双星对决双方的会话 ID
+ */
+export function extractDuelSessionIdsFromUrl(
+  pathname: string = typeof window !== "undefined" ? window.location.pathname : "",
+  search: string = typeof window !== "undefined" ? window.location.search : "",
+  hash: string = typeof window !== "undefined" ? window.location.hash : ""
+): { sessionIdA: string; sessionIdB: string } | null {
+  // 1. 优先解析专用路径路由: /duel/:idA/:idB
+  if (pathname) {
+    const parts = pathname.split("/").filter(Boolean);
+    const duelIdx = parts.indexOf("duel");
+    if (duelIdx !== -1 && parts[duelIdx + 1] && parts[duelIdx + 2]) {
+      return {
+        sessionIdA: parts[duelIdx + 1].trim(),
+        sessionIdB: parts[duelIdx + 2].trim(),
+      };
+    }
+  }
+
+  // 2. 解析 Query 参数: ?duel_a=xxx&duel_b=yyy 或 ?duel=xxx,yyy / ?duel=xxx_vs_yyy
+  if (search) {
+    const sp = new URLSearchParams(search);
+    const a = sp.get("duel_a") || sp.get("a") || sp.get("session_a") || sp.get("id_a");
+    const b = sp.get("duel_b") || sp.get("b") || sp.get("session_b") || sp.get("id_b");
+    if (a && b) {
+      return { sessionIdA: a.trim(), sessionIdB: b.trim() };
+    }
+
+    const duelPair = sp.get("duel");
+    if (duelPair) {
+      let tokens: string[] = [];
+      if (duelPair.includes("_vs_")) {
+        tokens = duelPair.split("_vs_");
+      } else if (duelPair.includes(",")) {
+        tokens = duelPair.split(",");
+      } else if (duelPair.includes(":")) {
+        tokens = duelPair.split(":");
+      } else {
+        tokens = duelPair.split(/\s+/);
+      }
+      if (tokens.length >= 2) {
+        return { sessionIdA: tokens[0].trim(), sessionIdB: tokens[1].trim() };
+      }
+    }
+  }
+
+  // 3. 兼容 Hash 路由模式
+  if (hash) {
+    const cleanHash = hash.replace(/^#\/?/, "");
+    if (cleanHash.startsWith("duel/")) {
+      const parts = cleanHash.split("/").filter(Boolean);
+      if (parts[1] && parts[2]) {
+        return { sessionIdA: parts[1].trim(), sessionIdB: parts[2].trim() };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * 将已完成会话持久化到本地存储（防止误关窗口丢失）
  */
 export function saveLastCompletedSession(sessionId: string): void {
@@ -160,6 +291,7 @@ export type AppViewType =
   | "settings"
   | "assets"
   | "share"
+  | "duel"
   | "privacy"
   | "terms"
   | "admin";
@@ -194,6 +326,9 @@ export function resolveRouteView(
   }
   if (cleanPath === "/share" || cleanPath.startsWith("/share/")) {
     return { view: "share", inAppLayout: false };
+  }
+  if (cleanPath === "/duel" || cleanPath.startsWith("/duel/")) {
+    return { view: "duel", inAppLayout: false };
   }
 
   // 2. 独立路由：历史记录 (/history) 与 个人偏好 (/settings) 与 认知资产 (/assets)

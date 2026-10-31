@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Share2,
   Check,
+  Swords,
 } from "lucide-react";
 import { useLocale } from "../contexts/LocaleContext";
 import { LanguageToggle } from "../components/LanguageToggle";
@@ -34,6 +35,7 @@ import { WesternArcanePoster } from "../components/share/WesternArcanePoster";
 import {
   extractSessionIdFromUrl,
   buildSessionShareUrl,
+  saveReferrerSessionId,
 } from "../utils/sessionRoute";
 import { triggerNativeShare } from "../utils/shareUtils";
 import { getArchetypeDefinition } from "../../backend/archetype_matrix";
@@ -151,8 +153,22 @@ export const SharePage: React.FC = () => {
     };
   }, [report, locale]);
 
+  const friendName = localizedReport?.subject_name || report?.subject_name || (isEn ? "Explorer" : "好友");
+
   const handleStartMyTest = () => {
-    window.location.href = "/";
+    if (sessionId) {
+      saveReferrerSessionId(sessionId);
+    }
+    window.location.href = sessionId ? `/?referrer=${encodeURIComponent(sessionId)}` : "/";
+  };
+
+  const handleStartDuel = () => {
+    if (sessionId) {
+      saveReferrerSessionId(sessionId);
+      window.location.href = `/?referrer=${encodeURIComponent(sessionId)}&duel=1`;
+    } else {
+      window.location.href = "/";
+    }
   };
 
   const shareUrl = useMemo(() => {
@@ -194,6 +210,20 @@ export const SharePage: React.FC = () => {
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <ThemeToggle />
             <LanguageToggle />
+
+            {/* 与好友对决行动点 */}
+            {report && (
+              <button
+                onClick={handleStartDuel}
+                type="button"
+                data-testid="header-duel-btn"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl text-xs sm:text-sm font-black bg-rose-500 hover:bg-rose-600 dark:bg-rose-500 dark:hover:brightness-110 text-white border-2 border-stone-900 dark:border-rose-400 shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] flex items-center gap-1 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer min-h-[38px] sm:min-h-[40px]"
+              >
+                <Swords className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                <span className="hidden sm:inline">{isEn ? `Duel with ${friendName}` : `与 ${friendName} 对决`}</span>
+                <span className="sm:hidden">{isEn ? "Duel" : "双星对决"}</span>
+              </button>
+            )}
 
             {/* 核心行动点：测测我的认知 */}
             <button
@@ -271,6 +301,33 @@ export const SharePage: React.FC = () => {
                   ? "Generated through 4AFC adaptive psychophysics and Type-2 metacognitive wagering."
                   : "基于 4AFC 阶梯范式与二阶元认知置信度博弈，精准定位感知敏锐度与自省决断力。"}
               </p>
+            </div>
+
+            {/* 双星对决吸睛挑战横幅 */}
+            <div className="p-4 sm:p-6 rounded-[24px] bg-[#FEF3C7] dark:bg-[#0E0E16] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] sm:shadow-[0_6px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1 text-left">
+                <div className="inline-flex items-center gap-1.5 text-xs font-black text-rose-600 dark:text-[#CCFF00]">
+                  <Swords className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" />
+                  <span>
+                    {isEn ? "Cognitive Twin Duel Invitation" : "双星认知对决挑战"}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-stone-800 dark:text-slate-200 font-bold leading-relaxed">
+                  {isEn
+                    ? `Challenge ${friendName} to a 4D cognitive manifold duel! Compute mutual alignment, complementary chemistry, and unlock your Twin Stars joint poster.`
+                    : `接受来自【${friendName}】的认知对决邀请！测测你们的 4D 认知流形欧氏距离与互补特质，解锁“双星并峙”专属联合对决海报！`}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                data-testid="duel-challenge-banner-btn"
+                onClick={handleStartDuel}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-rose-500 hover:bg-rose-600 dark:bg-[#CCFF00] dark:hover:brightness-110 text-white dark:text-[#08080C] font-black text-xs sm:text-sm border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none flex items-center justify-center gap-2 shrink-0 cursor-pointer transition-all"
+              >
+                <Swords className="w-4 h-4" />
+                <span>{isEn ? `Duel with ${friendName}` : `与 ${friendName} 发起对决`}</span>
+              </button>
             </div>
 
             {/* Poster Card Section */}
@@ -484,15 +541,28 @@ export const SharePage: React.FC = () => {
             {/* Bottom Final CTA Button */}
             <div className="py-6 text-center space-y-3 max-w-md mx-auto">
               <button
-                onClick={handleStartMyTest}
+                onClick={handleStartDuel}
                 type="button"
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl text-base font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-[2.5px] border-stone-900 dark:border-[#CCFF00] shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] inline-flex items-center justify-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer min-h-[44px]"
+                data-testid="bottom-duel-challenge-btn"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl text-base font-black bg-rose-500 hover:bg-rose-600 dark:bg-rose-500 dark:hover:brightness-110 text-white border-[2.5px] border-stone-900 dark:border-rose-400 shadow-[0_4px_0_#1c1917] dark:shadow-[3px_3px_0px_#FFFFFF] inline-flex items-center justify-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer min-h-[44px]"
               >
-                <Sparkles className="w-5 h-5 text-stone-950 dark:text-[#08080C]" />
-                <span>{isEn ? "Test My Metacognition Now" : "测测我的认知 · 开始评测"}</span>
+                <Swords className="w-5 h-5 text-white" />
+                <span>{isEn ? `Duel with ${friendName}` : `与 ${friendName} 发起双星对决`}</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
-              <div className="text-xs text-stone-500 dark:text-slate-400 font-medium">
+
+              <div>
+                <button
+                  onClick={handleStartMyTest}
+                  type="button"
+                  className="w-full sm:w-auto px-6 py-3 rounded-2xl text-sm font-black bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] inline-flex items-center justify-center gap-2 active:translate-y-1 active:shadow-none transition-all cursor-pointer min-h-[40px]"
+                >
+                  <Sparkles className="w-4 h-4 text-stone-950 dark:text-[#08080C]" />
+                  <span>{isEn ? "Test My Metacognition Now" : "测测我的认知 · 自主评测"}</span>
+                </button>
+              </div>
+
+              <div className="text-xs text-stone-500 dark:text-slate-400 font-medium pt-1">
                 {isEn
                   ? "No login required · Fast 3-minute scientific test"
                   : "免登录 · 3分钟极速自适应科学阶梯测评"}
