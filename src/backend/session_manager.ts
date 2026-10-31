@@ -1549,7 +1549,11 @@ export class SessionManager {
     options?: { budgetPerOctant?: number }
   ): CohortScatterResponse {
     const targetLocale = locale || getLocale();
-    const budget = Math.max(8, Math.min(12, options?.budgetPerOctant ?? 10));
+    const rawBudget = options?.budgetPerOctant;
+    const budget =
+      typeof rawBudget === "number" && Number.isFinite(rawBudget)
+        ? Math.max(8, Math.min(12, Math.floor(rawBudget)))
+        : 10;
 
     let aggRows: any[] = [];
     let sampledRows: any[] = [];
@@ -1575,7 +1579,11 @@ export class SessionManager {
     options?: { budgetPerOctant?: number }
   ): Promise<CohortScatterResponse> {
     const targetLocale = locale || getLocale();
-    const budget = Math.max(8, Math.min(12, options?.budgetPerOctant ?? 10));
+    const rawBudget = options?.budgetPerOctant;
+    const budget =
+      typeof rawBudget === "number" && Number.isFinite(rawBudget)
+        ? Math.max(8, Math.min(12, Math.floor(rawBudget)))
+        : 10;
 
     let aggRows: any[] = [];
     let sampledRows: any[] = [];

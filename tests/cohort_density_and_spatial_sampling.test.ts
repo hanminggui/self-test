@@ -246,5 +246,11 @@ describe("Issue #19: Cohort Density Aggregation & Spatial Sampling Engine", () =
     expect(typeof data.mean_y).toBe("number");
     expect(Array.isArray(data.subjects)).toBe(true);
     expect(data.subjects.length).toBeLessThanOrEqual(96);
+
+    // Call /api/cohort/scatter with invalid/NaN budget parameter - should safely default to 10 without crash
+    const resInvalidBudget = await app.fetch(new Request("http://localhost/api/cohort/scatter?budget=invalid_str"));
+    expect(resInvalidBudget.status).toBe(200);
+    const invalidBudgetData = await resInvalidBudget.json();
+    expect(Array.isArray(invalidBudgetData.subjects)).toBe(true);
   });
 });

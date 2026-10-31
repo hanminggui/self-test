@@ -441,7 +441,8 @@ app.get("/api/cohort/scatter", async (c) => {
   const currentSessionId = c.req.query("current_session_id");
   const locale = c.get("locale");
   const budgetParam = c.req.query("budget_per_octant") || c.req.query("budget");
-  const budgetPerOctant = budgetParam ? parseInt(budgetParam, 10) : undefined;
+  const parsedBudget = budgetParam ? parseInt(budgetParam, 10) : undefined;
+  const budgetPerOctant = Number.isFinite(parsedBudget) ? parsedBudget : undefined;
   const sm = getSessionManagerForContext(c);
   return c.json(await sm.getCohortScatterDataAsync(currentSessionId, locale, { budgetPerOctant }));
 });
