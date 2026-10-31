@@ -6,8 +6,17 @@
  */
 
 import { StorageAdapter } from "../storage/adapter";
-import { LocalSqliteAdapter, USERS_TABLE_SCHEMA_SQL } from "../storage/local_sqlite";
-import { User, UserRow, UserMetadata, parseUserRow, SessionVisibilityPreference, UserSocialLinks } from "../storage/user";
+import { LocalSqliteAdapter, USERS_TABLE_SCHEMA_SQL, USER_RELATIONS_TABLE_SCHEMA_SQL } from "../storage/local_sqlite";
+import {
+  User,
+  UserRow,
+  UserMetadata,
+  parseUserRow,
+  SessionVisibilityPreference,
+  UserSocialLinks,
+  UserRelation,
+  UserRelationRow,
+} from "../storage/user";
 import { validateDisplayName, validateBio, validateVisibility, validateSocialLinks } from "./user_validation";
 
 export interface UpsertUserParams {
@@ -55,8 +64,10 @@ export class UserManager {
   public initDb(): void {
     if (this.storage.execSync) {
       this.storage.execSync(USERS_TABLE_SCHEMA_SQL);
+      this.storage.execSync(USER_RELATIONS_TABLE_SCHEMA_SQL);
     } else {
       this.storage.exec(USERS_TABLE_SCHEMA_SQL).catch((e) => console.warn("Failed to init users table:", e));
+      this.storage.exec(USER_RELATIONS_TABLE_SCHEMA_SQL).catch((e) => console.warn("Failed to init user_relations table:", e));
     }
   }
 
@@ -524,5 +535,133 @@ export class UserManager {
         linked_at: info?.linked_at || (user.primary_provider === prov ? user.created_at : undefined),
       };
     });
+  }
+
+  /**
+   * 记录邀请推荐关系 (referrer -> referee)
+   */
+  public async recordReferral(
+    referrerId: string,
+    refereeId: string,
+    sourceSessionId?: string,
+    relationType: string = "referral"
+  ): Promise<UserRelation> {
+    if (!referrerId || !refereeId) {
+      throw new Error("referrerId and refereeId are required");
+    }
+    if (referrerId === refereeId) {
+      throw new Error("Cannot refer oneself");
+    }
+
+    // 检查是否已有关系
+    const existing = await this.storage.query<UserRelationRow>(
+      "SELECT * FROM user_relations WHERE referrer_id = ? AND referee_id = ?",
+      [referrerId, refereeId]
+    );
+
+    if (existing && existing.length > 0) {
+      const row = existing[0];
+      return {
+        id: row.id,
+        referrer_id: row.referrer_id,
+        referee_id: row.referee_id,
+        relation_type: row.relation_type,
+        source_session_id: row.source_session_id,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      };
+    }
+
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    await this.storage.run(
+      `INSERT INTO user_relations (id, referrer_id, referee_id, relation_type, source_session_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, referrerId, refereeId, relationType, sourceSessionId || null, now, now]
+    );
+
+    return {
+      id,
+      referrer_id: referrerId,
+      referee_id: refereeId,
+      relation_type: relationType,
+      source_session_id: sourceSessionId || null,
+      created_at: now,
+      updated_at: now,
+    };
+  }
+
+  /**
+   * 获取用户直接好友列表（双向：作为推荐人或被推荐人）
+   */
+  public async getDirectFriends(userId: string): Promise<User[]> {
+    if (!userId) return [];
+    const sql = `
+      SELECT DISTINCT u.* FROM users u
+      INNER JOIN user_relations r ON (
+        (r.referrer_id = ? AND r.referee_id = u.id)
+        OR
+        (r.referee_id = ? AND r.referrer_id = u.id)
+      )
+      WHERE u.id != ?
+    `;
+    const rows = await this.storage.query<UserRow>(sql, [userId, userId, userId]);
+    return (rows || []).map(parseUserRow);
+  }
+
+  /**
+   * 获取用户所有直接好友的 user_id 集合
+   */
+  public async getFriendUserIds(userId: string): Promise<string[]> {
+    if (!userId) return [];
+    const sql = `
+      SELECT DISTINCT
+        CASE WHEN referrer_id = ? THEN referee_id ELSE referrer_id END as friend_id
+      FROM user_relations
+      WHERE referrer_id = ? OR referee_id = ?
+    `;
+    const rows = await this.storage.query<{ friend_id: string }>(sql, [userId, userId, userId]);
+    return (rows || []).map((r) => r.friend_id).filter((id) => id && id !== userId);
+  }
+
+  /**
+   * 获取推荐链：向上追溯谁推荐了该用户 (upstream)，向下追溯该用户推荐了谁 (downstream)
+   */
+  public async getReferralChain(userId: string): Promise<{ upstream: string[]; downstream: string[] }> {
+    if (!userId) return { upstream: [], downstream: [] };
+
+    // Upstream (who referred this user)
+    const upstreamRows = await this.storage.query<{ referrer_id: string }>(
+      "SELECT referrer_id FROM user_relations WHERE referee_id = ?",
+      [userId]
+    );
+    const upstream = (upstreamRows || []).map((r) => r.referrer_id);
+
+    // Downstream (referees invited by this user)
+    const downstreamRows = await this.storage.query<{ referee_id: string }>(
+      "SELECT referee_id FROM user_relations WHERE referrer_id = ?",
+      [userId]
+    );
+    const downstream = (downstreamRows || []).map((r) => r.referee_id);
+
+    return { upstream, downstream };
+  }
+
+  /**
+   * 查找两位用户之间的共同好友关系
+   */
+  public async getMutualConnections(userId1: string, userId2: string): Promise<User[]> {
+    const friends1 = await this.getFriendUserIds(userId1);
+    const friends2 = await this.getFriendUserIds(userId2);
+    const commonIds = friends1.filter((id) => friends2.includes(id));
+    if (commonIds.length === 0) return [];
+
+    const placeholders = commonIds.map(() => "?").join(",");
+    const rows = await this.storage.query<UserRow>(
+      `SELECT * FROM users WHERE id IN (${placeholders})`,
+      commonIds
+    );
+    return (rows || []).map(parseUserRow);
   }
 }

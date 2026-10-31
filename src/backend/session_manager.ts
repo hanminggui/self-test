@@ -19,6 +19,7 @@ import {
   SubjectDataPoint,
   SubjectSocialProfile,
   CohortScatterResponse,
+  OctantDensityMetrics,
   TrialResponse,
   SessionExecutionMetadata,
   TokenUsageStats,
@@ -38,6 +39,15 @@ import { generateSubjectCodename, generateMaskedCodename } from "./codename_gene
 import { getLocale, type SupportedLocale } from "../i18n";
 import type { SessionVisibilityPreference } from "../storage/user";
 import { validateVisibility } from "./user_validation";
+import { computeCognitiveSimilarity } from "../frontend/utils/manifoldUtils";
+
+export interface CohortScatterOptions {
+  budgetPerOctant?: number;
+  scope?: string;
+  currentUserId?: string | null;
+  filterUserIds?: string[];
+  friendUserIds?: string[];
+}
 
 export interface SessionState {
   sessionId: string;
@@ -183,12 +193,13 @@ export class SessionManager {
         task_generator_state_json, current_task_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        agent_metadata_json, updated_at, user_id, visibility
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        agent_metadata_json, updated_at, user_id, referrer_session_id, visibility
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
     const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
     const locale = session.metadata?.locale || getLocale();
+    const referrerId = session.metadata?.referrer_session_id || null;
 
     const params = [
       session.sessionId,
@@ -214,6 +225,7 @@ export class SessionManager {
       agentMetadata,
       new Date().toISOString(),
       session.userId ?? null,
+      referrerId,
       session.visibility || "anonymous",
     ];
 
@@ -233,12 +245,13 @@ export class SessionManager {
         task_generator_state_json, current_task_json,
         is_completed, staged_p1_choice, hint_revealed, hints_unlocked,
         hints_unlocked_before_p1, hints_cost, created_at, start_time_ms,
-        agent_metadata_json, updated_at, user_id, visibility
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        agent_metadata_json, updated_at, user_id, referrer_session_id, visibility
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const isHuman = session.subjectType === SubjectType.HUMAN && !session.metadata?.persona;
     const agentMetadata = (!isHuman && session.metadata) ? JSON.stringify(session.metadata) : null;
     const locale = session.metadata?.locale || getLocale();
+    const referrerId = session.metadata?.referrer_session_id || null;
 
     const params = [
       session.sessionId,
@@ -264,6 +277,7 @@ export class SessionManager {
       agentMetadata,
       new Date().toISOString(),
       session.userId ?? null,
+      referrerId,
       session.visibility || "anonymous",
     ];
     await this.storage.run(sql, params);
@@ -324,6 +338,13 @@ export class SessionManager {
         metadata = { locale: row.locale };
       } else if (!metadata.locale) {
         metadata.locale = row.locale;
+      }
+    }
+    if (row.referrer_session_id) {
+      if (!metadata) {
+        metadata = { referrer_session_id: row.referrer_session_id };
+      } else {
+        metadata.referrer_session_id = row.referrer_session_id;
       }
     }
 
@@ -394,6 +415,7 @@ export class SessionManager {
     sessionId?: string;
     userId?: string | null;
     visibility?: SessionVisibilityPreference;
+    referrerSessionId?: string | null;
     subjectName?: string;
     subjectType?: string;
     totalTrials?: number;
@@ -411,6 +433,7 @@ export class SessionManager {
     const totalTrials = params.totalTrials ?? 30;
     const warmupTrials = params.warmupTrials ?? 10;
     const initialDelta = params.initialDelta ?? 0.50;
+    const referrerId = params.referrerSessionId || params.metadata?.referrer_session_id || null;
 
     const staircase = new StaircaseController(initialDelta, 0.08, 0.05, 0.85, 3, warmupTrials, 0.18);
     const taskGenerator = new TaskGenerator(params.seed);
@@ -421,7 +444,7 @@ export class SessionManager {
     const startTimeMs = Date.now();
 
     let sessionMetadata: SessionExecutionMetadata | undefined = undefined;
-    if (subjectType !== SubjectType.HUMAN || params.persona || params.thinkingEffort || params.metadata) {
+    if (subjectType !== SubjectType.HUMAN || params.persona || params.thinkingEffort) {
       sessionMetadata = {
         model_name: params.metadata?.model_name || (subjectType !== SubjectType.HUMAN ? sName : undefined),
         persona: params.persona || params.metadata?.persona,
@@ -439,6 +462,14 @@ export class SessionManager {
         },
         locale: params.metadata?.locale || getLocale(),
         visibility,
+        ...(referrerId ? { referrer_session_id: referrerId } : {}),
+        ...(params.metadata || {}),
+      };
+    } else if (params.metadata || referrerId || visibility) {
+      sessionMetadata = {
+        locale: params.metadata?.locale || getLocale(),
+        visibility,
+        ...(referrerId ? { referrer_session_id: referrerId } : {}),
         ...(params.metadata || {}),
       };
     }
@@ -480,6 +511,7 @@ export class SessionManager {
     sessionId?: string;
     userId?: string | null;
     visibility?: SessionVisibilityPreference;
+    referrerSessionId?: string | null;
     subjectName?: string;
     subjectType?: string;
     totalTrials?: number;
@@ -947,6 +979,8 @@ export class SessionManager {
     report.total_duration_ms = session.startTimeMs ? Date.now() - session.startTimeMs : (session.metadata?.total_duration_ms ?? 0);
     report.user_id = session.userId ?? null;
     report.visibility = session.visibility || "anonymous";
+    report.avatar_url = (session.metadata as any)?.avatar_url ?? null;
+    report.referrer_session_id = session.metadata?.referrer_session_id ?? null;
     report.records = session.records;
 
     // Agent metadata: populated ONLY when subjectType !== SubjectType.HUMAN
@@ -985,6 +1019,7 @@ export class SessionManager {
   public persistCompletedSession(session: SessionState): void {
     const report = session.finalReport || this.finalizeReport(session);
     const metrics = report.metrics;
+    const referrerId = report.referrer_session_id || session.metadata?.referrer_session_id || null;
 
     const insertSql = `
       INSERT OR REPLACE INTO completed_sessions (
@@ -992,8 +1027,8 @@ export class SessionManager {
         completed_trials, total_duration_ms, final_score, quadrant_code,
         first_order_accuracy, second_order_accuracy, reversals_count,
         d_star, d_prime, meta_d_prime, m_ratio, calibration_bias,
-        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, visibility
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, referrer_session_id, visibility
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       report.session_id,
@@ -1020,6 +1055,7 @@ export class SessionManager {
       metrics.risk_attitude,
       session.createdAt,
       session.userId ?? null,
+      referrerId,
       session.visibility || "anonymous",
     ];
 
@@ -1082,6 +1118,7 @@ export class SessionManager {
   public async persistCompletedSessionAsync(session: SessionState): Promise<void> {
     const report = session.finalReport || this.finalizeReport(session);
     const metrics = report.metrics;
+    const referrerId = report.referrer_session_id || session.metadata?.referrer_session_id || null;
 
     const insertSql = `
       INSERT OR REPLACE INTO completed_sessions (
@@ -1089,8 +1126,8 @@ export class SessionManager {
         completed_trials, total_duration_ms, final_score, quadrant_code,
         first_order_accuracy, second_order_accuracy, reversals_count,
         d_star, d_prime, meta_d_prime, m_ratio, calibration_bias,
-        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, visibility
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        brier_score, ive, coachability_index, risk_attitude, created_at, user_id, referrer_session_id, visibility
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       report.session_id,
@@ -1117,6 +1154,7 @@ export class SessionManager {
       metrics.risk_attitude,
       session.createdAt,
       session.userId ?? null,
+      referrerId,
       session.visibility || "anonymous",
     ];
     await this.storage.run(insertSql, params);
@@ -1567,6 +1605,7 @@ export class SessionManager {
       session_id: row.id,
       subject_name: row.subject_name || row.name || "受测者",
       subject_type: row.subject_type,
+      avatar_url: row.avatar_url || (legacyMetadata as any)?.avatar_url || null,
       locale: targetLocale,
       created_at: row.created_at,
       total_trials: row.total_trials ?? records.length,
@@ -1585,6 +1624,7 @@ export class SessionManager {
       records,
       user_id: row.user_id ?? null,
       visibility: (row.visibility as SessionVisibilityPreference) || "anonymous",
+      referrer_session_id: row.referrer_session_id ?? null,
 
       // Transitional wrappers
       summary: {
@@ -1628,58 +1668,406 @@ export class SessionManager {
     return report;
   }
 
-  getCohortScatterData(currentSessionId?: string, locale?: SupportedLocale): CohortScatterResponse {
-    const targetLocale = locale || getLocale();
-    const sql = `
-      SELECT 
+  public static readonly ALL_OCTANT_CODES = [
+    "Q1-CAL",
+    "Q2-EVO",
+    "Q3-SEN",
+    "Q4-PIO",
+    "Q5-RET",
+    "Q6-GAM",
+    "Q7-ARB",
+    "Q8-DRI",
+  ] as const;
+
+  private static readonly OCTANT_AGGREGATE_SQL = `
+    SELECT
+      COALESCE(c.quadrant_code, 'Q1-CAL') as quadrant_code,
+      COUNT(*) as count,
+      AVG(c.d_star) as avg_d_star,
+      AVG(c.m_ratio) as avg_m_ratio,
+      AVG(c.final_score) as avg_score,
+      MAX(0.0, AVG(c.d_star * c.d_star) - AVG(c.d_star) * AVG(c.d_star)) as var_d_star,
+      MAX(0.0, AVG(c.m_ratio * c.m_ratio) - AVG(c.m_ratio) * AVG(c.m_ratio)) as var_m_ratio,
+      MAX(0.0, AVG(c.final_score * c.final_score) - AVG(c.final_score) * AVG(c.final_score)) as var_score
+    FROM completed_sessions c
+    WHERE (c.visibility IS NULL OR c.visibility != 'private')
+    GROUP BY COALESCE(c.quadrant_code, 'Q1-CAL')
+  `;
+
+  private static readonly FALLBACK_SESSIONS_SQL = `
+    SELECT
+      c.*,
+      u.display_name as user_display_name,
+      u.avatar_url as user_avatar_url,
+      u.metadata_json as user_metadata_json,
+      a.model_name as agent_model,
+      a.persona as agent_persona,
+      a.thinking_effort as agent_effort,
+      a.evaluation_mode as agent_eval_mode,
+      a.prompt_tokens,
+      a.completion_tokens,
+      a.cached_tokens,
+      a.reasoning_tokens,
+      a.total_tokens
+    FROM completed_sessions c
+    LEFT JOIN users u ON c.user_id = u.id
+    LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+    ORDER BY c.created_at DESC
+  `;
+
+  private static readonly SPATIAL_SAMPLING_CTE_SQL = `
+    WITH BucketRanked AS (
+      SELECT
+        c.rowid as row_id,
         c.*,
-        a.model_name as agent_model,
-        a.persona as agent_persona,
-        a.thinking_effort as agent_effort,
-        a.evaluation_mode as agent_eval_mode,
-        a.prompt_tokens,
-        a.completion_tokens,
-        a.cached_tokens,
-        a.reasoning_tokens,
-        a.total_tokens,
-        u.display_name as user_display_name,
-        u.avatar_url as user_avatar_url,
-        u.metadata_json as user_metadata_json
+        COALESCE(c.quadrant_code, 'Q1-CAL') as norm_quadrant_code,
+        NTILE(?) OVER (
+          PARTITION BY COALESCE(c.quadrant_code, 'Q1-CAL')
+          ORDER BY COALESCE(c.d_star, 0.5) ASC, COALESCE(c.m_ratio, 0.8) ASC
+        ) as spatial_bucket
       FROM completed_sessions c
-      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
-      LEFT JOIN users u ON c.user_id = u.id
       WHERE (c.visibility IS NULL OR c.visibility != 'private')
-      ORDER BY c.created_at DESC
-    `;
-    const rows = (this.storage.querySync ? this.storage.querySync(sql) : []) as any[];
-    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale, true);
+    ),
+    RankedWithinBucket AS (
+      SELECT
+        b.*,
+        ROW_NUMBER() OVER (
+          PARTITION BY b.norm_quadrant_code, b.spatial_bucket
+          ORDER BY
+            CASE WHEN b.id = ? THEN 0 ELSE 1 END,
+            b.created_at DESC,
+            b.row_id DESC
+        ) as bucket_rank
+      FROM BucketRanked b
+    )
+    SELECT
+      r.*,
+      u.display_name as user_display_name,
+      u.avatar_url as user_avatar_url,
+      u.metadata_json as user_metadata_json,
+      a.model_name as agent_model,
+      a.persona as agent_persona,
+      a.thinking_effort as agent_effort,
+      a.evaluation_mode as agent_eval_mode,
+      a.prompt_tokens,
+      a.completion_tokens,
+      a.cached_tokens,
+      a.reasoning_tokens,
+      a.total_tokens
+    FROM RankedWithinBucket r
+    LEFT JOIN users u ON r.user_id = u.id
+    LEFT JOIN session_agent_metadata a ON r.id = a.session_id
+    WHERE r.bucket_rank = 1
+    ORDER BY r.norm_quadrant_code ASC, r.spatial_bucket ASC
+  `;
+
+  getCohortScatterData(
+    currentSessionId?: string,
+    locale?: SupportedLocale,
+    options?: CohortScatterOptions
+  ): CohortScatterResponse {
+    const targetLocale = locale || getLocale();
+    const rawBudget = options?.budgetPerOctant;
+    const budget =
+      typeof rawBudget === "number" && Number.isFinite(rawBudget)
+        ? Math.max(8, Math.min(12, Math.floor(rawBudget)))
+        : 10;
+
+    if (options?.filterUserIds) {
+      if (options.filterUserIds.length === 0) {
+        return this.buildCohortScatterResponse([], [], currentSessionId, targetLocale, budget, false, options);
+      }
+      const placeholders = options.filterUserIds.map(() => "?").join(",");
+      const currentUserId = options.currentUserId || "";
+      const filterSql = `
+        SELECT
+          c.*,
+          u.display_name as user_display_name,
+          u.avatar_url as user_avatar_url,
+          u.metadata_json as user_metadata_json,
+          a.model_name as agent_model,
+          a.persona as agent_persona,
+          a.thinking_effort as agent_effort,
+          a.evaluation_mode as agent_eval_mode,
+          a.prompt_tokens,
+          a.completion_tokens,
+          a.cached_tokens,
+          a.reasoning_tokens,
+          a.total_tokens
+        FROM completed_sessions c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+        WHERE c.user_id IN (${placeholders})
+          AND (c.visibility IS NULL OR c.visibility != 'private' OR c.user_id = ?)
+        ORDER BY c.created_at DESC
+      `;
+      const queryParams = [...options.filterUserIds, currentUserId];
+      const rows = (this.storage.querySync ? this.storage.querySync(filterSql, queryParams) : []) || [];
+      return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, budget, false, options);
+    }
+
+    let aggRows: any[] = [];
+    let sampledRows: any[] = [];
+    let usedSqlSampling = false;
+
+    if (this.storage.querySync) {
+      try {
+        aggRows = this.storage.querySync(SessionManager.OCTANT_AGGREGATE_SQL) || [];
+        sampledRows =
+          this.storage.querySync(SessionManager.SPATIAL_SAMPLING_CTE_SQL, [budget, currentSessionId || ""]) || [];
+        usedSqlSampling = true;
+      } catch {
+        sampledRows = (this.storage.querySync ? this.storage.querySync(SessionManager.FALLBACK_SESSIONS_SQL) : []) || [];
+      }
+    }
+
+    return this.buildCohortScatterResponse(aggRows, sampledRows, currentSessionId, targetLocale, budget, usedSqlSampling, options);
   }
 
-  async getCohortScatterDataAsync(currentSessionId?: string, locale?: SupportedLocale): Promise<CohortScatterResponse> {
+  async getCohortScatterDataAsync(
+    currentSessionId?: string,
+    locale?: SupportedLocale,
+    options?: CohortScatterOptions
+  ): Promise<CohortScatterResponse> {
     const targetLocale = locale || getLocale();
-    const sql = `
-      SELECT 
-        c.*,
-        a.model_name as agent_model,
-        a.persona as agent_persona,
-        a.thinking_effort as agent_effort,
-        a.evaluation_mode as agent_eval_mode,
-        a.prompt_tokens,
-        a.completion_tokens,
-        a.cached_tokens,
-        a.reasoning_tokens,
-        a.total_tokens,
-        u.display_name as user_display_name,
-        u.avatar_url as user_avatar_url,
-        u.metadata_json as user_metadata_json
-      FROM completed_sessions c
-      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
-      LEFT JOIN users u ON c.user_id = u.id
-      WHERE (c.visibility IS NULL OR c.visibility != 'private')
-      ORDER BY c.created_at DESC
-    `;
-    const rows = (await this.storage.query(sql)) as any[];
-    return this.assembleCohortScatterFromRows(rows, currentSessionId, targetLocale, true);
+    const rawBudget = options?.budgetPerOctant;
+    const budget =
+      typeof rawBudget === "number" && Number.isFinite(rawBudget)
+        ? Math.max(8, Math.min(12, Math.floor(rawBudget)))
+        : 10;
+
+    if (options?.filterUserIds) {
+      if (options.filterUserIds.length === 0) {
+        return this.buildCohortScatterResponse([], [], currentSessionId, targetLocale, budget, false, options);
+      }
+      const placeholders = options.filterUserIds.map(() => "?").join(",");
+      const currentUserId = options.currentUserId || "";
+      const filterSql = `
+        SELECT
+          c.*,
+          u.display_name as user_display_name,
+          u.avatar_url as user_avatar_url,
+          u.metadata_json as user_metadata_json,
+          a.model_name as agent_model,
+          a.persona as agent_persona,
+          a.thinking_effort as agent_effort,
+          a.evaluation_mode as agent_eval_mode,
+          a.prompt_tokens,
+          a.completion_tokens,
+          a.cached_tokens,
+          a.reasoning_tokens,
+          a.total_tokens
+        FROM completed_sessions c
+        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+        WHERE c.user_id IN (${placeholders})
+          AND (c.visibility IS NULL OR c.visibility != 'private' OR c.user_id = ?)
+        ORDER BY c.created_at DESC
+      `;
+      const queryParams = [...options.filterUserIds, currentUserId];
+      const rows = (await this.storage.query(filterSql, queryParams)) || [];
+      return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, budget, false, options);
+    }
+
+    let aggRows: any[] = [];
+    let sampledRows: any[] = [];
+    let usedSqlSampling = false;
+
+    try {
+      const [aggs, sampled] = await Promise.all([
+        this.storage.query(SessionManager.OCTANT_AGGREGATE_SQL),
+        this.storage.query(SessionManager.SPATIAL_SAMPLING_CTE_SQL, [budget, currentSessionId || ""]),
+      ]);
+      aggRows = aggs || [];
+      sampledRows = sampled || [];
+      usedSqlSampling = true;
+    } catch {
+      try {
+        sampledRows = (await this.storage.query(SessionManager.FALLBACK_SESSIONS_SQL)) || [];
+      } catch {
+        sampledRows = [];
+      }
+    }
+
+    return this.buildCohortScatterResponse(aggRows, sampledRows, currentSessionId, targetLocale, budget, usedSqlSampling, options);
+  }
+
+  public getAllCompletedSessions(locale?: SupportedLocale): SubjectDataPoint[] {
+    const targetLocale = locale || getLocale();
+    if (!this.storage.querySync) return [];
+    const rows = (this.storage.querySync(SessionManager.FALLBACK_SESSIONS_SQL) || []) as any[];
+    return this.mapRowsToSubjects(rows, undefined, targetLocale, false);
+  }
+
+  public async getAllCompletedSessionsAsync(locale?: SupportedLocale): Promise<SubjectDataPoint[]> {
+    const targetLocale = locale || getLocale();
+    const rows = ((await this.storage.query(SessionManager.FALLBACK_SESSIONS_SQL)) || []) as any[];
+    return this.mapRowsToSubjects(rows, undefined, targetLocale, false);
+  }
+
+  private buildCohortScatterResponse(
+    aggRows: any[],
+    rows: any[],
+    currentSessionId: string | undefined,
+    targetLocale: SupportedLocale,
+    budgetPerOctant: number,
+    usedSqlSampling: boolean,
+    options?: CohortScatterOptions,
+    isPublicScatter?: boolean
+  ): CohortScatterResponse {
+    const isPublic =
+      isPublicScatter !== undefined ? isPublicScatter : !options?.scope || options.scope === "global";
+    let subjects = this.mapRowsToSubjects(rows, currentSessionId, targetLocale, isPublic, options?.currentUserId);
+
+    let totalCount = 0;
+    let meanX = 0.5;
+    let meanY = 0.5;
+
+    if (usedSqlSampling && aggRows.length > 0) {
+      for (const r of aggRows) {
+        totalCount += Number(r.count || 0);
+      }
+      if (totalCount > 0) {
+        let sumX = 0;
+        let sumY = 0;
+        for (const r of aggRows) {
+          const c = Number(r.count || 0);
+          sumX += c * Number(r.avg_d_star ?? 0.5);
+          sumY += c * Number(r.avg_m_ratio ?? 0.8);
+        }
+        meanX = Math.round((sumX / totalCount) * 1000) / 1000;
+        meanY = Math.round((sumY / totalCount) * 1000) / 1000;
+      }
+    } else {
+      // In-memory aggregation fallback
+      const inMemRows = isPublic
+        ? rows.filter(
+            (r) =>
+              !r.visibility ||
+              r.visibility !== "private" ||
+              (options?.currentUserId && r.user_id === options.currentUserId)
+          )
+        : rows;
+      const inMem = this.computeInMemoryAggregates(inMemRows);
+      totalCount = inMem.totalCount;
+      aggRows = inMem.aggRows;
+      meanX = inMem.meanX;
+      meanY = inMem.meanY;
+
+      // In-memory spatial sampling if not pre-sampled by SQL and not scoped
+      if (!options?.filterUserIds) {
+        subjects = this.sampleSubjectsInMemory(subjects, budgetPerOctant, currentSessionId);
+      }
+    }
+
+    // Check if current session is active in memory and not yet saved
+    if (currentSessionId && !subjects.some((s) => s.id === currentSessionId)) {
+      const active = this.getSession(currentSessionId);
+      const isOwner = Boolean(options?.currentUserId && active && active.userId === options.currentUserId);
+      if (active && active.records.length > 0 && (!isPublic || active.visibility !== "private" || isOwner)) {
+        const activeSubject = this.assembleActiveSubject(active, targetLocale, isPublic, isOwner);
+        subjects.unshift(activeSubject);
+        totalCount += 1;
+        const foundAgg = aggRows.find((a) => a.quadrant_code === activeSubject.quadrant_code);
+        if (foundAgg) {
+          foundAgg.count = Number(foundAgg.count || 0) + 1;
+        } else {
+          aggRows.push({
+            quadrant_code: activeSubject.quadrant_code,
+            count: 1,
+            avg_d_star: activeSubject.metrics.d_star,
+            avg_m_ratio: activeSubject.metrics.m_ratio,
+            avg_score: activeSubject.final_score,
+            var_d_star: 0,
+            var_m_ratio: 0,
+          });
+        }
+      }
+    }
+
+    // Compute mutual cognitive similarities & friendship flags
+    const currentUserId = options?.currentUserId;
+    const friendUserIds = options?.friendUserIds || [];
+
+    let selfVector: [number, number, number, number] | undefined;
+    if (currentUserId) {
+      const selfSub = subjects.find((s) => s.user_id === currentUserId);
+      if (selfSub && selfSub.cognitive_manifold_vector) {
+        selfVector = selfSub.cognitive_manifold_vector;
+      }
+    }
+
+    subjects.forEach((s) => {
+      const isSelf = Boolean(currentUserId && s.user_id === currentUserId);
+      const isFriend = Boolean(s.user_id && friendUserIds.includes(s.user_id));
+      s.is_self = isSelf;
+      s.is_friend = isFriend;
+
+      if (isSelf) {
+        s.similarity = 100;
+        s.similarity_percentage = 100;
+      } else if (selfVector && s.cognitive_manifold_vector) {
+        const sim = computeCognitiveSimilarity(selfVector, s.cognitive_manifold_vector);
+        s.similarity = sim;
+        s.similarity_percentage = sim;
+      }
+    });
+
+    const octantStats = this.buildOctantDensityStats(aggRows, totalCount);
+
+    let varX = 0;
+    let varY = 0;
+    if (totalCount > 0) {
+      let sumXSq = 0;
+      let sumYSq = 0;
+      for (const r of aggRows) {
+        const c = Number(r.count || 0);
+        const meanD = Number(r.avg_d_star ?? 0.5);
+        const varD = Number(r.var_d_star ?? 0);
+        const meanM = Number(r.avg_m_ratio ?? 0.8);
+        const varM = Number(r.var_m_ratio ?? 0);
+        sumXSq += c * (varD + meanD * meanD);
+        sumYSq += c * (varM + meanM * meanM);
+      }
+      varX = Math.max(0, Math.round((sumXSq / totalCount - meanX * meanX) * 10000) / 10000);
+      varY = Math.max(0, Math.round((sumYSq / totalCount - meanY * meanY) * 10000) / 10000);
+    }
+
+    if (subjects.length > 96 && !options?.filterUserIds) {
+      subjects = subjects.slice(0, 96);
+    }
+
+    const xVals = subjects.map((s) => s.metrics.d_star);
+    const yVals = subjects.map((s) => s.metrics.m_ratio);
+
+
+
+    const median = (arr: number[]): number => {
+      if (arr.length === 0) return 0.5;
+      const sorted = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    };
+
+    return {
+      baseline_x: 0.6,
+      baseline_y: 0.8,
+      median_x: Math.round(median(xVals) * 1000) / 1000,
+      median_y: Math.round(median(yVals) * 1000) / 1000,
+      mean_x: meanX,
+      mean_y: meanY,
+      total_count: totalCount,
+      octants: octantStats,
+      octant_stats: octantStats,
+      density_summary: {
+        total_count: totalCount,
+        mean_x: meanX,
+        mean_y: meanY,
+        variance_x: varX,
+        variance_y: varY,
+      },
+      subjects,
+    };
   }
 
   private assembleCohortScatterFromRows(
@@ -1688,269 +2076,470 @@ export class SessionManager {
     targetLocale: SupportedLocale,
     isPublicScatter: boolean = true
   ): CohortScatterResponse {
-    const subjects: SubjectDataPoint[] = [];
+    return this.buildCohortScatterResponse([], rows, currentSessionId, targetLocale, 10, false, undefined, isPublicScatter);
+  }
 
+  private mapRowsToSubjects(
+    rows: any[],
+    currentSessionId: string | undefined,
+    targetLocale: SupportedLocale,
+    isPublicScatter: boolean = true,
+    currentUserId?: string | null
+  ): SubjectDataPoint[] {
+    const list: SubjectDataPoint[] = [];
     for (const r of rows) {
       const vis: SessionVisibilityPreference | undefined = r.visibility || undefined;
+      const isOwner = Boolean(currentUserId && r.user_id === currentUserId);
+      if (isPublicScatter && vis === "private" && !isOwner) {
+        continue;
+      }
+      list.push(this.mapRowToSubjectDataPoint(r, targetLocale, currentSessionId, isPublicScatter, isOwner));
+    }
+    return list;
+  }
 
-      if (isPublicScatter && vis === "private") {
+  private mapRowToSubjectDataPoint(
+    r: any,
+    targetLocale: SupportedLocale,
+    currentSessionId?: string,
+    isPublicScatter: boolean = true,
+    isOwner: boolean = false
+  ): SubjectDataPoint {
+    const quadrantCode = r.quadrant_code || "Q1-CAL";
+    const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
+    const dStarVal = r.d_star ?? 0.5;
+    const formalScore = r.final_score ?? 0;
+    const ccs = Math.round(dStarVal * formalScore * 100) / 100;
+
+    const metrics: AssessmentMetrics = {
+      first_order_accuracy: r.first_order_accuracy ?? 0.7,
+      second_order_accuracy: r.second_order_accuracy ?? 0.7,
+      reversals_count: r.reversals_count ?? 0,
+      d_star: dStarVal,
+      d_prime: r.d_prime ?? 1.2,
+      meta_d_prime: r.meta_d_prime ?? 1.1,
+      m_ratio: r.m_ratio ?? 0.9,
+      calibration_bias: r.calibration_bias ?? 0.0,
+      brier_score: r.brier_score ?? 0.2,
+      ive: r.ive ?? 0.5,
+      coachability_index: r.coachability_index ?? 50,
+      risk_attitude: (r.risk_attitude as RiskAttitude) || RiskAttitude.MODERATE_RATIONAL,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
+    };
+
+    let agentMetadata: AgentExecutionMetadata | undefined = undefined;
+    if (r.subject_type !== SubjectType.HUMAN && r.agent_model) {
+      agentMetadata = {
+        model_name: r.agent_model,
+        persona: r.agent_persona,
+        thinking_effort: r.agent_effort,
+        evaluation_mode: r.agent_eval_mode,
+        token_usage: {
+          prompt_tokens: r.prompt_tokens ?? 0,
+          completion_tokens: r.completion_tokens ?? 0,
+          cached_tokens: r.cached_tokens ?? 0,
+          reasoning_tokens: r.reasoning_tokens ?? 0,
+          total_tokens: r.total_tokens ?? 0,
+        },
+      };
+    }
+
+    const vis: SessionVisibilityPreference | undefined = r.visibility || undefined;
+    let displayName = r.subject_name || r.name || "受测者";
+    let userId: string | null = r.user_id ?? null;
+    let avatarUrl: string | null | undefined = undefined;
+    let profileUrl: string | undefined = undefined;
+    let social: SubjectSocialProfile | undefined = undefined;
+
+    if (isPublicScatter && !isOwner) {
+      if (vis === "anonymous") {
+        if (r.subject_type === SubjectType.HUMAN) {
+          displayName = generateMaskedCodename(r.id, targetLocale);
+        }
+        userId = null;
+        avatarUrl = undefined;
+      } else if (vis === "public") {
+        let userMeta: any;
+        if (r.user_metadata_json) {
+          try {
+            userMeta = typeof r.user_metadata_json === "string" ? JSON.parse(r.user_metadata_json) : r.user_metadata_json;
+          } catch {}
+        }
+        displayName = r.user_display_name || userMeta?.display_name || r.subject_name || "受测者";
+        avatarUrl = userMeta?.custom_avatar || r.user_avatar_url || null;
+        profileUrl = r.user_id ? `/user/${r.user_id}` : undefined;
+        social = {
+          user_id: r.user_id || "",
+          display_name: displayName,
+          avatar_url: avatarUrl,
+          profile_url: profileUrl,
+          bio: userMeta?.bio,
+          social_links: userMeta?.social_links,
+        };
+      }
+    } else {
+      let userMeta: any;
+      if (r.user_metadata_json) {
+        try {
+          userMeta = typeof r.user_metadata_json === "string" ? JSON.parse(r.user_metadata_json) : r.user_metadata_json;
+        } catch {}
+      }
+      displayName = r.user_display_name || userMeta?.display_name || r.subject_name || r.name || "受测者";
+      avatarUrl = userMeta?.custom_avatar || r.user_avatar_url || null;
+      if (r.user_id) {
+        profileUrl = `/user/${r.user_id}`;
+        social = {
+          user_id: r.user_id,
+          display_name: displayName,
+          avatar_url: avatarUrl,
+          profile_url: profileUrl,
+          bio: userMeta?.bio,
+          social_links: userMeta?.social_links,
+        };
+      }
+    }
+
+    return {
+      id: r.id,
+      name: displayName,
+      nickname: displayName,
+      avatar_url: avatarUrl,
+      profile_url: profileUrl,
+      social,
+      subject_type: r.subject_type,
+      locale: (r.locale as SupportedLocale) || targetLocale,
+      created_at: r.created_at,
+      total_trials: r.total_trials ?? 30,
+      warmup_trials: r.warmup_trials ?? 10,
+      total_duration_ms: r.total_duration_ms ?? 0,
+      final_score: formalScore,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
+      quadrant_code: quadrantCode,
+      is_current: r.id === currentSessionId,
+      metrics,
+      agent_metadata: agentMetadata,
+      user_id: userId,
+      visibility: vis,
+
+      // Legacy fields for backward compatibility
+      metadata: {
+        locale: (r.locale as SupportedLocale) || targetLocale,
+        visibility: vis,
+        ...(agentMetadata || {}),
+      },
+      first_order_accuracy: r.first_order_accuracy,
+      second_order_accuracy: r.second_order_accuracy,
+      d_prime: r.d_prime,
+      meta_d_prime: r.meta_d_prime,
+      m_ratio: r.m_ratio,
+      calibration_bias: r.calibration_bias,
+      d_star: r.d_star,
+      ive: r.ive,
+      info_buying_efficiency: r.ive,
+      brier_score: r.brier_score,
+      coachability_index: r.coachability_index,
+      role_title: archetypeDef.role_title,
+      praise_tagline: archetypeDef.praise_tagline,
+      cognitive_manifold_vector: [r.d_star ?? 0.5, r.m_ratio ?? 0.9, r.calibration_bias ?? 0.0, r.ive ?? 0.5],
+      clinical_summary: archetypeDef.clinical_summary,
+    };
+  }
+
+  private assembleActiveSubject(
+    active: SessionState,
+    targetLocale: SupportedLocale,
+    isPublicScatter: boolean = true,
+    isOwner: boolean = false
+  ): SubjectDataPoint {
+    const evalRecords = active.records.filter((r) => !r.is_warmup);
+    const target = evalRecords.length > 0 ? evalRecords : active.records;
+    const firstAcc = target.filter((r) => r.is_correct_first_order).length / (target.length || 1);
+    const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
+    const dStar = active.staircase.computeDStar(undefined, active.warmupTrials);
+    const metrics = PsychometricScorer.evaluate(active.records, true, dStar);
+    const hintsCount = ReportGenerator.countHintTrials(active.records, true);
+
+    const archetype = classifyCognitiveArchetype({
+      dStar: metrics.d_star,
+      dPrime: metrics.d_prime,
+      mRatio: metrics.m_ratio,
+      bias: metrics.calibration_bias,
+      brier: metrics.brier_score,
+      ive: metrics.ive ?? 0.5,
+      hintsCount,
+    });
+    const def = getArchetypeDefinition(archetype, targetLocale);
+
+    const formalScore = active.records
+      .filter((r) => !r.is_warmup)
+      .reduce((sum, r) => sum + (r.score_delta || 0), 0);
+    const ccs = Math.round(metrics.d_star * formalScore * 100) / 100;
+
+    const activeMetrics: AssessmentMetrics = {
+      first_order_accuracy: Math.round(firstAcc * 1000) / 1000,
+      second_order_accuracy: Math.round(secondAcc * 1000) / 1000,
+      reversals_count: active.staircase.reversalCount,
+      d_star: metrics.d_star,
+      d_prime: metrics.d_prime,
+      meta_d_prime: metrics.meta_d_prime,
+      m_ratio: metrics.m_ratio,
+      calibration_bias: metrics.calibration_bias,
+      brier_score: metrics.brier_score,
+      ive: metrics.ive,
+      info_buying_efficiency: metrics.ive,
+      coachability_index: 50,
+      risk_attitude: RiskAttitude.MODERATE_RATIONAL,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
+    };
+
+    let activeDisplayName = active.subjectName;
+    let activeUserId: string | null = active.userId ?? null;
+    let activeAvatarUrl: string | null | undefined = (active.metadata as any)?.avatar_url || undefined;
+    let activeProfileUrl: string | undefined = undefined;
+    let activeSocial: SubjectSocialProfile | undefined = undefined;
+
+    if (isPublicScatter && !isOwner) {
+      if (active.visibility === "anonymous") {
+        if (active.subjectType === SubjectType.HUMAN) {
+          activeDisplayName = generateMaskedCodename(active.sessionId, targetLocale);
+        }
+        activeUserId = null;
+        activeAvatarUrl = undefined;
+      } else if (active.visibility === "public" && active.userId) {
+        activeProfileUrl = `/user/${active.userId}`;
+        activeSocial = {
+          user_id: active.userId,
+          display_name: activeDisplayName,
+          avatar_url: activeAvatarUrl,
+          profile_url: activeProfileUrl,
+        };
+      }
+    }
+
+    return {
+      id: active.sessionId,
+      name: activeDisplayName,
+      nickname: activeDisplayName,
+      avatar_url: activeAvatarUrl,
+      profile_url: activeProfileUrl,
+      social: activeSocial,
+      subject_type: active.subjectType,
+      locale: targetLocale,
+      created_at: active.createdAt,
+      total_trials: active.totalTrials,
+      warmup_trials: active.warmupTrials,
+      total_duration_ms: Date.now() - active.startTimeMs,
+      final_score: formalScore,
+      formal_score: formalScore,
+      composite_cognitive_score: ccs,
+      ccs,
+      quadrant_code: def.quadrant_code,
+      is_current: true,
+      metrics: activeMetrics,
+      user_id: activeUserId,
+      visibility: active.visibility || "anonymous",
+
+      // Legacy fields
+      metadata: {
+        locale: targetLocale,
+        visibility: active.visibility || "anonymous",
+      },
+      first_order_accuracy: activeMetrics.first_order_accuracy,
+      second_order_accuracy: activeMetrics.second_order_accuracy,
+      d_prime: activeMetrics.d_prime,
+      meta_d_prime: activeMetrics.meta_d_prime,
+      m_ratio: activeMetrics.m_ratio,
+      calibration_bias: activeMetrics.calibration_bias,
+      d_star: activeMetrics.d_star,
+      ive: activeMetrics.ive,
+      info_buying_efficiency: activeMetrics.ive,
+      brier_score: activeMetrics.brier_score,
+      coachability_index: 50,
+      role_title: def.role_title,
+      praise_tagline: def.praise_tagline,
+      cognitive_manifold_vector: [activeMetrics.d_star, activeMetrics.m_ratio, activeMetrics.calibration_bias, activeMetrics.ive],
+      clinical_summary: def.clinical_summary,
+    };
+  }
+
+  private buildOctantDensityStats(
+    aggRows: any[],
+    totalCount: number
+  ): Record<string, OctantDensityMetrics> {
+    const stats: Record<string, OctantDensityMetrics> = {};
+    for (const code of SessionManager.ALL_OCTANT_CODES) {
+      stats[code] = {
+        quadrant_code: code,
+        count: 0,
+        percentage: "0.0%",
+        avg_d_star: 0.5,
+        avg_m_ratio: 0.8,
+        avg_score: 0,
+        variance_d_star: 0,
+        variance_m_ratio: 0,
+        variance_score: 0,
+        avgDStar: "--",
+        avgMRatio: "--",
+        avgScore: 0,
+      };
+    }
+
+    for (const r of aggRows) {
+      const code = r.quadrant_code || "Q1-CAL";
+      const count = Number(r.count || 0);
+      const avgDStar = Number(r.avg_d_star ?? 0.5);
+      const avgMRatio = Number(r.avg_m_ratio ?? 0.8);
+      const avgScore = Math.round(Number(r.avg_score ?? 0));
+      const varDStar = Math.max(0, Number(r.var_d_star ?? 0));
+      const varMRatio = Math.max(0, Number(r.var_m_ratio ?? 0));
+      const varScore = Math.max(0, Number(r.var_score ?? 0));
+      const pct = totalCount > 0 ? `${((count / totalCount) * 100).toFixed(1)}%` : "0.0%";
+
+      stats[code] = {
+        quadrant_code: code,
+        count,
+        percentage: pct,
+        avg_d_star: Math.round(avgDStar * 10000) / 10000,
+        avg_m_ratio: Math.round(avgMRatio * 10000) / 10000,
+        avg_score: avgScore,
+        variance_d_star: Math.round(varDStar * 10000) / 10000,
+        variance_m_ratio: Math.round(varMRatio * 10000) / 10000,
+        variance_score: Math.round(varScore * 100) / 100,
+        avgDStar: count > 0 ? avgDStar.toFixed(3) : "--",
+        avgMRatio: count > 0 ? avgMRatio.toFixed(2) : "--",
+        avgScore,
+      };
+    }
+
+    return stats;
+  }
+
+  private computeInMemoryAggregates(rows: any[]): {
+    totalCount: number;
+    aggRows: any[];
+    meanX: number;
+    meanY: number;
+  } {
+    const groups: Record<
+      string,
+      { dStarSum: number; dStarSqSum: number; mRatioSum: number; mRatioSqSum: number; scoreSum: number; scoreSqSum: number; count: number }
+    > = {};
+    for (const code of SessionManager.ALL_OCTANT_CODES) {
+      groups[code] = { dStarSum: 0, dStarSqSum: 0, mRatioSum: 0, mRatioSqSum: 0, scoreSum: 0, scoreSqSum: 0, count: 0 };
+    }
+
+    let totalCount = 0;
+    let totalDStar = 0;
+    let totalMRatio = 0;
+
+    for (const r of rows) {
+      const code = r.quadrant_code || "Q1-CAL";
+      if (!groups[code]) {
+        groups[code] = { dStarSum: 0, dStarSqSum: 0, mRatioSum: 0, mRatioSqSum: 0, scoreSum: 0, scoreSqSum: 0, count: 0 };
+      }
+      const dStar = Number(r.d_star ?? 0.5);
+      const mRatio = Number(r.m_ratio ?? 0.8);
+      const score = Number(r.final_score ?? 0);
+      const g = groups[code];
+      g.count += 1;
+      g.dStarSum += dStar;
+      g.dStarSqSum += dStar * dStar;
+      g.mRatioSum += mRatio;
+      g.mRatioSqSum += mRatio * mRatio;
+      g.scoreSum += score;
+      g.scoreSqSum += score * score;
+
+      totalCount += 1;
+      totalDStar += dStar;
+      totalMRatio += mRatio;
+    }
+
+    const aggRows = Object.entries(groups).map(([code, g]) => {
+      const c = g.count;
+      const avgDStar = c > 0 ? g.dStarSum / c : 0.5;
+      const avgMRatio = c > 0 ? g.mRatioSum / c : 0.8;
+      const avgScore = c > 0 ? g.scoreSum / c : 0;
+      const varDStar = c > 0 ? Math.max(0, g.dStarSqSum / c - avgDStar * avgDStar) : 0;
+      const varMRatio = c > 0 ? Math.max(0, g.mRatioSqSum / c - avgMRatio * avgMRatio) : 0;
+      const varScore = c > 0 ? Math.max(0, g.scoreSqSum / c - avgScore * avgScore) : 0;
+      return {
+        quadrant_code: code,
+        count: c,
+        avg_d_star: avgDStar,
+        avg_m_ratio: avgMRatio,
+        avg_score: avgScore,
+        var_d_star: varDStar,
+        var_m_ratio: varMRatio,
+        var_score: varScore,
+      };
+    });
+
+    return {
+      totalCount,
+      aggRows,
+      meanX: totalCount > 0 ? Math.round((totalDStar / totalCount) * 1000) / 1000 : 0.5,
+      meanY: totalCount > 0 ? Math.round((totalMRatio / totalCount) * 1000) / 1000 : 0.5,
+    };
+  }
+
+  private sampleSubjectsInMemory(
+    subjects: SubjectDataPoint[],
+    budgetPerOctant: number,
+    currentSessionId?: string
+  ): SubjectDataPoint[] {
+    const result: SubjectDataPoint[] = [];
+
+    for (const code of SessionManager.ALL_OCTANT_CODES) {
+      const octSubjects = subjects.filter((s) => (s.quadrant_code || "Q1-CAL") === code);
+      if (octSubjects.length <= budgetPerOctant) {
+        result.push(...octSubjects);
         continue;
       }
 
-      const quadrantCode = r.quadrant_code || "Q1-CAL";
-      const archetypeDef = getArchetypeDefinition(quadrantCode, targetLocale);
-      const dStarVal = r.d_star ?? 0.5;
-      const formalScore = r.final_score ?? 0;
-      const ccs = Math.round(dStarVal * formalScore * 100) / 100;
-
-      const metrics: AssessmentMetrics = {
-        first_order_accuracy: r.first_order_accuracy ?? 0.7,
-        second_order_accuracy: r.second_order_accuracy ?? 0.7,
-        reversals_count: r.reversals_count ?? 0,
-        d_star: dStarVal,
-        d_prime: r.d_prime ?? 1.2,
-        meta_d_prime: r.meta_d_prime ?? 1.1,
-        m_ratio: r.m_ratio ?? 0.9,
-        calibration_bias: r.calibration_bias ?? 0.0,
-        brier_score: r.brier_score ?? 0.20,
-        ive: r.ive ?? 0.50,
-        coachability_index: r.coachability_index ?? 50,
-        risk_attitude: (r.risk_attitude as RiskAttitude) || RiskAttitude.MODERATE_RATIONAL,
-        formal_score: formalScore,
-        composite_cognitive_score: ccs,
-        ccs,
-      };
-
-      let agentMetadata: AgentExecutionMetadata | undefined = undefined;
-      if (r.subject_type !== SubjectType.HUMAN && r.agent_model) {
-        agentMetadata = {
-          model_name: r.agent_model,
-          persona: r.agent_persona,
-          thinking_effort: r.agent_effort,
-          evaluation_mode: r.agent_eval_mode,
-          token_usage: {
-            prompt_tokens: r.prompt_tokens ?? 0,
-            completion_tokens: r.completion_tokens ?? 0,
-            cached_tokens: r.cached_tokens ?? 0,
-            reasoning_tokens: r.reasoning_tokens ?? 0,
-            total_tokens: r.total_tokens ?? 0,
-          },
-        };
-      }
-
-      let displayName = r.subject_name || r.name || "受测者";
-      let userId: string | null = r.user_id ?? null;
-      let avatarUrl: string | null | undefined = undefined;
-      let profileUrl: string | undefined = undefined;
-      let social: SubjectSocialProfile | undefined = undefined;
-
-      if (isPublicScatter) {
-        if (vis === "anonymous") {
-          // L2: Anonymized with masked codename
-          if (r.subject_type === SubjectType.HUMAN) {
-            displayName = generateMaskedCodename(r.id, targetLocale);
-          }
-          userId = null;
-        } else if (vis === "public") {
-          // L3: Shows verified user avatar, nickname, and link to profile
-          let userMeta: any;
-          if (r.user_metadata_json) {
-            try {
-              userMeta = typeof r.user_metadata_json === "string" ? JSON.parse(r.user_metadata_json) : r.user_metadata_json;
-            } catch {}
-          }
-          displayName = r.user_display_name || userMeta?.display_name || r.subject_name || "受测者";
-          avatarUrl = userMeta?.custom_avatar || r.user_avatar_url || null;
-          profileUrl = r.user_id ? `/user/${r.user_id}` : undefined;
-          social = {
-            user_id: r.user_id || "",
-            display_name: displayName,
-            avatar_url: avatarUrl,
-            profile_url: profileUrl,
-            bio: userMeta?.bio,
-            social_links: userMeta?.social_links,
-          };
-        }
-      }
-
-      subjects.push({
-        id: r.id,
-        name: displayName,
-        subject_type: r.subject_type,
-        locale: (r.locale as SupportedLocale) || targetLocale,
-        created_at: r.created_at,
-        total_trials: r.total_trials ?? 30,
-        warmup_trials: r.warmup_trials ?? 10,
-        total_duration_ms: r.total_duration_ms ?? 0,
-        final_score: formalScore,
-        formal_score: formalScore,
-        composite_cognitive_score: ccs,
-        ccs,
-        quadrant_code: quadrantCode,
-        is_current: r.id === currentSessionId,
-        metrics,
-        agent_metadata: agentMetadata,
-        user_id: userId,
-        visibility: vis,
-        avatar_url: avatarUrl,
-        profile_url: profileUrl,
-        social,
-
-        // Legacy fields for backward compatibility
-        metadata: {
-          locale: (r.locale as SupportedLocale) || targetLocale,
-          visibility: vis,
-          ...(agentMetadata || {}),
-        },
-        first_order_accuracy: r.first_order_accuracy,
-        second_order_accuracy: r.second_order_accuracy,
-        d_prime: r.d_prime,
-        meta_d_prime: r.meta_d_prime,
-        m_ratio: r.m_ratio,
-        calibration_bias: r.calibration_bias,
-        d_star: r.d_star,
-        ive: r.ive,
-        info_buying_efficiency: r.ive,
-        brier_score: r.brier_score,
-        coachability_index: r.coachability_index,
-        role_title: archetypeDef.role_title,
-        praise_tagline: archetypeDef.praise_tagline,
-        cognitive_manifold_vector: [r.d_star ?? 0.5, r.m_ratio ?? 0.9, r.calibration_bias ?? 0.0, r.ive ?? 0.5],
-        clinical_summary: archetypeDef.clinical_summary,
+      // Sort by d_star, m_ratio to prepare quantile spatial buckets
+      octSubjects.sort((a, b) => {
+        const dDiff = (a.metrics.d_star ?? 0.5) - (b.metrics.d_star ?? 0.5);
+        if (Math.abs(dDiff) > 1e-5) return dDiff;
+        return (a.metrics.m_ratio ?? 0.8) - (b.metrics.m_ratio ?? 0.8);
       });
-    }
 
-    // If current session is active and not yet saved
-    if (currentSessionId && !subjects.some(s => s.id === currentSessionId)) {
-      const active = this.getSession(currentSessionId);
-      if (active && active.records.length > 0) {
-        if (!isPublicScatter || active.visibility !== "private") {
-          const evalRecords = active.records.filter(r => !r.is_warmup);
-          const target = evalRecords.length > 0 ? evalRecords : active.records;
-          const firstAcc = target.filter(r => r.is_correct_first_order).length / target.length;
-          const secondAcc = PsychometricScorer.computeMetacognitiveJudgmentAccuracy(target);
-          const dStar = active.staircase.computeDStar(undefined, active.warmupTrials);
-          const metrics = PsychometricScorer.evaluate(active.records, true, dStar);
-          const hintsCount = ReportGenerator.countHintTrials(active.records, true);
+      const bucketSize = octSubjects.length / budgetPerOctant;
+      for (let b = 0; b < budgetPerOctant; b++) {
+        const startIdx = Math.floor(b * bucketSize);
+        const endIdx = Math.min(octSubjects.length, Math.floor((b + 1) * bucketSize));
+        const slice = octSubjects.slice(startIdx, endIdx);
+        if (slice.length === 0) continue;
 
-          const archetype = classifyCognitiveArchetype({
-            dStar: metrics.d_star,
-            dPrime: metrics.d_prime,
-            mRatio: metrics.m_ratio,
-            bias: metrics.calibration_bias,
-            brier: metrics.brier_score,
-            ive: metrics.info_buying_efficiency ?? (metrics as any).ive ?? 0.50,
-            hintsCount,
-          });
-          const def = getArchetypeDefinition(archetype, targetLocale);
-
-          const formalScore = active.records
-            .filter(r => !r.is_warmup)
-            .reduce((sum, r) => sum + (r.score_delta || 0), 0);
-          const ccs = Math.round(metrics.d_star * formalScore * 100) / 100;
-
-          const activeMetrics: AssessmentMetrics = {
-            first_order_accuracy: Math.round(firstAcc * 1000) / 1000,
-            second_order_accuracy: Math.round(secondAcc * 1000) / 1000,
-            reversals_count: active.staircase.reversalCount,
-            d_star: metrics.d_star,
-            d_prime: metrics.d_prime,
-            meta_d_prime: metrics.meta_d_prime,
-            m_ratio: metrics.m_ratio,
-            calibration_bias: metrics.calibration_bias,
-            brier_score: metrics.brier_score,
-            ive: metrics.info_buying_efficiency,
-            coachability_index: 50,
-            risk_attitude: RiskAttitude.MODERATE_RATIONAL,
-            formal_score: formalScore,
-            composite_cognitive_score: ccs,
-            ccs,
-          };
-
-          let activeDisplayName = active.subjectName;
-          let activeUserId: string | null = active.userId ?? null;
-          if (isPublicScatter && active.visibility === "anonymous") {
-            if (active.subjectType === SubjectType.HUMAN) {
-              activeDisplayName = generateMaskedCodename(active.sessionId, targetLocale);
-            }
-            activeUserId = null;
-          }
-
-          subjects.unshift({
-            id: active.sessionId,
-            name: activeDisplayName,
-            subject_type: active.subjectType,
-            locale: targetLocale,
-            created_at: active.createdAt,
-            total_trials: active.totalTrials,
-            warmup_trials: active.warmupTrials,
-            total_duration_ms: Date.now() - active.startTimeMs,
-            final_score: formalScore,
-            formal_score: formalScore,
-            composite_cognitive_score: ccs,
-            ccs,
-            quadrant_code: def.quadrant_code,
-            is_current: true,
-            metrics: activeMetrics,
-            user_id: activeUserId,
-            visibility: active.visibility || "anonymous",
-
-            // Legacy fields
-            metadata: {
-              locale: targetLocale,
-              visibility: active.visibility || "anonymous",
-            },
-            first_order_accuracy: activeMetrics.first_order_accuracy,
-            second_order_accuracy: activeMetrics.second_order_accuracy,
-            d_prime: activeMetrics.d_prime,
-            meta_d_prime: activeMetrics.meta_d_prime,
-            m_ratio: activeMetrics.m_ratio,
-            calibration_bias: activeMetrics.calibration_bias,
-            d_star: activeMetrics.d_star,
-            ive: activeMetrics.ive,
-            info_buying_efficiency: activeMetrics.ive,
-            brier_score: activeMetrics.brier_score,
-            coachability_index: 50,
-            role_title: def.role_title,
-            praise_tagline: def.praise_tagline,
-            cognitive_manifold_vector: [activeMetrics.d_star, activeMetrics.m_ratio, activeMetrics.calibration_bias, activeMetrics.ive],
-            clinical_summary: def.clinical_summary,
-          });
+        const curr = slice.find((s) => s.id === currentSessionId);
+        if (curr) {
+          result.push(curr);
+        } else {
+          result.push(slice[Math.floor(slice.length / 2)]);
         }
       }
     }
 
-    const xVals = subjects.map(s => s.metrics.d_star);
-    const yVals = subjects.map(s => s.metrics.m_ratio);
+    if (currentSessionId && !result.some((s) => s.id === currentSessionId)) {
+      const found = subjects.find((s) => s.id === currentSessionId);
+      if (found) {
+        result.unshift(found);
+      }
+    }
 
-    const median = (arr: number[]): number => {
-      if (arr.length === 0) return 0.50;
-      const sorted = [...arr].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-    };
-
-    const mean = (arr: number[]): number => {
-      if (arr.length === 0) return 0.50;
-      return arr.reduce((a, b) => a + b, 0) / arr.length;
-    };
-
-    return {
-      baseline_x: 0.60,
-      baseline_y: 0.80,
-      median_x: Math.round(median(xVals) * 1000) / 1000,
-      median_y: Math.round(median(yVals) * 1000) / 1000,
-      mean_x: Math.round(mean(xVals) * 1000) / 1000,
-      mean_y: Math.round(mean(yVals) * 1000) / 1000,
-      subjects,
-    };
+    return result;
   }
 
   public getUserSessions(userId: string, locale?: SupportedLocale): SubjectDataPoint[] {
     const targetLocale = locale || getLocale();
     if (!this.storage.querySync) return [];
     const sql = `
-      SELECT 
+      SELECT
         c.*,
         a.model_name as agent_model,
         a.persona as agent_persona,
@@ -1973,7 +2562,7 @@ export class SessionManager {
   public async getUserSessionsAsync(userId: string, locale?: SupportedLocale): Promise<SubjectDataPoint[]> {
     const targetLocale = locale || getLocale();
     const sql = `
-      SELECT 
+      SELECT
         c.*,
         a.model_name as agent_model,
         a.persona as agent_persona,

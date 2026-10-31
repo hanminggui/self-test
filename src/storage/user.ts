@@ -78,3 +78,24 @@ export function parseUserRow(row: UserRow): User {
     metadata,
   };
 }
+
+export interface UserRelation {
+  id: string;
+  referrer_id: string;
+  referee_id: string;
+  relation_type: string;
+  source_session_id?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface UserRelationRow {
+  id: string;
+  referrer_id: string;
+  referee_id: string;
+  relation_type: string;
+  source_session_id: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+

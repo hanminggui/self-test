@@ -490,15 +490,38 @@ export default function SubjectDataTableView({
                   return (
                     <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors group">
                       <td className="py-2 px-3 font-medium text-white flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
-                          style={{
-                            backgroundColor: colorToken.backgroundColor,
-                            border: `1px solid ${colorToken.borderColor}`,
-                            boxShadow: colorToken.boxShadow,
-                          }}
-                        />
-                        <span className="truncate max-w-[120px]">{sub.name}</span>
+                        {sub.avatar_url ? (
+                          <img
+                            src={sub.avatar_url}
+                            alt={sub.name}
+                            className="w-5 h-5 rounded-full object-cover border border-emerald-400/60 shrink-0"
+                          />
+                        ) : (
+                          <span
+                            className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                            style={{
+                              backgroundColor: colorToken.backgroundColor,
+                              border: `1px solid ${colorToken.borderColor}`,
+                              boxShadow: colorToken.boxShadow,
+                            }}
+                          />
+                        )}
+                        <span className="truncate max-w-[120px]">{sub.nickname || sub.name}</span>
+                        {sub.is_friend && (
+                          <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 shrink-0">
+                            {isEn ? "Friend" : "好友"}
+                          </span>
+                        )}
+                        {sub.is_self && (
+                          <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-950/80 border border-amber-500/50 text-amber-300 shrink-0">
+                            {isEn ? "Self" : "本体"}
+                          </span>
+                        )}
+                        {typeof sub.similarity === "number" && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-black bg-cyan-950/80 border border-cyan-400/50 text-cyan-300 shrink-0">
+                            {sub.similarity}%
+                          </span>
+                        )}
                         <span
                           className={`px-1 py-0.2 rounded text-[9px] font-mono font-bold border shrink-0 ${
                             isSubEn

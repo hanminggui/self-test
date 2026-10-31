@@ -63,8 +63,9 @@ describe("Unified Share Suite: Component Rendering & Data Sanitization", () => {
     expect(html).not.toContain("乃统天");
     expect(html).not.toContain("周易 · 象辞");
 
-    // 4. 头像框下方长条徽带展示用户真实昵称
-    expect(html).toContain("探索者 · 伏羲042");
+    // 4. 头像框下方长条徽带展示用户真实昵称 (彻底移除写死的“探索者 · ”前缀)
+    expect(html).toContain("伏羲042");
+    expect(html).not.toContain("探索者 · 伏羲042");
 
     // 5. 原 4 个指标数据块区域替换为展示 4 项原创正向专属认知特技 (图标 + 名称 + 描述)
     expect(html).toContain("算力透视");
@@ -159,7 +160,8 @@ describe("Unified Share Suite: Component Rendering & Data Sanitization", () => {
 
     expect(html).toContain("The Grand Archmage");
     expect(html).toContain("Sight Beyond the Veil · Unerring Decree");
-    expect(html).toContain("Explorer · Arthur042");
+    expect(html).toContain("Arthur042");
+    expect(html).not.toContain("Explorer · Arthur042");
 
     // 4 项纯正英文秘法特技
     expect(html).toContain("Eye of Aether");
@@ -221,5 +223,67 @@ describe("Unified Share Suite: Component Rendering & Data Sanitization", () => {
     expect(modalHtmlEn).toContain("data-share-poster=\"western-arcane\"");
     expect(modalHtmlEn).toContain("The Grand Archmage");
     expect(modalHtmlEn).toContain("Eye of Aether");
+  });
+
+  it("Issue #39: 移除‘探索者 · ’硬编码前缀并渲染真实用户头像与优雅降级", () => {
+    // 1. 当携带 avatar_url 时，海报视图渲染具备圆形裁切与边框光效的真实头像 <img>
+    const reportWithAvatar = {
+      ...sampleReport,
+      subject_name: "女娲999",
+      avatar_url: "https://example.com/avatar_nuwa.png",
+    };
+
+    const htmlWithAvatar = renderToString(
+      React.createElement(ChineseMythicPoster, {
+        report: reportWithAvatar,
+      })
+    );
+
+    // 验证昵称直接展示且绝无“探索者 · ”前缀
+    expect(htmlWithAvatar).toContain("女娲999");
+    expect(htmlWithAvatar).not.toContain("探索者 · 女娲999");
+    // 验证头像图片元素、跨域属性与圆形裁切徽章
+    expect(htmlWithAvatar).toContain('src="https://example.com/avatar_nuwa.png"');
+    expect(htmlWithAvatar).toContain('crossorigin="anonymous"');
+    expect(htmlWithAvatar).toContain('data-avatar-badge="true"');
+
+    // 2. 支持通过 props.avatar_url 单独传入
+    const htmlWithPropAvatar = renderToString(
+      React.createElement(ChineseMythicPoster, {
+        report: sampleReport,
+        avatar_url: "https://example.com/prop_avatar.png",
+      })
+    );
+    expect(htmlWithPropAvatar).toContain('src="https://example.com/prop_avatar.png"');
+
+    // 3. 当无 avatar_url 时，优雅降级为图腾或用户首字母
+    const reportWithoutAvatar = {
+      ...sampleReport,
+      subject_name: "伏羲042",
+      avatar_url: undefined,
+    };
+
+    const htmlWithoutAvatar = renderToString(
+      React.createElement(ChineseMythicPoster, {
+        report: reportWithoutAvatar,
+      })
+    );
+    expect(htmlWithoutAvatar).toContain("伏羲042");
+    expect(htmlWithoutAvatar).not.toContain("探索者 · 伏羲042");
+    expect(htmlWithoutAvatar).not.toContain('src="https://example.com/avatar_nuwa.png"');
+    expect(htmlWithoutAvatar).toContain('data-avatar-badge="true"');
+
+    // 4. 当未提供 subject_name 时，优雅回退至“探索者”默认值且无多余前缀
+    const reportNoName = {
+      ...sampleReport,
+      subject_name: undefined,
+    };
+    const htmlNoName = renderToString(
+      React.createElement(ChineseMythicPoster, {
+        report: reportNoName,
+      })
+    );
+    expect(htmlNoName).toContain("探索者");
+    expect(htmlNoName).not.toContain("探索者 · 探索者");
   });
 });

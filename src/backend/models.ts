@@ -140,6 +140,9 @@ export interface SessionExecutionMetadata {
   token_usage?: TokenUsageStats;
   locale?: SupportedLocale;
   visibility?: SessionVisibility;
+  referrer_id?: string;
+  source_session_id?: string;
+  referrer_session_id?: string;
 }
 
 export interface AgentExecutionMetadata {
@@ -231,6 +234,7 @@ export interface FinalAssessmentReport {
   session_id: string;
   subject_name: string;
   subject_type: string;
+  avatar_url?: string | null;
   locale: SupportedLocale;
   created_at: string;
   total_trials: number;
@@ -248,6 +252,7 @@ export interface FinalAssessmentReport {
   records?: TrialRecord[];
   user_id?: string | null;
   visibility?: SessionVisibility;
+  referrer_session_id?: string | null;
 
   // Transitional optional getters/properties for backwards compatibility until Issue #35
   summary?: {
@@ -293,6 +298,11 @@ export interface SubjectDataPoint {
   avatar_url?: string | null;
   profile_url?: string;
   social?: SubjectSocialProfile;
+  nickname?: string;
+  similarity?: number;
+  similarity_percentage?: number;
+  is_friend?: boolean;
+  is_self?: boolean;
 
   // Legacy flat fields for backwards compatibility until views adapt
   first_order_accuracy?: number;
@@ -313,6 +323,23 @@ export interface SubjectDataPoint {
   metadata?: SessionExecutionMetadata;
 }
 
+export interface OctantDensityMetrics {
+  quadrant_code: string;
+  count: number;
+  percentage: string;
+  avg_d_star: number;
+  avg_m_ratio: number;
+  avg_score: number;
+  variance_d_star: number;
+  variance_m_ratio: number;
+  variance_score: number;
+
+  // Frontend display aliases
+  avgDStar: string;
+  avgMRatio: string;
+  avgScore: number;
+}
+
 export interface CohortScatterResponse {
   baseline_x: number;
   baseline_y: number;
@@ -320,5 +347,15 @@ export interface CohortScatterResponse {
   median_y: number;
   mean_x: number;
   mean_y: number;
+  total_count: number;
+  octants: Record<string, OctantDensityMetrics>;
+  octant_stats: Record<string, OctantDensityMetrics>;
+  density_summary?: {
+    total_count: number;
+    mean_x: number;
+    mean_y: number;
+    variance_x?: number;
+    variance_y?: number;
+  };
   subjects: SubjectDataPoint[];
 }

@@ -3,6 +3,8 @@ import { getOctantSectorConfigs } from "../../constants/adminConstants";
 import { AXIS_RAY_COLOR_CONFIGS, getCurvatureOffsetDeg } from "../../CosmicGalaxyCompass";
 import { GUEST_MOCK_EXPLORERS, GuestMockExplorer } from "./guestMockData";
 import { useLocale } from "../../contexts/LocaleContext";
+import { useUser } from "../../contexts/UserContext";
+import { ScopeSwitcherCapsule, ChartScope } from "../common/ScopeSwitcherCapsule";
 
 interface GuestGalaxyHeroProps {
   onSelectArchetype?: (quadrantCode: string) => void;
@@ -214,11 +216,78 @@ export const GuestGalaxyHero: React.FC<GuestGalaxyHeroProps> = ({
   className = "",
 }) => {
   const { locale } = useLocale();
+  const { user, openAuthModal } = useUser();
   const isEn = String(locale).toLowerCase().startsWith("en");
   const octantSectorConfigs = getOctantSectorConfigs(isEn ? "en-US" : "zh-CN");
 
+  // 社交范围过滤器 (全域宏观星系 | 好友社交圈 | 唯我本体) (GitHub Issue #20)
+  const [scope, setScope] = useState<ChartScope>("global");
+  const [friendsList, setFriendsList] = useState<GuestMockExplorer[]>([]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [rotation, setRotation] = useState(0);
+
+  const handleScopeChange = (nextScope: ChartScope) => {
+    if ((nextScope === "friends" || nextScope === "self") && !user) {
+      openAuthModal();
+      return;
+    }
+    setScope(nextScope);
+  };
+
+  useEffect(() => {
+    if (scope === "global") {
+      setFriendsList([]);
+      return;
+    }
+    if (!user) return;
+
+    let cancelled = false;
+
+    fetch(`/api/cohort/scatter?lang=${encodeURIComponent(locale)}&scope=${scope}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data || !Array.isArray(data.subjects)) return;
+        const mapped: GuestMockExplorer[] = data.subjects.map((sub: any, idx: number) => {
+          const dStar = sub.d_star ?? sub.metrics?.d_star ?? 0.5;
+          const mRatio = sub.m_ratio ?? sub.metrics?.m_ratio ?? 0.9;
+          const bias = sub.calibration_bias ?? sub.metrics?.calibration_bias ?? 0.0;
+          const ive = sub.ive ?? sub.metrics?.ive ?? 0.5;
+          const isFriend = Boolean(sub.is_friend);
+          const isSelf = Boolean(sub.is_self);
+
+          return {
+            id: sub.id || `sub-${idx}`,
+            nameZh: sub.nickname || sub.name || "受测者",
+            nameEn: sub.nickname || sub.name || "Explorer",
+            badgeZh: isSelf ? "唯我本体" : isFriend ? "引荐好友" : "探索者",
+            badgeEn: isSelf ? "Self Anchor" : isFriend ? "Friend" : "Explorer",
+            quadrantCode: sub.quadrant_code || "Q1-CAL",
+            dStar,
+            mRatio,
+            calibrationBias: bias,
+            ive,
+            finalScore: sub.final_score ?? 80,
+            avatarUrl: sub.avatar_url,
+            similarity: sub.similarity,
+            isFriend,
+            isSelf,
+            powerScore: Math.round(dStar * 100),
+            selfKnowScore: Math.round(Math.min(100, mRatio * 80)),
+            boldnessScore: Math.round(Math.max(0, Math.min(100, (bias + 0.5) * 100))),
+            leverageScore: Math.round(ive * 100),
+            quoteZh: sub.similarity !== undefined ? `与你的认知契合度达 ${sub.similarity}%` : "心智流形星轨探索者",
+            quoteEn: sub.similarity !== undefined ? `Cognitive match rate with you: ${sub.similarity}%` : "Mind manifold explorer",
+          };
+        });
+        setFriendsList(mapped);
+      })
+      .catch((e) => console.error("Failed to load friend cohort:", e));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [scope, user, locale]);
 
   // 悬停交互状态：脱离后自动重置为 null，球体失去选中焦点并恢复匀速旋转
   const [hoveredExplorer, setHoveredExplorer] = useState<GuestMockExplorer | null>(null);
@@ -313,12 +382,13 @@ export const GuestGalaxyHero: React.FC<GuestGalaxyHeroProps> = ({
   };
 
   // 预先缓存探索者极坐标
+  const activeExplorers = scope !== "global" && friendsList.length > 0 ? friendsList : GUEST_MOCK_EXPLORERS;
   const explorerPolars = useMemo(() => {
-    return GUEST_MOCK_EXPLORERS.map((exp) => ({
+    return activeExplorers.map((exp) => ({
       exp,
       polar: getExplorerPolar(exp),
     }));
-  }, []);
+  }, [activeExplorers]);
 
   // 投影星球：带深度排序与视锥比例
   const projectedPlanets = useMemo(() => {
@@ -378,8 +448,17 @@ export const GuestGalaxyHero: React.FC<GuestGalaxyHeroProps> = ({
       ref={containerRef}
       onPointerDown={handlePointerDown}
       onPointerLeave={handlePointerLeaveContainer}
-      className={`w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing select-none overflow-hidden touch-pan-y ${className}`}
+      className={`relative w-full h-full flex items-center justify-center cursor-grab active:cursor-grabbing select-none overflow-hidden touch-pan-y ${className}`}
     >
+      {/* 顶部悬浮社交范围切换胶囊 (GitHub Issue #20) */}
+      <div className="absolute top-4 right-4 z-40 pointer-events-auto hidden md:flex">
+        <ScopeSwitcherCapsule
+          scope={scope}
+          onScopeChange={handleScopeChange}
+          friendCount={friendsList.filter((f) => f.isFriend).length}
+        />
+      </div>
+
       <svg
         viewBox="0 0 1000 620"
         preserveAspectRatio="xMidYMid slice"
@@ -691,24 +770,74 @@ export const GuestGalaxyHero: React.FC<GuestGalaxyHeroProps> = ({
                   />
                 )}
 
-                {/* 球体本体 */}
-                <circle
-                  cx={proj.x}
-                  cy={proj.y}
-                  r={planetR}
-                  fill={planetGrad}
-                  stroke={isHovered ? "#ffffff" : "rgba(255, 255, 255, 0.45)"}
-                  strokeWidth={isHovered ? 1.6 : 0.8}
-                />
+                {/* 好友引荐网络高亮环与自我标记 (GitHub Issue #20) */}
+                {exp.isFriend && (
+                  <circle
+                    cx={proj.x}
+                    cy={proj.y}
+                    r={planetR * 1.55}
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="1.5"
+                    strokeDasharray="3 3"
+                  />
+                )}
+                {exp.isSelf && (
+                  <circle
+                    cx={proj.x}
+                    cy={proj.y}
+                    r={planetR * 1.7}
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="2"
+                  />
+                )}
 
-                {/* 表面立体高光 */}
-                <circle
-                  cx={proj.x - planetR * 0.32}
-                  cy={proj.y - planetR * 0.32}
-                  r={planetR * 0.24}
-                  fill="#ffffff"
-                  opacity={0.85}
-                />
+                {/* 球体本体 / 好友社交头像 */}
+                {exp.isFriend && exp.avatarUrl ? (
+                  <g>
+                    <clipPath id={`guest-avatar-clip-${exp.id}`}>
+                      <circle cx={proj.x} cy={proj.y} r={planetR * 1.05} />
+                    </clipPath>
+                    <circle
+                      cx={proj.x}
+                      cy={proj.y}
+                      r={planetR * 1.15}
+                      fill="#10b981"
+                      stroke="#ffffff"
+                      strokeWidth={1}
+                    />
+                    <image
+                      href={exp.avatarUrl}
+                      x={proj.x - planetR * 1.05}
+                      y={proj.y - planetR * 1.05}
+                      width={planetR * 2.1}
+                      height={planetR * 2.1}
+                      clipPath={`url(#guest-avatar-clip-${exp.id})`}
+                      preserveAspectRatio="xMidYMid slice"
+                    />
+                  </g>
+                ) : (
+                  <>
+                    <circle
+                      cx={proj.x}
+                      cy={proj.y}
+                      r={planetR}
+                      fill={planetGrad}
+                      stroke={exp.isFriend ? "#10b981" : isHovered ? "#ffffff" : "rgba(255, 255, 255, 0.45)"}
+                      strokeWidth={exp.isFriend ? 1.6 : isHovered ? 1.6 : 0.8}
+                    />
+
+                    {/* 表面立体高光 */}
+                    <circle
+                      cx={proj.x - planetR * 0.32}
+                      cy={proj.y - planetR * 0.32}
+                      r={planetR * 0.24}
+                      fill="#ffffff"
+                      opacity={0.85}
+                    />
+                  </>
+                )}
               </g>
             );
           })}
@@ -726,15 +855,19 @@ export const GuestGalaxyHero: React.FC<GuestGalaxyHeroProps> = ({
             {/* 卡片底板：深色半透明毛玻璃微光 */}
             <rect
               x="-110"
-              y="-86"
+              y={typeof hoveredExplorer.similarity === "number" ? "-96" : "-86"}
               width="220"
-              height="82"
+              height={typeof hoveredExplorer.similarity === "number" ? "102" : "82"}
               rx="12"
               fill="#060913"
               fillOpacity="0.94"
-              stroke="rgba(251, 191, 36, 0.4)"
-              strokeWidth="1.2"
-              style={{ filter: "drop-shadow(0 12px 28px rgba(0,0,0,0.85))" }}
+              stroke={hoveredExplorer.isFriend ? "#10b981" : "rgba(251, 191, 36, 0.4)"}
+              strokeWidth={hoveredExplorer.isFriend ? "1.6" : "1.2"}
+              style={{
+                filter: hoveredExplorer.isFriend
+                  ? "drop-shadow(0 0 16px rgba(16, 185, 129, 0.4))"
+                  : "drop-shadow(0 12px 28px rgba(0,0,0,0.85))",
+              }}
             />
 
             {/* 顶栏：探索者姓名 */}
@@ -796,17 +929,45 @@ export const GuestGalaxyHero: React.FC<GuestGalaxyHeroProps> = ({
               {isEn ? "Boldness" : "果敢"}: <tspan fill="#fbbf24" fontWeight="bold">{hoveredExplorer.boldnessScore}</tspan>
             </text>
 
-            {/* 生动的探索宣言 */}
-            <text
-              x="-98"
-              y="-15"
-              fill="#94a3b8"
-              fontSize="8.5"
-              fontFamily="system-ui, sans-serif"
-              fontStyle="italic"
-            >
-              &ldquo;{isEn ? hoveredExplorer.quoteEn : hoveredExplorer.quoteZh}&rdquo;
-            </text>
+            {/* 认知契合度徽章 (GitHub Issue #20) */}
+            {typeof hoveredExplorer.similarity === "number" ? (
+              <g>
+                <rect
+                  x="-98"
+                  y="-16"
+                  width="196"
+                  height="16"
+                  rx="4"
+                  fill={hoveredExplorer.isSelf ? "rgba(245, 158, 11, 0.25)" : "rgba(16, 185, 129, 0.25)"}
+                  stroke={hoveredExplorer.isSelf ? "rgba(245, 158, 11, 0.7)" : "rgba(16, 185, 129, 0.7)"}
+                  strokeWidth="0.8"
+                />
+                <text
+                  x="0"
+                  y="-4"
+                  textAnchor="middle"
+                  fill={hoveredExplorer.isSelf ? "#fbbf24" : "#34d399"}
+                  fontSize="8.5"
+                  fontWeight="bold"
+                >
+                  {hoveredExplorer.isSelf
+                    ? isEn ? "★ Self Anchor Point (100% Match)" : "★ 唯我本体锚点 (100% 契合)"
+                    : isEn ? `Cognitive Match Rate: ${hoveredExplorer.similarity}%` : `认知流形契合度: ${hoveredExplorer.similarity}%`}
+                </text>
+              </g>
+            ) : (
+              /* 生动的探索宣言 */
+              <text
+                x="-98"
+                y="-15"
+                fill="#94a3b8"
+                fontSize="8.5"
+                fontFamily="system-ui, sans-serif"
+                fontStyle="italic"
+              >
+                &ldquo;{isEn ? hoveredExplorer.quoteEn : hoveredExplorer.quoteZh}&rdquo;
+              </text>
+            )}
           </g>
         )}
       </svg>

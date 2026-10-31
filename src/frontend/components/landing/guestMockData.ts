@@ -13,6 +13,10 @@ export interface GuestMockExplorer {
   ive: number;
   finalScore: number;
   isCurrent?: boolean;
+  avatarUrl?: string | null;
+  similarity?: number;
+  isFriend?: boolean;
+  isSelf?: boolean;
   /** Public-friendly ratings (1 ~ 5 stars / 0 ~ 100%) */
   powerScore: number;      // 解题硬实力 / Deductive Prowess (0-100)
   selfKnowScore: number;   // 自知之明 / Self-Awareness (0-100)

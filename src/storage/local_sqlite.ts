@@ -24,6 +24,22 @@ export const USERS_TABLE_SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 `;
 
+export const USER_RELATIONS_TABLE_SCHEMA_SQL = `
+  CREATE TABLE IF NOT EXISTS user_relations (
+    id TEXT PRIMARY KEY,
+    referrer_id TEXT NOT NULL,
+    referee_id TEXT NOT NULL,
+    relation_type TEXT NOT NULL DEFAULT 'referral',
+    source_session_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT,
+    UNIQUE(referrer_id, referee_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_relations_referrer ON user_relations(referrer_id);
+  CREATE INDEX IF NOT EXISTS idx_user_relations_referee ON user_relations(referee_id);
+  CREATE INDEX IF NOT EXISTS idx_user_relations_source_session ON user_relations(source_session_id);
+`;
+
 /**
  * 动态解析默认 SQLite 数据库文件路径：
  * - 优先遵循 process.env.DB_PATH 或 process.env.DATABASE_PATH
@@ -191,6 +207,7 @@ export class LocalSqliteAdapter implements StorageAdapter {
     // Always ensure users table and auxiliary tables exist (safe idempotent check)
     try {
       this.db.exec(USERS_TABLE_SCHEMA_SQL);
+      this.db.exec(USER_RELATIONS_TABLE_SCHEMA_SQL);
     } catch {}
     try {
       this.db.exec(`
@@ -259,6 +276,15 @@ export class LocalSqliteAdapter implements StorageAdapter {
     } catch {}
     try {
       this.db.exec("ALTER TABLE completed_sessions ADD COLUMN brier_score REAL DEFAULT 0.20;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE active_sessions ADD COLUMN referrer_session_id TEXT;");
+    } catch {}
+    try {
+      this.db.exec("ALTER TABLE completed_sessions ADD COLUMN referrer_session_id TEXT;");
+    } catch {}
+    try {
+      this.db.exec("CREATE INDEX IF NOT EXISTS idx_completed_sessions_referrer ON completed_sessions(referrer_session_id);");
     } catch {}
     try {
       this.db.exec("ALTER TABLE completed_sessions ADD COLUMN coachability_index INTEGER DEFAULT 50;");
@@ -427,5 +453,6 @@ export class LocalSqliteAdapter implements StorageAdapter {
 
   initUserSchema(): void {
     this.execSync(USERS_TABLE_SCHEMA_SQL);
+    this.execSync(USER_RELATIONS_TABLE_SCHEMA_SQL);
   }
 }
