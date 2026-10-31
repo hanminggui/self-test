@@ -129,7 +129,14 @@ describe("Issue #19: Cohort Density Aggregation & Spatial Sampling Engine", () =
     expect(q1Stats.avg_score).toBe(125);
     expect(q1Stats.variance_d_star).toBeGreaterThan(0);
     expect(q1Stats.variance_m_ratio).toBeGreaterThan(0);
+    expect(q1Stats.variance_score).toBeGreaterThan(0);
     expect(q1Stats.percentage).toContain("66."); // 4 / 6 = 66.7%
+
+    // Verify density_summary macroscopic metrics
+    expect(scatter.density_summary).toBeDefined();
+    expect(scatter.density_summary?.total_count).toBe(6);
+    expect(scatter.density_summary?.variance_x).toBeGreaterThan(0);
+    expect(scatter.density_summary?.variance_y).toBeGreaterThan(0);
 
     // Verify Q4-PIO stats
     const q4Stats = scatter.octant_stats["Q4-PIO"];

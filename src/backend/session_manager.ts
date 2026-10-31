@@ -1481,9 +1481,27 @@ export class SessionManager {
       AVG(c.m_ratio) as avg_m_ratio,
       AVG(c.final_score) as avg_score,
       MAX(0.0, AVG(c.d_star * c.d_star) - AVG(c.d_star) * AVG(c.d_star)) as var_d_star,
-      MAX(0.0, AVG(c.m_ratio * c.m_ratio) - AVG(c.m_ratio) * AVG(c.m_ratio)) as var_m_ratio
+      MAX(0.0, AVG(c.m_ratio * c.m_ratio) - AVG(c.m_ratio) * AVG(c.m_ratio)) as var_m_ratio,
+      MAX(0.0, AVG(c.final_score * c.final_score) - AVG(c.final_score) * AVG(c.final_score)) as var_score
     FROM completed_sessions c
     GROUP BY COALESCE(c.quadrant_code, 'Q1-CAL')
+  `;
+
+  private static readonly FALLBACK_SESSIONS_SQL = `
+    SELECT 
+      c.*,
+      a.model_name as agent_model,
+      a.persona as agent_persona,
+      a.thinking_effort as agent_effort,
+      a.evaluation_mode as agent_eval_mode,
+      a.prompt_tokens,
+      a.completion_tokens,
+      a.cached_tokens,
+      a.reasoning_tokens,
+      a.total_tokens
+    FROM completed_sessions c
+    LEFT JOIN session_agent_metadata a ON c.id = a.session_id
+    ORDER BY c.created_at DESC
   `;
 
   private static readonly SPATIAL_SAMPLING_CTE_SQL = `
@@ -1544,24 +1562,7 @@ export class SessionManager {
           this.storage.querySync(SessionManager.SPATIAL_SAMPLING_CTE_SQL, [budget, currentSessionId || ""]) || [];
         usedSqlSampling = true;
       } catch {
-        // Fallback for storage environments without CTE window functions
-        const fallbackSql = `
-          SELECT 
-            c.*,
-            a.model_name as agent_model,
-            a.persona as agent_persona,
-            a.thinking_effort as agent_effort,
-            a.evaluation_mode as agent_eval_mode,
-            a.prompt_tokens,
-            a.completion_tokens,
-            a.cached_tokens,
-            a.reasoning_tokens,
-            a.total_tokens
-          FROM completed_sessions c
-          LEFT JOIN session_agent_metadata a ON c.id = a.session_id
-          ORDER BY c.created_at DESC
-        `;
-        sampledRows = (this.storage.querySync ? this.storage.querySync(fallbackSql) : []) || [];
+        sampledRows = (this.storage.querySync ? this.storage.querySync(SessionManager.FALLBACK_SESSIONS_SQL) : []) || [];
       }
     }
 
@@ -1589,25 +1590,8 @@ export class SessionManager {
       sampledRows = sampled || [];
       usedSqlSampling = true;
     } catch {
-      // Fallback for storage environments without CTE window functions
       try {
-        const fallbackSql = `
-          SELECT 
-            c.*,
-            a.model_name as agent_model,
-            a.persona as agent_persona,
-            a.thinking_effort as agent_effort,
-            a.evaluation_mode as agent_eval_mode,
-            a.prompt_tokens,
-            a.completion_tokens,
-            a.cached_tokens,
-            a.reasoning_tokens,
-            a.total_tokens
-          FROM completed_sessions c
-          LEFT JOIN session_agent_metadata a ON c.id = a.session_id
-          ORDER BY c.created_at DESC
-        `;
-        sampledRows = (await this.storage.query(fallbackSql)) || [];
+        sampledRows = (await this.storage.query(SessionManager.FALLBACK_SESSIONS_SQL)) || [];
       } catch {
         sampledRows = [];
       }
@@ -1619,45 +1603,13 @@ export class SessionManager {
   public getAllCompletedSessions(locale?: SupportedLocale): SubjectDataPoint[] {
     const targetLocale = locale || getLocale();
     if (!this.storage.querySync) return [];
-    const sql = `
-      SELECT 
-        c.*,
-        a.model_name as agent_model,
-        a.persona as agent_persona,
-        a.thinking_effort as agent_effort,
-        a.evaluation_mode as agent_eval_mode,
-        a.prompt_tokens,
-        a.completion_tokens,
-        a.cached_tokens,
-        a.reasoning_tokens,
-        a.total_tokens
-      FROM completed_sessions c
-      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
-      ORDER BY c.created_at DESC
-    `;
-    const rows = (this.storage.querySync(sql) || []) as any[];
+    const rows = (this.storage.querySync(SessionManager.FALLBACK_SESSIONS_SQL) || []) as any[];
     return this.mapRowsToSubjects(rows, undefined, targetLocale);
   }
 
   public async getAllCompletedSessionsAsync(locale?: SupportedLocale): Promise<SubjectDataPoint[]> {
     const targetLocale = locale || getLocale();
-    const sql = `
-      SELECT 
-        c.*,
-        a.model_name as agent_model,
-        a.persona as agent_persona,
-        a.thinking_effort as agent_effort,
-        a.evaluation_mode as agent_eval_mode,
-        a.prompt_tokens,
-        a.completion_tokens,
-        a.cached_tokens,
-        a.reasoning_tokens,
-        a.total_tokens
-      FROM completed_sessions c
-      LEFT JOIN session_agent_metadata a ON c.id = a.session_id
-      ORDER BY c.created_at DESC
-    `;
-    const rows = ((await this.storage.query(sql)) || []) as any[];
+    const rows = ((await this.storage.query(SessionManager.FALLBACK_SESSIONS_SQL)) || []) as any[];
     return this.mapRowsToSubjects(rows, undefined, targetLocale);
   }
 
@@ -1728,6 +1680,28 @@ export class SessionManager {
 
     const octantStats = this.buildOctantDensityStats(aggRows, totalCount);
 
+    let varX = 0;
+    let varY = 0;
+    if (totalCount > 0) {
+      let sumXSq = 0;
+      let sumYSq = 0;
+      for (const r of aggRows) {
+        const c = Number(r.count || 0);
+        const meanD = Number(r.avg_d_star ?? 0.5);
+        const varD = Number(r.var_d_star ?? 0);
+        const meanM = Number(r.avg_m_ratio ?? 0.8);
+        const varM = Number(r.var_m_ratio ?? 0);
+        sumXSq += c * (varD + meanD * meanD);
+        sumYSq += c * (varM + meanM * meanM);
+      }
+      varX = Math.max(0, Math.round((sumXSq / totalCount - meanX * meanX) * 10000) / 10000);
+      varY = Math.max(0, Math.round((sumYSq / totalCount - meanY * meanY) * 10000) / 10000);
+    }
+
+    if (subjects.length > 96) {
+      subjects = subjects.slice(0, 96);
+    }
+
     const xVals = subjects.map((s) => s.metrics.d_star);
     const yVals = subjects.map((s) => s.metrics.m_ratio);
 
@@ -1752,6 +1726,8 @@ export class SessionManager {
         total_count: totalCount,
         mean_x: meanX,
         mean_y: meanY,
+        variance_x: varX,
+        variance_y: varY,
       },
       subjects,
     };
@@ -1957,14 +1933,10 @@ export class SessionManager {
         avg_score: 0,
         variance_d_star: 0,
         variance_m_ratio: 0,
+        variance_score: 0,
         avgDStar: "--",
         avgMRatio: "--",
         avgScore: 0,
-        mean_d_star: 0.5,
-        mean_m_ratio: 0.8,
-        mean_score: 0,
-        var_d_star: 0,
-        var_m_ratio: 0,
       };
     }
 
@@ -1976,6 +1948,7 @@ export class SessionManager {
       const avgScore = Math.round(Number(r.avg_score ?? 0));
       const varDStar = Math.max(0, Number(r.var_d_star ?? 0));
       const varMRatio = Math.max(0, Number(r.var_m_ratio ?? 0));
+      const varScore = Math.max(0, Number(r.var_score ?? 0));
       const pct = totalCount > 0 ? `${((count / totalCount) * 100).toFixed(1)}%` : "0.0%";
 
       stats[code] = {
@@ -1987,14 +1960,10 @@ export class SessionManager {
         avg_score: avgScore,
         variance_d_star: Math.round(varDStar * 10000) / 10000,
         variance_m_ratio: Math.round(varMRatio * 10000) / 10000,
+        variance_score: Math.round(varScore * 100) / 100,
         avgDStar: count > 0 ? avgDStar.toFixed(3) : "--",
         avgMRatio: count > 0 ? avgMRatio.toFixed(2) : "--",
         avgScore,
-        mean_d_star: Math.round(avgDStar * 10000) / 10000,
-        mean_m_ratio: Math.round(avgMRatio * 10000) / 10000,
-        mean_score: avgScore,
-        var_d_star: Math.round(varDStar * 10000) / 10000,
-        var_m_ratio: Math.round(varMRatio * 10000) / 10000,
       };
     }
 
@@ -2009,10 +1978,10 @@ export class SessionManager {
   } {
     const groups: Record<
       string,
-      { dStarSum: number; dStarSqSum: number; mRatioSum: number; mRatioSqSum: number; scoreSum: number; count: number }
+      { dStarSum: number; dStarSqSum: number; mRatioSum: number; mRatioSqSum: number; scoreSum: number; scoreSqSum: number; count: number }
     > = {};
     for (const code of SessionManager.ALL_OCTANT_CODES) {
-      groups[code] = { dStarSum: 0, dStarSqSum: 0, mRatioSum: 0, mRatioSqSum: 0, scoreSum: 0, count: 0 };
+      groups[code] = { dStarSum: 0, dStarSqSum: 0, mRatioSum: 0, mRatioSqSum: 0, scoreSum: 0, scoreSqSum: 0, count: 0 };
     }
 
     let totalCount = 0;
@@ -2022,7 +1991,7 @@ export class SessionManager {
     for (const r of rows) {
       const code = r.quadrant_code || "Q1-CAL";
       if (!groups[code]) {
-        groups[code] = { dStarSum: 0, dStarSqSum: 0, mRatioSum: 0, mRatioSqSum: 0, scoreSum: 0, count: 0 };
+        groups[code] = { dStarSum: 0, dStarSqSum: 0, mRatioSum: 0, mRatioSqSum: 0, scoreSum: 0, scoreSqSum: 0, count: 0 };
       }
       const dStar = Number(r.d_star ?? 0.5);
       const mRatio = Number(r.m_ratio ?? 0.8);
@@ -2034,6 +2003,7 @@ export class SessionManager {
       g.mRatioSum += mRatio;
       g.mRatioSqSum += mRatio * mRatio;
       g.scoreSum += score;
+      g.scoreSqSum += score * score;
 
       totalCount += 1;
       totalDStar += dStar;
@@ -2047,6 +2017,7 @@ export class SessionManager {
       const avgScore = c > 0 ? g.scoreSum / c : 0;
       const varDStar = c > 0 ? Math.max(0, g.dStarSqSum / c - avgDStar * avgDStar) : 0;
       const varMRatio = c > 0 ? Math.max(0, g.mRatioSqSum / c - avgMRatio * avgMRatio) : 0;
+      const varScore = c > 0 ? Math.max(0, g.scoreSqSum / c - avgScore * avgScore) : 0;
       return {
         quadrant_code: code,
         count: c,
@@ -2055,6 +2026,7 @@ export class SessionManager {
         avg_score: avgScore,
         var_d_star: varDStar,
         var_m_ratio: varMRatio,
+        var_score: varScore,
       };
     });
 

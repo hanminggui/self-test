@@ -9,7 +9,6 @@
 import {
   FinalAssessmentReport,
   AssessmentMetrics,
-  MetacognitiveMetrics,
   DiagnosticProfile,
   CognitiveArchetype,
   RiskAttitude,
