@@ -18,6 +18,7 @@ import { X, Sparkles, Download, Copy, Share2, Check } from "lucide-react";
 import { ChineseMythicPoster } from "./ChineseMythicPoster";
 import { WesternArcanePoster } from "./WesternArcanePoster";
 import { useLocale } from "../../contexts/LocaleContext";
+import { useUser } from "../../contexts/UserContext";
 import {
   generatePosterBlob,
   downloadPoster,
@@ -86,7 +87,18 @@ export const PosterModal: React.FC<PosterModalProps> = ({
   const profile = report?.diagnostic_profile || {};
   const quadrantCode = report?.quadrant_code || profile.quadrant_code || profile.archetype || "Q1-CAL";
   const def = useMemo(() => getArchetypeDefinition(quadrantCode, activeLocale), [quadrantCode, activeLocale]);
-  const subjectName = report?.subject_name || (isEn ? "Explorer" : "探索者");
+  const subjectName = report?.subject_name?.trim() || (isEn ? "Explorer" : "探索者");
+
+  let currentUserAvatar: string | null = null;
+  try {
+    const userCtx = useUser();
+    if (userCtx?.user?.avatar_url) {
+      currentUserAvatar = userCtx.user.avatar_url;
+    }
+  } catch {
+    // Outside UserContext fallback
+  }
+  const avatarUrl = report?.avatar_url || (report as any)?.avatarUrl || currentUserAvatar || null;
 
   const mythicConfig = useMemo(() => getMythicArchetype(def.archetype || quadrantCode), [def.archetype, quadrantCode]);
   const arcaneConfig = useMemo(() => getArcaneArchetype(def.archetype || quadrantCode), [def.archetype, quadrantCode]);
@@ -102,6 +114,8 @@ export const PosterModal: React.FC<PosterModalProps> = ({
   const shareData: PosterShareData = useMemo(() => {
     return {
       subjectName,
+      avatar_url: avatarUrl,
+      avatarUrl,
       archetype: isEn ? arcaneConfig.archetype : mythicConfig.archetype,
       roleTitle: profile.role_title || def.role_title || (isEn ? arcaneConfig.roleTitle : mythicConfig.roleTitle),
       praiseTagline: profile.praise_tagline || def.praise_tagline || (isEn ? arcaneConfig.praiseTagline : mythicConfig.praiseTagline),
@@ -113,7 +127,7 @@ export const PosterModal: React.FC<PosterModalProps> = ({
       locale: activeLocale,
       entryUrl: resolvedUrl,
     };
-  }, [subjectName, isEn, arcaneConfig, mythicConfig, profile, def, skills, activeLocale, resolvedUrl]);
+  }, [subjectName, avatarUrl, isEn, arcaneConfig, mythicConfig, profile, def, skills, activeLocale, resolvedUrl]);
 
   // 移动端原生 <img> 图片生成与缓存
   const [posterImageUrl, setPosterImageUrl] = useState<string | null>(null);
@@ -356,12 +370,14 @@ export const PosterModal: React.FC<PosterModalProps> = ({
           {isEn ? (
             <WesternArcanePoster
               report={report}
+              avatar_url={avatarUrl}
               entryUrl={entryUrl}
               onClose={onClose}
             />
           ) : (
             <ChineseMythicPoster
               report={report}
+              avatar_url={avatarUrl}
               entryUrl={entryUrl}
               onClose={onClose}
             />

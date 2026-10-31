@@ -42,6 +42,7 @@ import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
 export interface WesternArcanePosterProps {
   report: {
     subject_name?: string;
+    avatar_url?: string | null;
     session_id?: string;
     quadrant_code?: string;
     metrics?: any;
@@ -64,6 +65,7 @@ export interface WesternArcanePosterProps {
       skills?: SkillDisplayItem[];
     };
   };
+  avatar_url?: string | null;
   entryUrl?: string;
   onClose?: () => void;
   className?: string;
@@ -71,6 +73,7 @@ export interface WesternArcanePosterProps {
 
 export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
   report,
+  avatar_url: propAvatarUrl,
   entryUrl,
   onClose,
   className = "",
@@ -78,7 +81,13 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
   const profile = report.diagnostic_profile || {};
   const quadrantCode = report.quadrant_code || profile.quadrant_code || profile.archetype || "Q1-CAL";
   const def = useMemo(() => getArchetypeDefinition(quadrantCode, "en-US"), [quadrantCode]);
-  const subjectName = report.subject_name || "Explorer";
+  const subjectName = report.subject_name?.trim() || "Explorer";
+  const avatarUrl = propAvatarUrl || report.avatar_url || (report as any).avatarUrl || null;
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [avatarUrl]);
 
   // 解析西方秘法秩序画像配置
   const arcaneConfig: ArcaneArchetypeConfig = useMemo(() => {
@@ -122,6 +131,8 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
   const shareData: PosterShareData = useMemo(() => {
     return {
       subjectName,
+      avatar_url: avatarUrl,
+      avatarUrl,
       archetype: arcaneConfig.archetype,
       roleTitle: arcaneConfig.roleTitle,
       praiseTagline: arcaneConfig.praiseTagline,
@@ -133,7 +144,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
       locale: "en-US",
       entryUrl: resolvedUrl,
     };
-  }, [subjectName, arcaneConfig, profile, skills, empoweringFeedback, resolvedUrl]);
+  }, [subjectName, avatarUrl, arcaneConfig, profile, skills, empoweringFeedback, resolvedUrl]);
 
   // 动态渲染二维码 SVG
   useEffect(() => {
@@ -267,23 +278,35 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
               style={{ backgroundColor: colors.glowColor }}
             />
 
-            {/* 秘法环 */}
+            {/* 秘法/头像环 (带圆形裁切与边框光效) */}
             <div
-              className="w-24 h-24 rounded-full border-2 flex flex-col items-center justify-center relative shadow-inner"
+              data-avatar-badge="true"
+              className="w-24 h-24 rounded-full border-2 flex items-center justify-center relative shadow-inner overflow-hidden"
               style={{
                 borderColor: colors.primaryGold,
                 backgroundColor: "rgba(0, 0, 0, 0.55)",
+                boxShadow: `0 0 24px ${colors.glowColor}, inset 0 0 12px rgba(0, 0, 0, 0.6)`,
               }}
             >
-              <div
-                className="text-4xl font-black leading-none select-none drop-shadow-md"
-                style={{ color: colors.secondaryGold }}
-              >
-                {arcaneConfig.crestSymbol}
-              </div>
+              {avatarUrl && !imageError ? (
+                <img
+                  src={avatarUrl}
+                  alt={subjectName}
+                  crossOrigin="anonymous"
+                  onError={() => setImageError(true)}
+                  className="w-full h-full object-cover rounded-full select-none pointer-events-none"
+                />
+              ) : (
+                <div
+                  className="text-4xl font-black leading-none select-none drop-shadow-md"
+                  style={{ color: colors.secondaryGold }}
+                >
+                  {arcaneConfig.crestSymbol || (subjectName ? subjectName.charAt(0).toUpperCase() : "✦")}
+                </div>
+              )}
             </div>
 
-            {/* 头像框下方长条徽带 (展示用户真实昵称，如“Explorer · Arthur042”) */}
+            {/* 头像框下方长条徽带 (展示用户真实昵称，已移除硬编码“Explorer · ”前缀) */}
             <div
               className="mt-3 px-5 py-1 rounded-full border text-xs font-semibold tracking-wider font-sans shadow-md"
               style={{
@@ -292,7 +315,7 @@ export const WesternArcanePoster: React.FC<WesternArcanePosterProps> = ({
                 color: colors.secondaryGold,
               }}
             >
-              {`Explorer · ${subjectName}`}
+              {subjectName}
             </div>
           </div>
 

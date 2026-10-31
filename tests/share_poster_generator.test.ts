@@ -165,6 +165,7 @@ describe("Unified Share Suite: Poster Generator Engine & Text Purging", () => {
       lineTo: () => drawCalls.push("lineTo"),
       quadraticCurveTo: () => drawCalls.push("quadraticCurveTo"),
       closePath: () => drawCalls.push("closePath"),
+      clip: () => drawCalls.push("clip"),
       strokeRect: () => drawCalls.push("strokeRect"),
       fillText: (text: string) => drawCalls.push(`fillText:${text}`),
       measureText: (text: string) => ({ width: text.length * 10 }),
@@ -188,7 +189,11 @@ describe("Unified Share Suite: Poster Generator Engine & Text Purging", () => {
     // 模拟 Image 对象
     (globalThis as any).Image = class {
       src = "";
+      crossOrigin = "";
+      width = 200;
+      height = 200;
       onload = () => {};
+      onerror = () => {};
       constructor() {
         setTimeout(() => this.onload(), 10);
       }
@@ -205,10 +210,11 @@ describe("Unified Share Suite: Poster Generator Engine & Text Purging", () => {
     expect(drawCalls).toContain("fillRect");
     expect(drawCalls).toContain("arc");
 
-    // 验证文字绘制包含真实昵称、画像标题、四大特技，但绝对不含 Q1-CAL 或 d'
+    // 验证文字绘制包含真实昵称、画像标题、四大特技，但绝对不含 Q1-CAL 或 d'，且已移除硬编码前缀
     const renderedTexts = drawCalls.filter((c) => c.startsWith("fillText:")).map((c) => c.slice(9));
     expect(renderedTexts.some((t) => t.includes("人形外挂"))).toBe(true);
-    expect(renderedTexts.some((t) => t.includes("探索者 · 伏羲042"))).toBe(true);
+    expect(renderedTexts.some((t) => t.includes("伏羲042"))).toBe(true);
+    expect(renderedTexts.some((t) => t.includes("探索者 · 伏羲042"))).toBe(false);
     expect(renderedTexts.some((t) => t.includes("算力透视"))).toBe(true);
     expect(renderedTexts.some((t) => t.includes("精准制导"))).toBe(true);
     expect(renderedTexts.some((t) => t.includes("知行律动"))).toBe(true);
@@ -224,5 +230,115 @@ describe("Unified Share Suite: Poster Generator Engine & Text Purging", () => {
     expect(mockCanvas.height).toBe(1380);
     expect(renderedTexts.some((t) => t.includes("长按扫码 · 探索你的心智本命"))).toBe(true);
     expect(renderedTexts.some((t) => t.includes("Two-Tier Metacognitive Manifold Test"))).toBe(true);
+  });
+
+  it("Issue #39: renderPosterToCanvas 支持 avatar_url 异步跨域图片加载与 Canvas 圆形路径绘制，异常时优雅降级", async () => {
+    const drawCalls: string[] = [];
+    const mockContext: any = {
+      scale: () => drawCalls.push("scale"),
+      fillRect: () => drawCalls.push("fillRect"),
+      createRadialGradient: () => ({
+        addColorStop: () => {},
+      }),
+      createLinearGradient: () => ({
+        addColorStop: () => {},
+      }),
+      save: () => drawCalls.push("save"),
+      restore: () => drawCalls.push("restore"),
+      beginPath: () => drawCalls.push("beginPath"),
+      arc: () => drawCalls.push("arc"),
+      fill: () => drawCalls.push("fill"),
+      stroke: () => drawCalls.push("stroke"),
+      moveTo: () => drawCalls.push("moveTo"),
+      lineTo: () => drawCalls.push("lineTo"),
+      quadraticCurveTo: () => drawCalls.push("quadraticCurveTo"),
+      closePath: () => drawCalls.push("closePath"),
+      clip: () => drawCalls.push("clip"),
+      strokeRect: () => drawCalls.push("strokeRect"),
+      fillText: (text: string) => drawCalls.push(`fillText:${text}`),
+      measureText: (text: string) => ({ width: text.length * 10 }),
+      roundRect: () => drawCalls.push("roundRect"),
+      drawImage: () => drawCalls.push("drawImage"),
+    };
+
+    const mockCanvas: any = {
+      width: 1080,
+      height: 1380,
+      getContext: () => mockContext,
+    };
+
+    (globalThis as any).document = {
+      createElement: (tag: string) => {
+        if (tag === "canvas") return mockCanvas;
+        return {};
+      },
+    };
+
+    const requestedCrossOrigins: string[] = [];
+    const loadedUrls: string[] = [];
+    (globalThis as any).Image = class {
+      _src = "";
+      crossOrigin = "";
+      width = 200;
+      height = 200;
+      onload = () => {};
+      onerror = () => {};
+      set src(val: string) {
+        this._src = val;
+        loadedUrls.push(val);
+        requestedCrossOrigins.push(this.crossOrigin);
+        setTimeout(() => this.onload(), 5);
+      }
+      get src() {
+        return this._src;
+      }
+    };
+
+    // 1. 成功异步跨域加载 avatar_url 并执行圆形裁剪绘制
+    await renderPosterToCanvas({
+      subjectName: "女娲001",
+      avatar_url: "https://example.com/avatar.jpg",
+      archetype: CognitiveArchetype.SOVEREIGN,
+      entryUrl: "http://localhost:8000/",
+    });
+
+    expect(requestedCrossOrigins).toContain("anonymous");
+    expect(loadedUrls).toContain("https://example.com/avatar.jpg");
+    expect(drawCalls).toContain("clip");
+    expect(drawCalls).toContain("drawImage");
+
+    const texts1 = drawCalls.filter((c) => c.startsWith("fillText:")).map((c) => c.slice(9));
+    expect(texts1.some((t) => t.includes("女娲001"))).toBe(true);
+    expect(texts1.some((t) => t.includes("探索者 · 女娲001"))).toBe(false);
+
+    // 2. 加载失败 (如网络超时/跨域报错) 时优雅降级为图腾/首字母，绝不抛出未捕获异常
+    (globalThis as any).Image = class {
+      _src = "";
+      crossOrigin = "";
+      onload = () => {};
+      onerror = () => {};
+      set src(val: string) {
+        this._src = val;
+        setTimeout(() => this.onerror(new Error("Network Error")), 5);
+      }
+      get src() {
+        return this._src;
+      }
+    };
+
+    drawCalls.length = 0;
+    const canvasFailed = await renderPosterToCanvas({
+      subjectName: "神农002",
+      avatar_url: "https://invalid.com/error.png",
+      archetype: CognitiveArchetype.SOVEREIGN,
+      entryUrl: "http://localhost:8000/",
+    });
+
+    expect(canvasFailed).toBeDefined();
+    const texts2 = drawCalls.filter((c) => c.startsWith("fillText:")).map((c) => c.slice(9));
+    expect(texts2.some((t) => t.includes("神农002"))).toBe(true);
+    expect(texts2.some((t) => t.includes("探索者 · 神农002"))).toBe(false);
+    // 降级绘制图腾或字形
+    expect(texts2.length).toBeGreaterThan(0);
   });
 });
