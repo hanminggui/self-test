@@ -24,6 +24,8 @@ import {
   LogIn,
   ArrowLeft,
   Menu,
+  Globe,
+  EyeOff,
 } from "lucide-react";
 
 import { generateSubjectCodename as generateRandomCodename } from "../backend/codename_generator";
@@ -595,6 +597,23 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
   // Current trial hint cost
   const hintsCost = unlockedHints.length === 0 ? 0 : unlockedHints.length === 1 ? 1 : 3;
+
+  // 会话可见性即时切换处理 (GitHub Issue #15)
+  const handleUpdateVisibility = async (newVis: "private" | "anonymous" | "public") => {
+    const targetSessionId = report?.session_id || sessionId;
+    if (!targetSessionId) return;
+    setReport((prev) => (prev ? { ...prev, visibility: newVis } : prev));
+    try {
+      await fetch(`/api/sessions/${encodeURIComponent(targetSessionId)}/visibility`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibility: newVis }),
+      });
+      notifySessionChanged();
+    } catch (err) {
+      console.warn("Error updating session visibility:", err);
+    }
+  };
 
   // 复制专属会话报告链接
   const handleCopyReportLink = async () => {
@@ -1628,6 +1647,90 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 <p className="text-stone-800 dark:text-slate-300 text-xs md:text-sm pt-1 font-bold">
                   {profile.growth_advice}
                 </p>
+              </div>
+
+              {/* 会话可见性即时切换面板 (GitHub Issue #15: Three-Tier Session Visibility Engine) */}
+              <div
+                data-testid="finish-visibility-switcher"
+                className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-3 text-left"
+              >
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-amber-600 dark:text-[#CCFF00]" />
+                    <span className="text-xs sm:text-sm font-black text-stone-900 dark:text-white">
+                      {t.profile?.visibilityLabel || "会话可见性偏好"}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold text-stone-500 dark:text-slate-400">
+                    {displayReport.visibility === "private"
+                      ? (t.profile?.visibilityL1Title || "私密保护 (L1)")
+                      : displayReport.visibility === "public"
+                      ? (t.profile?.visibilityL3Title || "公开名片 (L3)")
+                      : (t.profile?.visibilityL2Title || "匿名代号 (L2)")}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {/* L1: Private */}
+                  <button
+                    type="button"
+                    data-testid="visibility-toggle-private"
+                    onClick={() => handleUpdateVisibility("private")}
+                    className={`p-3 rounded-xl border-2 transition-all flex flex-col items-start gap-1 text-left cursor-pointer ${
+                      displayReport.visibility === "private"
+                        ? "bg-[#FEF3C7] dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
+                        : "bg-stone-50 dark:bg-white/5 border-stone-900/15 dark:border-white/10 hover:border-stone-900 text-stone-600 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-black text-xs text-stone-900 dark:text-white">
+                      <Lock className="w-3.5 h-3.5 text-stone-700 dark:text-slate-300" />
+                      <span>{isEn ? "Private (L1)" : "私密保护 (L1)"}</span>
+                    </div>
+                    <p className="text-[10px] text-stone-500 dark:text-slate-400 leading-tight">
+                      {isEn ? "Owner only · Never on scatter" : "仅自己可见 · 绝不投影至大盘"}
+                    </p>
+                  </button>
+
+                  {/* L2: Anonymous (Default) */}
+                  <button
+                    type="button"
+                    data-testid="visibility-toggle-anonymous"
+                    onClick={() => handleUpdateVisibility("anonymous")}
+                    className={`p-3 rounded-xl border-2 transition-all flex flex-col items-start gap-1 text-left cursor-pointer ${
+                      (displayReport.visibility || "anonymous") === "anonymous"
+                        ? "bg-[#FEF3C7] dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
+                        : "bg-stone-50 dark:bg-white/5 border-stone-900/15 dark:border-white/10 hover:border-stone-900 text-stone-600 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-black text-xs text-stone-900 dark:text-white">
+                      <EyeOff className="w-3.5 h-3.5 text-amber-600 dark:text-[#CCFF00]" />
+                      <span>{isEn ? "Anonymous (L2)" : "匿名代号 (L2)"}</span>
+                    </div>
+                    <p className="text-[10px] text-stone-500 dark:text-slate-400 leading-tight">
+                      {isEn ? "Masked codename · Default" : "推荐默认 · 匿名星象代号"}
+                    </p>
+                  </button>
+
+                  {/* L3: Public */}
+                  <button
+                    type="button"
+                    data-testid="visibility-toggle-public"
+                    onClick={() => handleUpdateVisibility("public")}
+                    className={`p-3 rounded-xl border-2 transition-all flex flex-col items-start gap-1 text-left cursor-pointer ${
+                      displayReport.visibility === "public"
+                        ? "bg-[#FEF3C7] dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
+                        : "bg-stone-50 dark:bg-white/5 border-stone-900/15 dark:border-white/10 hover:border-stone-900 text-stone-600 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-black text-xs text-stone-900 dark:text-white">
+                      <Globe className="w-3.5 h-3.5 text-sky-600 dark:text-[#38BDF8]" />
+                      <span>{isEn ? "Public Card (L3)" : "公开名片 (L3)"}</span>
+                    </div>
+                    <p className="text-[10px] text-stone-500 dark:text-slate-400 leading-tight">
+                      {isEn ? "Shows avatar, name & profile" : "展示认证头像、昵称与主页"}
+                    </p>
+                  </button>
+                </div>
               </div>
 
               {/* 专属永久报告链接卡片 */}

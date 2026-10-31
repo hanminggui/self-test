@@ -292,6 +292,7 @@ app.post("/api/sessions/start", async (c) => {
   const session = await sm.createSessionAsync({
     sessionId: body.session_id,
     userId,
+    visibility: body.visibility || user?.metadata?.default_visibility,
     subjectName: body.subject_name || (user ? user.display_name : undefined),
     subjectType: body.subject_type || SubjectType.HUMAN,
     totalTrials: body.total_trials ?? 30,
@@ -435,6 +436,36 @@ app.patch("/api/sessions/:id/metadata", async (c) => {
     return c.json({ error: e.message }, 400);
   }
 });
+
+// 7c. Update Session Visibility (GitHub Issue #15: Three-Tier Session Visibility Engine)
+const handleUpdateSessionVisibility = async (c: any) => {
+  const id = c.req.param("id");
+  const body = await c.req.json().catch(() => ({}));
+  const visibility = body.visibility;
+  const user = c.get("user");
+  const authHeader = c.req.header("Authorization") || "";
+  const tokenQuery = c.req.query("token") || "";
+  const isAdmin = authHeader.replace("Bearer ", "") === ADMIN_PASSWORD || tokenQuery === ADMIN_PASSWORD;
+  const sm = getSessionManagerForContext(c);
+  try {
+    const res = await sm.updateSessionVisibilityAsync(id, visibility, user?.id, isAdmin);
+    return c.json(res);
+  } catch (e: any) {
+    const msg = e.message || "Failed to update visibility";
+    const status = msg.includes("Unauthorized")
+      ? 403
+      : msg.includes("Authentication required")
+      ? 401
+      : msg.includes("not found")
+      ? 404
+      : 400;
+    return c.json({ error: msg }, status);
+  }
+};
+
+app.patch("/api/sessions/:id/visibility", handleUpdateSessionVisibility);
+app.post("/api/sessions/:id/visibility", handleUpdateSessionVisibility);
+app.put("/api/sessions/:id/visibility", handleUpdateSessionVisibility);
 
 // 8. Cohort Scatter
 app.get("/api/cohort/scatter", async (c) => {

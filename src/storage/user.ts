@@ -8,6 +8,7 @@
 export type AuthProvider = "github" | "linuxdo" | "google" | (string & {});
 
 export type SessionVisibilityPreference = "private" | "anonymous" | "public";
+export type SessionVisibility = SessionVisibilityPreference;
 
 export interface UserSocialLinks {
   github?: string;

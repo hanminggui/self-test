@@ -45,3 +45,31 @@ export function generateSubjectCodename(locale?: SupportedLocale): string {
   const s = CODENAME_SUFFIXES_ZH[Math.floor(Math.random() * CODENAME_SUFFIXES_ZH.length)];
   return `${p}${s} · ${num}`;
 }
+
+export const ANONYMOUS_STARS_ZH = [
+  "天机星", "天枢星", "天璇星", "天玑星", "天权星",
+  "玉衡星", "开阳星", "摇光星", "紫微星", "天府星",
+  "武曲星", "破军星", "贪狼星", "巨门星", "廉贞星", "七杀星",
+] as const;
+
+export const ANONYMOUS_STARS_EN = [
+  "Arcane", "Astral", "Celestial", "Aether", "Solar",
+  "Lunar", "Mythic", "Eldritch", "Runic", "Nebula",
+  "Vanguard", "Chronos",
+] as const;
+
+export function generateMaskedCodename(sessionId: string, locale?: SupportedLocale): string {
+  const targetLocale = locale || getLocale();
+  let hash = 0;
+  const str = String(sessionId || "session");
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  const code = String(1000 + (hash % 9000));
+  if (targetLocale === "en-US") {
+    const star = ANONYMOUS_STARS_EN[hash % ANONYMOUS_STARS_EN.length];
+    return `[${star}-${code}]`;
+  }
+  const star = ANONYMOUS_STARS_ZH[hash % ANONYMOUS_STARS_ZH.length];
+  return `[${star}-${code}]`;
+}
