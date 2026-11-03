@@ -20,6 +20,154 @@ import { getArcaneArchetype } from "../components/share/arcaneArchetypes";
 import { getArchetypeDefinition } from "../../backend/archetype_matrix";
 import { BottomSheet } from "../components/common/BottomSheet";
 
+export interface VipTheme {
+  vipRank: string;
+  vipLevel: string;
+  accentColor: string;
+  badgeBg: string;
+  badgeBorder: string;
+  badgeText: string;
+  cardBgLight: string;
+  cardBorderLight: string;
+  cardShadowLight: string;
+  cardBgDark: string;
+  cardBorderDark: string;
+  cardShadowDark: string;
+  glowAura: string;
+  vipTagColor: string;
+}
+
+export const VIP_THEMES: Record<string, VipTheme> = {
+  "Q1-CAL": {
+    vipRank: "VIP·天元鎏金",
+    vipLevel: "UR·帝尊",
+    accentColor: "#F59E0B",
+    badgeBg: "bg-amber-100 dark:bg-amber-500/20",
+    badgeBorder: "border-amber-600 dark:border-amber-400",
+    badgeText: "text-amber-950 dark:text-amber-300",
+    cardBgLight: "bg-gradient-to-b from-[#FFFDF2] via-[#FFFBEB] to-white",
+    cardBorderLight: "border-amber-600",
+    cardShadowLight: "shadow-[0_5px_0_#b45309]",
+    cardBgDark: "dark:bg-gradient-to-b dark:from-[#171306] dark:to-[#0E0E16]",
+    cardBorderDark: "dark:border-amber-400",
+    cardShadowDark: "dark:shadow-[4px_4px_0px_#F59E0B]",
+    glowAura: "rgba(245, 158, 11, 0.25)",
+    vipTagColor: "bg-amber-500 text-stone-950 font-black",
+  },
+  "Q2-EVO": {
+    vipRank: "VIP·通幽翡翠",
+    vipLevel: "SSR·先知",
+    accentColor: "#10B981",
+    badgeBg: "bg-emerald-100 dark:bg-emerald-500/20",
+    badgeBorder: "border-emerald-600 dark:border-emerald-400",
+    badgeText: "text-emerald-950 dark:text-emerald-300",
+    cardBgLight: "bg-gradient-to-b from-[#F2FDF7] via-[#ECFDF5] to-white",
+    cardBorderLight: "border-emerald-600",
+    cardShadowLight: "shadow-[0_5px_0_#047857]",
+    cardBgDark: "dark:bg-gradient-to-b dark:from-[#061710] dark:to-[#0E0E16]",
+    cardBorderDark: "dark:border-emerald-400",
+    cardShadowDark: "dark:shadow-[4px_4px_0px_#10B981]",
+    glowAura: "rgba(16, 185, 129, 0.25)",
+    vipTagColor: "bg-emerald-500 text-stone-950 font-black",
+  },
+  "Q3-SEN": {
+    vipRank: "VIP·苍穹沧澜",
+    vipLevel: "SSR·明鉴",
+    accentColor: "#0EA5E9",
+    badgeBg: "bg-sky-100 dark:bg-sky-500/20",
+    badgeBorder: "border-sky-600 dark:border-sky-400",
+    badgeText: "text-sky-950 dark:text-sky-300",
+    cardBgLight: "bg-gradient-to-b from-[#F2F9FD] via-[#F0F9FF] to-white",
+    cardBorderLight: "border-sky-600",
+    cardShadowLight: "shadow-[0_5px_0_#0369a1]",
+    cardBgDark: "dark:bg-gradient-to-b dark:from-[#06141c] dark:to-[#0E0E16]",
+    cardBorderDark: "dark:border-sky-400",
+    cardShadowDark: "dark:shadow-[4px_4px_0px_#0EA5E9]",
+    glowAura: "rgba(14, 165, 233, 0.25)",
+    vipTagColor: "bg-sky-500 text-stone-950 font-black",
+  },
+  "Q4-PIO": {
+    vipRank: "VIP·赤焰破晓",
+    vipLevel: "SP·炽阳",
+    accentColor: "#F43F5E",
+    badgeBg: "bg-rose-100 dark:bg-rose-500/20",
+    badgeBorder: "border-rose-600 dark:border-rose-400",
+    badgeText: "text-rose-950 dark:text-rose-300",
+    cardBgLight: "bg-gradient-to-b from-[#FFF3F4] via-[#FFF1F2] to-white",
+    cardBorderLight: "border-rose-600",
+    cardShadowLight: "shadow-[0_5px_0_#be123c]",
+    cardBgDark: "dark:bg-gradient-to-b dark:from-[#1b070b] dark:to-[#0E0E16]",
+    cardBorderDark: "dark:border-rose-400",
+    cardShadowDark: "dark:shadow-[4px_4px_0px_#F43F5E]",
+    glowAura: "rgba(244, 63, 94, 0.25)",
+    vipTagColor: "bg-rose-500 text-white font-black",
+  },
+  "Q5-RET": {
+    vipRank: "VIP·幻夜玄晶",
+    vipLevel: "SSR·沉渊",
+    accentColor: "#8B5CF6",
+    badgeBg: "bg-purple-100 dark:bg-purple-500/20",
+    badgeBorder: "border-purple-600 dark:border-purple-400",
+    badgeText: "text-purple-950 dark:text-purple-300",
+    cardBgLight: "bg-gradient-to-b from-[#FAF7FF] via-[#F5F3FF] to-white",
+    cardBorderLight: "border-purple-600",
+    cardShadowLight: "shadow-[0_5px_0_#6d28d9]",
+    cardBgDark: "dark:bg-gradient-to-b dark:from-[#120824] dark:to-[#0E0E16]",
+    cardBorderDark: "dark:border-purple-400",
+    cardShadowDark: "dark:shadow-[4px_4px_0px_#8B5CF6]",
+    glowAura: "rgba(139, 92, 246, 0.25)",
+    vipTagColor: "bg-purple-500 text-white font-black",
+  },
+  "Q6-GAM": {
+    vipRank: "VIP·先锋酸芒",
+    vipLevel: "SP·诡道",
+    accentColor: "#CCFF00",
+    badgeBg: "bg-lime-100 dark:bg-[#CCFF00]/20",
+    badgeBorder: "border-lime-600 dark:border-[#CCFF00]",
+    badgeText: "text-lime-950 dark:text-[#CCFF00]",
+    cardBgLight: "bg-gradient-to-b from-[#F9FFE6] via-[#F7FEE7] to-white",
+    cardBorderLight: "border-lime-600",
+    cardShadowLight: "shadow-[0_5px_0_#4d7c0f]",
+    cardBgDark: "dark:bg-gradient-to-b dark:from-[#101704] dark:to-[#0E0E16]",
+    cardBorderDark: "dark:border-[#CCFF00]",
+    cardShadowDark: "dark:shadow-[4px_4px_0px_#CCFF00]",
+    glowAura: "rgba(204, 255, 0, 0.25)",
+    vipTagColor: "bg-[#CCFF00] text-stone-950 font-black",
+  },
+  "Q7-ARB": {
+    vipRank: "VIP·雷霆极钴",
+    vipLevel: "SSR·定乾",
+    accentColor: "#3B82F6",
+    badgeBg: "bg-blue-100 dark:bg-blue-500/20",
+    badgeBorder: "border-blue-600 dark:border-blue-400",
+    badgeText: "text-blue-950 dark:text-blue-300",
+    cardBgLight: "bg-gradient-to-b from-[#F2F7FF] via-[#EFF6FF] to-white",
+    cardBorderLight: "border-blue-600",
+    cardShadowLight: "shadow-[0_5px_0_#1d4ed8]",
+    cardBgDark: "dark:bg-gradient-to-b dark:from-[#060e22] dark:to-[#0E0E16]",
+    cardBorderDark: "dark:border-blue-400",
+    cardShadowDark: "dark:shadow-[4px_4px_0px_#3B82F6]",
+    glowAura: "rgba(59, 130, 246, 0.25)",
+    vipTagColor: "bg-blue-500 text-white font-black",
+  },
+  "Q8-DRI": {
+    vipRank: "VIP·极光幻彩",
+    vipLevel: "SSR·逍遥",
+    accentColor: "#EC4899",
+    badgeBg: "bg-pink-100 dark:bg-pink-500/20",
+    badgeBorder: "border-pink-600 dark:border-pink-400",
+    badgeText: "text-pink-950 dark:text-pink-300",
+    cardBgLight: "bg-gradient-to-b from-[#FFF2F9] via-[#FDF2F8] to-white",
+    cardBorderLight: "border-pink-600",
+    cardShadowLight: "shadow-[0_5px_0_#be185d]",
+    cardBgDark: "dark:bg-gradient-to-b dark:from-[#1e0714] dark:to-[#0E0E16]",
+    cardBorderDark: "dark:border-pink-400",
+    cardShadowDark: "dark:shadow-[4px_4px_0px_#EC4899]",
+    glowAura: "rgba(236, 72, 153, 0.25)",
+    vipTagColor: "bg-pink-500 text-white font-black",
+  },
+};
+
 interface CognitiveAssetItem {
   quadrant_code: string;
   archetype: string;
@@ -52,11 +200,19 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
   const [filterTab, setFilterTab] = useState<"ALL" | "UNLOCKED" | "LOCKED">("ALL");
   const [selectedAsset, setSelectedAsset] = useState<CognitiveAssetItem | null>(null);
 
-  const filteredAssets = assets.filter((item) => {
-    if (filterTab === "UNLOCKED") return item.unlocked;
-    if (filterTab === "LOCKED") return !item.unlocked;
-    return true;
-  });
+  const sortedAssets = React.useMemo(() => {
+    const list = assets.filter((item) => {
+      if (filterTab === "UNLOCKED") return item.unlocked;
+      if (filterTab === "LOCKED") return !item.unlocked;
+      return true;
+    });
+    // 已点亮的排到最前 (unlocked first, locked after)
+    return [...list].sort((a, b) => {
+      if (a.unlocked && !b.unlocked) return -1;
+      if (!a.unlocked && b.unlocked) return 1;
+      return a.quadrant_code.localeCompare(b.quadrant_code);
+    });
+  }, [assets, filterTab]);
 
   const navigate = (path: string) => {
     if (onNavigate) {
@@ -204,13 +360,22 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
           <button
             type="button"
             onClick={fetchAssets}
-            className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all cursor-pointer active:translate-y-0.5 flex items-center justify-center"
+            disabled={loading}
+            className="min-h-[44px] min-w-[44px] p-2.5 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all cursor-pointer active:translate-y-0.5 flex items-center justify-center disabled:opacity-60"
             title={isEn ? "Refresh" : "刷新资产"}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-amber-500 dark:text-[#CCFF00]" : ""}`} />
           </button>
         </div>
       </div>
+
+      {/* 资产图鉴刷新交互提示 */}
+      {loading && assets.length > 0 && (
+        <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-amber-50 dark:bg-white/5 border border-amber-300 dark:border-[#CCFF00]/30 text-xs font-bold text-stone-800 dark:text-[#CCFF00] animate-pulse">
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-[#CCFF00]" />
+          <span>正在同步认知资产图鉴与专属特技库...</span>
+        </div>
+      )}
 
       {loading && assets.length === 0 ? (
         <div className="p-16 text-center flex flex-col items-center justify-center space-y-3">
@@ -220,14 +385,15 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
           </p>
         </div>
       ) : (
-        /* Mobile Waterfall / Masonry Cards Stream */
-        <div className="columns-1 sm:columns-2 lg:columns-4 gap-4 [column-fill:_balance]">
-          {filteredAssets.map((item) => {
+        /* 响应式整齐网格排列 (已点亮优先排列在最前，每个图鉴专属 VIP 尊贵配色) */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4.5 items-stretch">
+          {sortedAssets.map((item) => {
             const mythic = getMythicArchetype(item.quadrant_code);
             const arcane = getArcaneArchetype(item.quadrant_code);
             const totemLabel = isEn
               ? arcane.orderTitle
               : `${mythic.mythicTotem} · ${mythic.totemTitle}`;
+            const vip = VIP_THEMES[item.quadrant_code] || VIP_THEMES["Q1-CAL"];
 
             return (
               <div
@@ -242,60 +408,67 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                     setSelectedAsset(item);
                   }
                 }}
-                className={`break-inside-avoid mb-4 rounded-[26px] p-5 border-[2.5px] transition-all duration-200 flex flex-col justify-between relative overflow-hidden cursor-pointer select-none active:scale-[0.98] ${
+                className={`rounded-[26px] p-5 border-[2.5px] transition-all duration-200 flex flex-col justify-between h-full min-h-[380px] relative overflow-hidden cursor-pointer select-none active:scale-[0.98] ${
                   item.unlocked
-                    ? "bg-[#FFFBEB] dark:bg-[#0E0E16] border-stone-900 dark:border-[#CCFF00] shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] hover:-translate-y-0.5"
-                    : "bg-[#FFFDF8] dark:bg-[#0A0A10] border-stone-900/40 dark:border-white/10 opacity-80 shadow-[0_3px_0_#1c1917] dark:shadow-none hover:opacity-100"
+                    ? `${vip.cardBgLight} ${vip.cardBgDark} ${vip.cardBorderLight} ${vip.cardBorderDark} ${vip.cardShadowLight} ${vip.cardShadowDark} hover:-translate-y-1`
+                    : "bg-[#FFFDF8] dark:bg-[#0E0E16] border-stone-900/30 dark:border-white/10 opacity-75 shadow-[0_3px_0_#1c1917] dark:shadow-none hover:opacity-100"
                 }`}
               >
-                <div className="space-y-3 relative z-10">
-                  {/* Top Row: Quadrant Code, Unlock Status & Detail indicator */}
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border-2 ${
-                        item.unlocked
-                          ? "bg-[#FEF3C7] dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] text-stone-950 dark:text-[#CCFF00] font-black shadow-[0_1.5px_0_#1c1917]"
-                          : "bg-stone-100 dark:bg-white/5 border-stone-300 dark:border-white/10 text-stone-500 dark:text-slate-500 font-bold"
-                      }`}
-                    >
-                      {item.quadrant_code}
-                    </span>
+                {/* 暗色模式氛围流光层 (兼容文字可读性，通过深色背景阻断，仅在边缘溢出柔光) */}
+                {item.unlocked && (
+                  <div
+                    className="absolute -top-12 -right-12 w-48 h-48 rounded-full pointer-events-none opacity-20 dark:opacity-35 blur-2xl transition-opacity"
+                    style={{ backgroundColor: vip.accentColor }}
+                  />
+                )}
 
-                    <div className="flex items-center gap-1.5">
+                <div className="space-y-3 relative z-10">
+                  {/* Top Row: Archetype Title Pill & Unlock Status */}
+                  <div className="flex items-center justify-between gap-1.5 flex-nowrap">
+                    <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+                      <span
+                        className={`text-xs px-2.5 py-1 rounded-xl border-2 font-black shrink-0 ${
+                          item.unlocked
+                            ? `${vip.badgeBg} ${vip.badgeBorder} ${vip.badgeText} shadow-[0_1.5px_0_#1c1917] dark:shadow-none`
+                            : "bg-stone-100 dark:bg-white/10 border-stone-300 dark:border-white/20 text-stone-700 dark:text-white font-bold"
+                        }`}
+                      >
+                        {item.role_title}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {item.unlocked ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-950 dark:text-[#CCFF00] bg-[#D1FAE5] dark:bg-[#CCFF00]/10 border-2 border-stone-900 dark:border-[#CCFF00]/30 px-2 py-0.5 rounded-full shadow-[0_1.5px_0_#1c1917]">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-700 dark:text-[#CCFF00]" />
+                        <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-950 dark:text-[#08080C] bg-[#D1FAE5] dark:bg-[#CCFF00] border-2 border-stone-900 dark:border-black px-2 py-0.5 rounded-full shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-700 dark:text-[#08080C]" />
                           <span>{isEn ? `×${item.count}` : `已收录 ×${item.count}`}</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-stone-500 dark:text-slate-500 bg-stone-100 dark:bg-white/5 border border-stone-300 dark:border-white/10 px-2 py-0.5 rounded-full font-bold">
-                          <Lock className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 text-[11px] text-stone-700 dark:text-slate-200 bg-stone-100 dark:bg-white/10 border border-stone-300 dark:border-white/20 px-2 py-0.5 rounded-full font-bold">
+                          <Lock className="w-3 h-3 text-stone-600 dark:text-slate-300" />
                           <span>{isEn ? "Locked" : "待探索"}</span>
                         </span>
                       )}
-                      <span className="w-6 h-6 rounded-lg bg-stone-100 dark:bg-white/10 flex items-center justify-center text-stone-600 dark:text-slate-300">
+                      <span className="w-6 h-6 rounded-lg bg-stone-100 dark:bg-white/10 flex items-center justify-center text-stone-700 dark:text-white">
                         <Eye className="w-3 h-3" />
                       </span>
                     </div>
                   </div>
 
-                  {/* Totem & Role Title */}
+                  {/* Totem & Slogan */}
                   <div className="space-y-1">
-                    <div className={`text-[11px] font-black truncate ${item.unlocked ? "text-amber-900 dark:text-[#CCFF00]" : "text-stone-500 dark:text-slate-300"}`}>
+                    <div className={`text-[11px] font-black truncate ${item.unlocked ? "text-amber-900 dark:text-[#CCFF00]" : "text-stone-700 dark:text-slate-200"}`}>
                       {totemLabel}
                     </div>
-                    <h2
-                      className={`text-lg sm:text-xl font-black tracking-tight ${
+                    <div
+                      className={`text-sm sm:text-base font-black tracking-tight leading-snug italic ${
                         item.unlocked
-                          ? "text-stone-950 dark:text-white"
-                          : "text-stone-600 dark:text-slate-300"
+                          ? "text-stone-950 dark:text-white drop-shadow-sm"
+                          : "text-stone-700 dark:text-slate-100"
                       }`}
                     >
-                      {item.role_title}
-                    </h2>
-                    <p className={`text-xs italic line-clamp-2 font-bold ${item.unlocked ? "text-stone-700 dark:text-slate-300" : "text-stone-500 dark:text-slate-400"}`}>
                       “{item.praise_tagline}”
-                    </p>
+                    </div>
                   </div>
 
                   {/* Strength Tags */}
@@ -305,8 +478,8 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                         key={idx}
                         className={`text-[10px] px-2 py-0.5 rounded-md border font-bold ${
                           item.unlocked
-                            ? "bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-slate-200 shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
-                            : "bg-stone-50 dark:bg-white/5 border border-stone-300/60 dark:border-white/10 text-stone-500 dark:text-slate-300"
+                            ? "bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/30 text-stone-950 dark:text-white shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                            : "bg-stone-50 dark:bg-white/10 border border-stone-400/40 dark:border-white/20 text-stone-700 dark:text-slate-200"
                         }`}
                       >
                         #{tag}
@@ -314,20 +487,28 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                     ))}
                   </div>
 
-                  {/* Skills Preview */}
+                  {/* Skills Preview (Feedback 4 & 5: 暗色模式高对比度可见度强化，无惧流光干扰) */}
                   {item.skills && item.skills.length > 0 && (
-                    <div className="pt-2 border-t-2 border-stone-900/15 dark:border-white/10 space-y-1.5">
+                    <div className="pt-2 border-t-2 border-stone-900/15 dark:border-white/20 space-y-2">
                       {item.skills.slice(0, 2).map((sk, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-[11px]">
-                          <span>{sk.icon}</span>
-                          <span className={item.unlocked ? "text-stone-950 dark:text-slate-200 font-bold truncate" : "text-stone-500 dark:text-slate-500 truncate"}>
+                        <div key={idx} className="flex items-center gap-2 text-xs py-0.5">
+                          <span className="text-sm shrink-0">{sk.icon}</span>
+                          <span className={`font-black truncate ${
+                            item.unlocked ? "text-stone-950 dark:text-white" : "text-stone-700 dark:text-slate-100"
+                          }`}>
                             {sk.name}
                           </span>
-                          <span className="text-[9px] text-stone-600 dark:text-slate-400 font-black ml-auto shrink-0">{sk.type}</span>
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ml-auto shrink-0 border ${
+                            item.unlocked
+                              ? "bg-amber-100 dark:bg-[#CCFF00]/15 text-stone-950 dark:text-[#CCFF00] border-stone-900/30 dark:border-[#CCFF00]/40 shadow-xs"
+                              : "bg-stone-100 dark:bg-white/10 text-stone-700 dark:text-slate-200 border-stone-300 dark:border-white/20"
+                          }`}>
+                            {sk.type}
+                          </span>
                         </div>
                       ))}
                       {item.skills.length > 2 && (
-                        <div className="text-[10px] text-amber-700 dark:text-[#CCFF00] font-bold text-center pt-0.5">
+                        <div className="text-[10px] text-amber-800 dark:text-[#CCFF00] font-black text-center pt-1 hover:underline">
                           + 点击展开全部 {item.skills.length} 项技能
                         </div>
                       )}
@@ -335,44 +516,21 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
                   )}
                 </div>
 
-                {/* Bottom Metrics or Unlock Action */}
+                {/* Bottom Unlock / View Action */}
                 <div className="pt-3.5 mt-3.5 border-t-2 border-stone-900/15 dark:border-white/10 relative z-10">
                   {item.unlocked && item.latest_session_id ? (
-                    <div className="space-y-2.5">
-                      <div className="grid grid-cols-2 gap-2 text-[10px]">
-                        <div className="p-2 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
-                          <span className="text-stone-600 dark:text-slate-400 flex items-center gap-1 font-bold">
-                            <Zap className="w-3 h-3 text-sky-700 dark:text-cyan-400" />
-                            <span>Best d&apos;</span>
-                          </span>
-                          <span className="font-mono font-black text-sky-900 dark:text-cyan-300 text-xs">
-                            {item.best_d_prime?.toFixed(2) ?? "--"}
-                          </span>
-                        </div>
-                        <div className="p-2 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/15 shadow-[0_1.5px_0_#1c1917] dark:shadow-none">
-                          <span className="text-stone-600 dark:text-slate-400 flex items-center gap-1 font-bold">
-                            <TrendingUp className="w-3 h-3 text-emerald-700 dark:text-[#CCFF00]" />
-                            <span>Best M</span>
-                          </span>
-                          <span className="font-mono font-black text-emerald-900 dark:text-[#CCFF00] text-xs">
-                            {item.best_m_ratio?.toFixed(2) ?? "--"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/report/${item.latest_session_id}`);
-                        }}
-                        className="w-full min-h-[44px] py-2.5 px-3 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:text-[#08080C] text-stone-950 font-black text-xs border-2 border-stone-900 dark:border-black shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] active:translate-y-1 active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-stone-950 dark:text-[#08080C]" />
-                        <span>{isEn ? "Inspect Report" : "查看代表报告"}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/report/${item.latest_session_id}`);
+                      }}
+                      className="w-full min-h-[44px] py-2.5 px-3 rounded-2xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:text-[#08080C] text-stone-950 font-black text-xs border-2 border-stone-900 dark:border-black shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] active:translate-y-1 active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-stone-950 dark:text-[#08080C]" />
+                      <span>{isEn ? "Inspect Report" : "查看代表报告"}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
                   ) : (
                     <button
                       type="button"
@@ -399,19 +557,19 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
         onClose={() => setSelectedAsset(null)}
         title={
           selectedAsset ? (
-            <div className="flex items-center gap-2.5">
-              <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] text-stone-950 dark:text-[#CCFF00] font-black">
-                {selectedAsset.quadrant_code}
-              </span>
-              <span className="text-base sm:text-lg font-black text-stone-950 dark:text-white truncate">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-xs px-2.5 py-1 rounded-xl bg-[#FEF3C7] dark:bg-[#12121C] border-2 border-stone-900 dark:border-[#CCFF00] text-stone-950 dark:text-[#CCFF00] font-black shrink-0">
                 {selectedAsset.role_title}
+              </span>
+              <span className="text-xs text-stone-600 dark:text-slate-400 font-bold italic truncate">
+                “{selectedAsset.praise_tagline}”
               </span>
             </div>
           ) : undefined
         }
         subtitle={
           selectedAsset ? (
-            <span className="text-xs text-stone-500 dark:text-slate-400 font-bold">
+            <span className="text-[11px] text-stone-500 dark:text-slate-400 font-medium">
               {isEn
                 ? getArcaneArchetype(selectedAsset.quadrant_code).orderTitle
                 : `${getMythicArchetype(selectedAsset.quadrant_code).mythicTotem} · ${getMythicArchetype(selectedAsset.quadrant_code).totemTitle}`}
@@ -460,114 +618,125 @@ export const AssetsPage: React.FC<AssetsPageProps> = ({ onNavigate }) => {
           )
         }
       >
-        {selectedAsset && (
-          <div className="space-y-4 py-1">
-            {/* Tagline */}
-            <div className="p-3.5 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900/20 dark:border-white/20 text-stone-900 dark:text-slate-100 text-xs italic font-bold">
-              “{selectedAsset.praise_tagline}”
-            </div>
+        {selectedAsset && (() => {
+          const userArchetypeLevel = selectedAsset.unlocked
+            ? Math.min(3, Math.max(1, selectedAsset.count >= 3 ? 3 : selectedAsset.count >= 2 ? 2 : 1))
+            : 0;
 
-            {/* Unlock Status / Summary KPI Card */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-black">
+          return (
+            <div className="space-y-6 py-3">
+              {/* Unlock Status Card */}
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] flex items-center justify-between text-xs font-black">
                 <span className="text-stone-700 dark:text-slate-300">
                   {isEn ? "Archetype Status" : "流派图鉴状态"}
                 </span>
                 {selectedAsset.unlocked ? (
-                  <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-[#CCFF00]">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isEn ? `Collected ${selectedAsset.count} times` : `已收录 ${selectedAsset.count} 次`}</span>
-                  </span>
+                  <div className="inline-flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-[#CCFF00]">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{isEn ? `Collected ${selectedAsset.count} times` : `已收录 ${selectedAsset.count} 次`}</span>
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-[#CCFF00]/20 text-emerald-950 dark:text-[#CCFF00] border border-emerald-500/30">
+                      {userArchetypeLevel === 3 ? (isEn ? "Lv.3 Master" : "3级 · 巅峰") : userArchetypeLevel === 2 ? (isEn ? "Lv.2 Adept" : "2级 · 进阶") : (isEn ? "Lv.1 Novice" : "1级 · 初阶")}
+                    </span>
+                  </div>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-stone-500 dark:text-slate-400">
                     <Lock className="w-4 h-4" />
-                    <span>{isEn ? "Unclaimed" : "待探索点亮"}</span>
+                    <span>{isEn ? "Unclaimed (Lv.0)" : "待探索点亮 (未解锁)"}</span>
                   </span>
                 )}
               </div>
 
-              {selectedAsset.unlocked && (
-                <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-xs">
-                  <div className="p-2.5 rounded-xl bg-stone-50 dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-sans font-bold">
-                      最高敏感度 Best d&apos;
+              {/* Empowering Feedback */}
+              <div className="space-y-2">
+                <div className="text-xs font-black text-stone-900 dark:text-white flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-amber-500 dark:text-[#CCFF00]" />
+                  <span>{isEn ? "Empowering Feedback" : "心智流派深度赋能"}</span>
+                </div>
+                <p className="text-xs text-stone-700 dark:text-slate-300 leading-relaxed font-medium p-3.5 rounded-2xl bg-stone-50 dark:bg-[#12121C] border border-stone-900/15 dark:border-white/10">
+                  {selectedAsset.empowering_feedback}
+                </p>
+              </div>
+
+              {/* Strength Tags */}
+              <div className="space-y-2">
+                <div className="text-xs font-black text-stone-900 dark:text-white">
+                  {isEn ? "Core Strengths" : "核心优势特质"}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedAsset.strength_tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="text-xs px-3 py-1 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white font-bold shadow-[0_2px_0_#1c1917] dark:shadow-none"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Complete Skills List (Tiered unlock based on archetype level) */}
+              {selectedAsset.skills && selectedAsset.skills.length > 0 && (
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center justify-between text-xs font-black text-stone-900 dark:text-white">
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-purple-600 dark:text-[#CCFF00]" />
+                      <span>{isEn ? "Archetype Skills" : "流派专属认知特技"}</span>
                     </div>
-                    <div className="text-sm font-black text-sky-800 dark:text-cyan-300">
-                      {selectedAsset.best_d_prime?.toFixed(2) ?? "--"}
-                    </div>
+                    {selectedAsset.unlocked && (
+                      <span className="text-[10px] text-stone-500 dark:text-slate-400 font-bold">
+                        {isEn ? `Current Tier: Lv.${userArchetypeLevel}` : `当前画像最高能级：${userArchetypeLevel} 级`}
+                      </span>
+                    )}
                   </div>
-                  <div className="p-2.5 rounded-xl bg-stone-50 dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20">
-                    <div className="text-[10px] text-stone-500 dark:text-slate-400 font-sans font-bold">
-                      最高元认知 Best M_ratio
-                    </div>
-                    <div className="text-sm font-black text-emerald-800 dark:text-[#CCFF00]">
-                      {selectedAsset.best_m_ratio?.toFixed(2) ?? "--"}
-                    </div>
+                  <div className="space-y-2.5">
+                    {selectedAsset.skills.map((sk, idx) => {
+                      const reqLevel = idx === 0 ? 1 : idx === 1 ? 2 : 3;
+                      const isLit = userArchetypeLevel >= reqLevel;
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-3.5 rounded-2xl border-2 transition-all space-y-1.5 ${
+                            isLit
+                              ? "bg-white dark:bg-[#0E0E16] border-stone-900 dark:border-white/30 shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
+                              : "bg-stone-100/70 dark:bg-white/5 border-dashed border-stone-300 dark:border-white/10 opacity-60"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 font-black text-xs text-stone-950 dark:text-white min-w-0">
+                              <span className={`text-base ${isLit ? "" : "grayscale opacity-50"}`}>{sk.icon}</span>
+                              <span className={`truncate ${isLit ? "text-stone-950 dark:text-white" : "text-stone-500 dark:text-slate-300"}`}>{sk.name}</span>
+                              <span className="text-[10px] text-amber-800 dark:text-[#CCFF00] font-black shrink-0">
+                                ({sk.type})
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isLit ? (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#D1FAE5] dark:bg-[#CCFF00]/15 text-emerald-900 dark:text-[#CCFF00] border border-emerald-500/40 dark:border-[#CCFF00]/40 flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-[#CCFF00]" />
+                                  <span>{isEn ? `Lv.${reqLevel} Active` : `${reqLevel}级·已点亮`}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-200 dark:bg-white/10 text-stone-600 dark:text-slate-300 border border-stone-300 dark:border-white/20 flex items-center gap-1">
+                                  <Lock className="w-3 h-3" />
+                                  <span>{isEn ? `Req. Lv.${reqLevel}` : `需达到 ${reqLevel} 级点亮`}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className={`text-[11px] leading-relaxed font-medium pl-6 ${isLit ? "text-stone-700 dark:text-slate-200" : "text-stone-500 dark:text-slate-400"}`}>
+                            {sk.desc}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Empowering Feedback */}
-            <div className="space-y-1.5">
-              <div className="text-xs font-black text-stone-900 dark:text-white flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-amber-500 dark:text-[#CCFF00]" />
-                <span>{isEn ? "Empowering Feedback" : "心智流派深度赋能"}</span>
-              </div>
-              <p className="text-xs text-stone-700 dark:text-slate-300 leading-relaxed font-medium p-3.5 rounded-2xl bg-stone-50 dark:bg-[#12121C] border border-stone-900/15 dark:border-white/10">
-                {selectedAsset.empowering_feedback}
-              </p>
-            </div>
-
-            {/* Strength Tags */}
-            <div className="space-y-1.5">
-              <div className="text-xs font-black text-stone-900 dark:text-white">
-                {isEn ? "Core Strengths" : "核心优势特质"}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {selectedAsset.strength_tags.map((tag, idx) => (
-                  <span
-                    key={idx}
-                    className="text-xs px-3 py-1 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-stone-950 dark:text-white font-bold shadow-[0_2px_0_#1c1917] dark:shadow-none"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Complete Skills List */}
-            {selectedAsset.skills && selectedAsset.skills.length > 0 && (
-              <div className="space-y-2 pt-1">
-                <div className="text-xs font-black text-stone-900 dark:text-white flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-purple-600 dark:text-[#CCFF00]" />
-                  <span>{isEn ? "Complete Archetype Skills" : "流派专属认知特技"} ({selectedAsset.skills.length})</span>
-                </div>
-                <div className="space-y-2">
-                  {selectedAsset.skills.map((sk, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900/20 dark:border-white/20 space-y-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 font-black text-xs text-stone-950 dark:text-white">
-                          <span className="text-base">{sk.icon}</span>
-                          <span>{sk.name}</span>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#12121C] border border-stone-900 dark:border-white/20 text-stone-900 dark:text-[#CCFF00]">
-                          {sk.type}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-stone-600 dark:text-slate-300 leading-relaxed font-medium pl-6">
-                        {sk.desc}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          );
+        })()}
       </BottomSheet>
     </div>
   );

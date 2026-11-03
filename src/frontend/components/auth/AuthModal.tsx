@@ -16,7 +16,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSelectProvider,
 }) => {
   const { t, locale } = useLocale();
-  const { enabledProviders, hasAnyProvider } = useUser();
+  const { enabledProviders, hasAnyProvider, devLogin } = useUser();
   const isEn = String(locale).toLowerCase().startsWith("en");
 
   return (
@@ -144,6 +144,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-stone-500 dark:text-slate-400 group-hover:text-stone-950 dark:group-hover:text-[#CCFF00] group-hover:translate-x-0.5 transition-all" />
+            </button>
+          )}
+
+          {/* Local Development Quick Login */}
+          {import.meta.env.DEV && (
+            <button
+              type="button"
+              onClick={async () => {
+                await devLogin();
+                onClose();
+              }}
+              className="w-full group flex items-center justify-between p-3.5 rounded-2xl bg-amber-400/10 dark:bg-[#CCFF00]/10 hover:bg-amber-400/20 dark:hover:bg-[#CCFF00]/20 border-2 border-dashed border-amber-600/50 dark:border-[#CCFF00]/60 active:translate-y-0.5 transition-all text-left cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-400/20 dark:bg-[#CCFF00]/20 border border-amber-600/30 dark:border-[#CCFF00]/40 flex items-center justify-center text-lg shrink-0">
+                  ⚡
+                </div>
+                <div>
+                  <div className="text-sm font-black text-amber-900 dark:text-[#CCFF00]">
+                    {isEn ? "Dev Explorer Quick Login" : "本地开发者快速登录 (Dev Explorer)"}
+                  </div>
+                  <div className="text-[11px] text-amber-800/80 dark:text-slate-400 font-medium">
+                    {isEn ? "One-click login for local development" : "免配置一键直通工作台，恢复默认开发身份"}
+                  </div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-amber-800 dark:text-[#CCFF00] group-hover:translate-x-0.5 transition-transform" />
             </button>
           )}
 

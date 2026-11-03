@@ -168,6 +168,50 @@ export const userManager: UserManager = new Proxy({} as UserManager, {
 
 export { oauthService, OAuthService };
 
+export const DEV_DEFAULT_USER: User = {
+  id: "usr_dev_explorer",
+  display_name: "Dev Explorer",
+  email: "dev@self-test.local",
+  avatar_url: null,
+  primary_provider: "github",
+  created_at: "2026-10-01T00:00:00.000Z",
+  updated_at: "2026-10-01T00:00:00.000Z",
+  metadata: {
+    badge: "Local Dev",
+    trust_level: 4,
+  },
+};
+
+export function isLocalDevEnvironment(): boolean {
+  if (typeof process === "undefined") return false;
+  if (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "test") {
+    return false;
+  }
+  if (process.env.DEV_AUTO_LOGIN === "false" || process.env.DEV_AUTO_LOGIN === "0") {
+    return false;
+  }
+  return true;
+}
+
+export async function ensureDevUser(um: UserManager): Promise<User> {
+  try {
+    let user = await um.getUserById(DEV_DEFAULT_USER.id);
+    if (!user) {
+      user = await um.upsertUser({
+        id: DEV_DEFAULT_USER.id,
+        email: DEV_DEFAULT_USER.email,
+        display_name: DEV_DEFAULT_USER.display_name,
+        primary_provider: DEV_DEFAULT_USER.primary_provider,
+        avatar_url: DEV_DEFAULT_USER.avatar_url,
+        metadata: DEV_DEFAULT_USER.metadata,
+      });
+    }
+    return user;
+  } catch (err) {
+    return DEV_DEFAULT_USER;
+  }
+}
+
 // Cache D1-backed SessionManager and UserManager instances per D1 database binding
 const d1SessionManagers = new WeakMap<object, SessionManager>();
 const d1UserManagers = new WeakMap<object, UserManager>();
@@ -236,6 +280,18 @@ app.use("*", async (c, next) => {
       return next();
     }
   }
+
+  // Local development auto-login: if in local dev and user didn't explicitly log out into guest mode
+  if (isLocalDevEnvironment()) {
+    const isGuestLoggedOut = getCookie(c, "dev_guest_mode") === "1";
+    if (!isGuestLoggedOut) {
+      const um = getUserManagerForContext(c);
+      const devUser = await ensureDevUser(um);
+      c.set("user", devUser);
+      return next();
+    }
+  }
+
   c.set("user", null);
   return next();
 });
@@ -551,14 +607,47 @@ app.get("/api/leaderboard/overview", async (c) => {
 // --- Auth & OAuth Matrix Routes ---
 
 // Current User Profile
-app.get("/api/auth/me", (c) => {
-  const user = c.get("user");
+app.get("/api/auth/me", async (c) => {
+  let user = c.get("user");
+  if (!user && isLocalDevEnvironment()) {
+    const isGuestLoggedOut = getCookie(c, "dev_guest_mode") === "1";
+    if (!isGuestLoggedOut) {
+      const um = getUserManagerForContext(c);
+      user = await ensureDevUser(um);
+      c.set("user", user);
+    }
+  }
+  if (user && isLocalDevEnvironment() && !extractToken(c)) {
+    // Automatically issue and set auth cookie for browser persistence in local dev
+    const token = await createAuthToken(user);
+    setAuthCookie(c, token);
+  }
   return c.json({ user: user || null });
+});
+
+// Dev environment quick login
+app.all("/api/auth/dev-login", async (c) => {
+  if (process.env.NODE_ENV === "production") {
+    return c.json({ error: "Forbidden in production" }, 403);
+  }
+  deleteCookie(c, "dev_guest_mode", { path: "/" });
+  const um = getUserManagerForContext(c);
+  const devUser = await ensureDevUser(um);
+  const token = await createAuthToken(devUser);
+  setAuthCookie(c, token);
+  const redirect = c.req.query("redirect");
+  if (redirect) {
+    return c.redirect(redirect);
+  }
+  return c.json({ success: true, user: devUser, token });
 });
 
 // Logout
 app.post("/api/auth/logout", (c) => {
   clearAuthCookie(c);
+  if (isLocalDevEnvironment()) {
+    setCookie(c, "dev_guest_mode", "1", { path: "/" });
+  }
   return c.json({ success: true });
 });
 
@@ -1591,5 +1680,8 @@ export default {
 if (typeof import.meta !== "undefined" && (import.meta as any).main) {
   // Startup bootstrap: ensure local database storage is checked and ready before serving requests
   getDefaultSessionManager();
+  if (isLocalDevEnvironment()) {
+    ensureDevUser(getDefaultUserManager()).catch(console.error);
+  }
   printAdminBanner(HOST, PORT);
 }

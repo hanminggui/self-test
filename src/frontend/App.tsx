@@ -919,6 +919,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (loading) return;
 
       const key = e.key.toUpperCase();
       if (["A", "B", "C", "D"].includes(key)) {
@@ -1013,7 +1014,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 <h1 className="text-sm md:text-base font-black tracking-tight text-stone-900 dark:text-white truncate">
                   {t.app.appTitle}
                 </h1>
-                <p className="text-[11px] font-bold text-stone-500 dark:text-[#CCFF00] font-mono uppercase hidden xs:block truncate">
+                <p className="text-[11px] font-bold text-stone-700 dark:text-[#CCFF00] font-mono uppercase hidden xs:block truncate">
                   {t.app.appSubtitle}
                 </p>
               </div>
@@ -1283,8 +1284,8 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
           <div className="w-full max-w-3xl mx-auto space-y-6">
             {/* 在 App Layout 内无顶部固定栏时展示内联进度计数器 */}
             {inAppLayout && (
-              <div className="flex items-center justify-between text-xs text-stone-600 dark:text-slate-400">
-                <span className="flex items-center gap-2 font-black text-stone-800 dark:text-white">
+              <div className="flex items-center justify-between text-xs text-stone-800 dark:text-slate-200">
+                <span className="flex items-center gap-2 font-black text-stone-900 dark:text-white">
                   <Compass className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" />
                   <span>{t.app.voyageProgress}</span>
                 </span>
@@ -1330,7 +1331,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
               {/* 线索购买操作栏 */}
               <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] font-bold text-stone-500 dark:text-slate-400">
+                <span className="text-[11px] font-bold text-stone-700 dark:text-slate-200">
                   {unlockedHints.length === 0
                     ? t.app.hintHint0
                     : formatMessage(t.app.hintHintN, { count: unlockedHints.length, cost: hintsCost })}
@@ -1383,12 +1384,18 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   <button
                     key={key}
                     type="button"
+                    disabled={loading}
                     onClick={() => {
+                      if (loading) return;
                       setSelectedOption(key);
                       playSound("select");
                       triggerHaptic("light");
                     }}
-                    className={`p-4 rounded-2xl border-[2.5px] text-left transition-all duration-150 flex items-start gap-3.5 cursor-pointer relative ${
+                    className={`p-4 rounded-2xl border-[2.5px] text-left transition-all duration-150 flex items-start gap-3.5 relative ${
+                      loading
+                        ? "opacity-60 cursor-not-allowed pointer-events-none"
+                        : "cursor-pointer"
+                    } ${
                       isSelected
                         ? "bg-[#D1FAE5] dark:bg-[#0E0E16] border-stone-900 dark:border-[#CCFF00] ring-2 ring-emerald-600 dark:ring-0 shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.015]"
                         : "bg-white dark:bg-[#12121C] border-stone-900 dark:border-white/20 text-stone-950 dark:text-white hover:bg-[#FFFBEB] dark:hover:border-[#CCFF00] dark:hover:bg-[#161624] dark:hover:shadow-[2px_2px_0px_#CCFF00] hover:-translate-y-1 hover:shadow-[0_6px_0_#1c1917] shadow-[0_3.5px_0_#1c1917] dark:shadow-none active:translate-y-1.5 active:shadow-none"
@@ -1415,18 +1422,22 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
             <div className="bg-white dark:bg-[#0E0E16] rounded-[24px] p-5 space-y-4 border-[2.5px] border-stone-900 dark:border-white/20 shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00]">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-black text-stone-900 dark:text-white">{t.app.instinctPrompt}</span>
-                <span className="text-[11px] font-bold text-stone-600 dark:text-slate-400 font-mono">{t.app.instinctShortcuts}</span>
+                <span className="text-[11px] font-bold text-stone-700 dark:text-slate-300 font-mono">{t.app.instinctShortcuts}</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
+                  disabled={loading}
                   onClick={() => {
+                    if (loading) return;
                     setSelectedAction("HIGH_BET");
                     playSound("wager");
                     triggerHaptic("light");
                   }}
-                  className={`p-3.5 rounded-2xl border-[2.5px] transition-all cursor-pointer ${
+                  className={`p-3.5 rounded-2xl border-[2.5px] transition-all ${
+                    loading ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+                  } ${
                     selectedAction === "HIGH_BET"
                       ? "bg-[#FFE4E6] dark:bg-[#FF3366] text-stone-950 dark:text-white border-stone-900 dark:border-[#FF3366] shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.015]"
                       : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-800 dark:text-white border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none hover:bg-rose-50 hover:border-stone-900 hover:-translate-y-0.5 hover:shadow-[0_4px_0_#1c1917] dark:hover:border-[#FF3366] dark:hover:shadow-[2px_2px_0px_#FF3366] active:translate-y-1.5 active:shadow-none"
@@ -1454,12 +1465,16 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
                 <button
                   type="button"
+                  disabled={loading}
                   onClick={() => {
+                    if (loading) return;
                     setSelectedAction("SAFE_BET");
                     playSound("wager");
                     triggerHaptic("light");
                   }}
-                  className={`p-3.5 rounded-2xl border-[2.5px] transition-all cursor-pointer ${
+                  className={`p-3.5 rounded-2xl border-[2.5px] transition-all ${
+                    loading ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+                  } ${
                     selectedAction === "SAFE_BET"
                       ? "bg-[#E0F2FE] dark:bg-[#38BDF8] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-[#38BDF8] shadow-[0_5px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00] scale-[1.015]"
                       : "bg-[#FFFDF8] dark:bg-[#0E0E16] text-stone-800 dark:text-white border-stone-900 dark:border-white/20 shadow-[0_2.5px_0_#1c1917] dark:shadow-none hover:bg-sky-50 hover:border-stone-900 hover:-translate-y-0.5 hover:shadow-[0_4px_0_#1c1917] dark:hover:border-[#38BDF8] dark:hover:shadow-[2px_2px_0px_#38BDF8] active:translate-y-1.5 active:shadow-none"
@@ -1501,7 +1516,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer border-[2.5px] border-stone-900 dark:border-[#CCFF00] ${
                   selectedOption && !loading
                     ? "bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] shadow-[0_4px_0_#1c1917] dark:shadow-[4px_4px_0px_#FFFFFF] active:translate-y-1 active:shadow-none"
-                    : "bg-[#E7E5E4] dark:bg-[#12121C] text-stone-400 dark:text-slate-600 shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-not-allowed"
+                    : "bg-[#E7E5E4] dark:bg-[#12121C] text-stone-600 dark:text-slate-300 font-bold shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-not-allowed"
                 }`}
               >
                 {loading ? (
@@ -1517,7 +1532,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
             </div>
 
             {/* 键盘盲打指引 */}
-            <div className="flex items-center justify-center gap-4 text-[11px] font-bold text-stone-500 dark:text-slate-400">
+            <div className="flex items-center justify-center gap-4 text-[11px] font-bold text-stone-700 dark:text-slate-300">
               {t.app.shortcutsGuide}
             </div>
           </div>
@@ -1680,12 +1695,12 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                       {t.profile?.visibilityLabel || "会话可见性偏好"}
                     </span>
                   </div>
-                  <span className="text-[11px] font-mono font-bold text-stone-500 dark:text-slate-400">
+                  <span className="text-[11px] font-mono font-bold text-stone-700 dark:text-slate-300">
                     {displayReport.visibility === "private"
-                      ? (t.profile?.visibilityL1Title || "私密保护 (L1)")
+                      ? (isEn ? "Private" : "隐私")
                       : displayReport.visibility === "public"
-                      ? (t.profile?.visibilityL3Title || "公开名片 (L3)")
-                      : (t.profile?.visibilityL2Title || "匿名代号 (L2)")}
+                      ? (isEn ? "Public" : "公开")
+                      : (isEn ? "Anonymous" : "匿名")}
                   </span>
                 </div>
 
@@ -1698,14 +1713,14 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     className={`p-3 rounded-xl border-2 transition-all flex flex-col items-start gap-1 text-left cursor-pointer ${
                       displayReport.visibility === "private"
                         ? "bg-[#FEF3C7] dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
-                        : "bg-stone-50 dark:bg-white/5 border-stone-900/15 dark:border-white/10 hover:border-stone-900 text-stone-600 dark:text-slate-300"
+                        : "bg-stone-50 dark:bg-white/5 border-stone-900/15 dark:border-white/10 hover:border-stone-900 text-stone-700 dark:text-slate-200"
                     }`}
                   >
                     <div className="flex items-center gap-1.5 font-black text-xs text-stone-900 dark:text-white">
                       <Lock className="w-3.5 h-3.5 text-stone-700 dark:text-slate-300" />
-                      <span>{isEn ? "Private (L1)" : "私密保护 (L1)"}</span>
+                      <span>{isEn ? "Private" : "隐私"}</span>
                     </div>
-                    <p className="text-[10px] text-stone-500 dark:text-slate-400 leading-tight">
+                    <p className="text-[10px] text-stone-700 dark:text-slate-300 font-semibold leading-tight">
                       {isEn ? "Owner only · Never on scatter" : "仅自己可见 · 绝不投影至大盘"}
                     </p>
                   </button>
@@ -1718,14 +1733,14 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     className={`p-3 rounded-xl border-2 transition-all flex flex-col items-start gap-1 text-left cursor-pointer ${
                       (displayReport.visibility || "anonymous") === "anonymous"
                         ? "bg-[#FEF3C7] dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
-                        : "bg-stone-50 dark:bg-white/5 border-stone-900/15 dark:border-white/10 hover:border-stone-900 text-stone-600 dark:text-slate-300"
+                        : "bg-stone-50 dark:bg-white/5 border-stone-900/15 dark:border-white/10 hover:border-stone-900 text-stone-700 dark:text-slate-200"
                     }`}
                   >
                     <div className="flex items-center gap-1.5 font-black text-xs text-stone-900 dark:text-white">
                       <EyeOff className="w-3.5 h-3.5 text-amber-600 dark:text-[#CCFF00]" />
-                      <span>{isEn ? "Anonymous (L2)" : "匿名代号 (L2)"}</span>
+                      <span>{isEn ? "Anonymous" : "匿名"}</span>
                     </div>
-                    <p className="text-[10px] text-stone-500 dark:text-slate-400 leading-tight">
+                    <p className="text-[10px] text-stone-700 dark:text-slate-300 font-semibold leading-tight">
                       {isEn ? "Masked codename · Default" : "推荐默认 · 匿名星象代号"}
                     </p>
                   </button>
@@ -1738,58 +1753,18 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                     className={`p-3 rounded-xl border-2 transition-all flex flex-col items-start gap-1 text-left cursor-pointer ${
                       displayReport.visibility === "public"
                         ? "bg-[#FEF3C7] dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
-                        : "bg-stone-50 dark:bg-white/5 border-stone-900/15 dark:border-white/10 hover:border-stone-900 text-stone-600 dark:text-slate-300"
+                        : "bg-stone-50 dark:bg-white/5 border-stone-900/15 dark:border-white/10 hover:border-stone-900 text-stone-700 dark:text-slate-200"
                     }`}
                   >
                     <div className="flex items-center gap-1.5 font-black text-xs text-stone-900 dark:text-white">
                       <Globe className="w-3.5 h-3.5 text-sky-600 dark:text-[#38BDF8]" />
-                      <span>{isEn ? "Public Card (L3)" : "公开名片 (L3)"}</span>
+                      <span>{isEn ? "Public" : "公开"}</span>
                     </div>
-                    <p className="text-[10px] text-stone-500 dark:text-slate-400 leading-tight">
+                    <p className="text-[10px] text-stone-700 dark:text-slate-300 font-semibold leading-tight">
                       {isEn ? "Shows avatar, name & profile" : "展示认证头像、昵称与主页"}
                     </p>
                   </button>
                 </div>
-              </div>
-
-              {/* 专属永久报告链接卡片 */}
-              <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-2.5 text-left">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs md:text-sm font-black text-stone-900 dark:text-white flex items-center gap-1.5 font-sans">
-                    <Link2 className="w-4 h-4 text-stone-900 dark:text-[#CCFF00]" /> {t.app.permanentLinkTitle}
-                  </span>
-                  <span className="text-[10px] text-stone-600 dark:text-[#08080C] font-mono font-bold bg-[#FEF3C7] dark:bg-[#CCFF00] px-2 py-0.5 rounded-full border border-stone-900 dark:border-black">
-                    ID: {displayReport.session_id}
-                  </span>
-                </div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={buildSessionReportUrl(displayReport.session_id)}
-                    className="flex-1 bg-[#FFFDF8] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-stone-900 dark:text-white truncate select-all focus:outline-none shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopyReportLink}
-                    className="px-4 py-2.5 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition-all border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] active:translate-y-0.5 active:shadow-none shrink-0"
-                  >
-                    {copiedPermalink ? (
-                      <>
-                        <Check className="w-4 h-4 text-emerald-950 dark:text-[#08080C]" />
-                        <span>已复制！</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        <span>{t.app.copyReportLinkBtn}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <p className="text-[11px] text-stone-500 dark:text-slate-400 leading-relaxed font-sans font-medium">
-                  {t.app.permanentLinkDesc}
-                </p>
               </div>
 
               {/* 双星对决应战成功提示横幅 */}
@@ -1891,7 +1866,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   <span>{isEn ? "Generate Poster" : "生成专属海报"}</span>
                 </button>
 
-                {/* 优先调起移动端系统原生 Web Share API */}
+                {/* 优先调起移动端系统原生 Web Share API / 剪贴板分享 */}
                 <button
                   type="button"
                   data-testid="report-direct-share-btn"
@@ -1912,8 +1887,17 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                   }}
                   className="w-full sm:w-auto min-h-[44px] px-6 py-3.5 rounded-2xl bg-white dark:bg-[#12121C] hover:bg-stone-50 dark:hover:bg-white/10 text-stone-900 dark:text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-1 active:shadow-none"
                 >
-                  <Share2 className="w-4 h-4 text-stone-950 dark:text-[#CCFF00]" />
-                  <span>{isEn ? "System Share" : "系统原生分享"}</span>
+                  {copiedPermalink ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-600 dark:text-[#CCFF00]" />
+                      <span>{isEn ? "Copied!" : "已复制"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-4 h-4 text-stone-950 dark:text-[#CCFF00]" />
+                      <span>{isEn ? "Share" : "分享"}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
