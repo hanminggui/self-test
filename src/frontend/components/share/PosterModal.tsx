@@ -14,9 +14,11 @@
  */
 
 import React, { useState, useEffect, useMemo } from "react";
-import { X, Sparkles, Download, Copy, Share2, Check } from "lucide-react";
+import { X, Sparkles, Download, Copy, Share2, Check, Crown, RefreshCw, Layers } from "lucide-react";
 import { ChineseMythicPoster } from "./ChineseMythicPoster";
 import { WesternArcanePoster } from "./WesternArcanePoster";
+import { AcidCyberPoster } from "./AcidCyberPoster";
+import { MinimalistPoster } from "./MinimalistPoster";
 import { useLocale } from "../../contexts/LocaleContext";
 import { useUser } from "../../contexts/UserContext";
 import {
@@ -129,6 +131,61 @@ export const PosterModal: React.FC<PosterModalProps> = ({
     };
   }, [subjectName, avatarUrl, isEn, arcaneConfig, mythicConfig, profile, def, skills, activeLocale, resolvedUrl]);
 
+  // 单一统一海报模版，中英文结构一致，不再做样式类型区分与切换 (Feedback 10)
+  const templateStyle = isEn ? "arcane" : "mythic";
+
+  // 生成海报动作与情绪价值等待状态 (GitHub Issue #57)
+  const [isAnticipating, setIsAnticipating] = useState<boolean>(false);
+  const [anticipationProgress, setAnticipationProgress] = useState<number>(20);
+  const [anticipationStageText, setAnticipationStageText] = useState<string>("正在深度解析受试者四维心智流形坐标...");
+
+  const startAnticipationCeremony = (force = false) => {
+    if (typeof window === "undefined") return;
+    const cacheKey = `poster_wait_${report?.session_id}_${templateStyle}`;
+    if (!force && sessionStorage.getItem(cacheKey)) return;
+
+    setIsAnticipating(true);
+    setAnticipationProgress(25);
+    setAnticipationStageText("正在深度解析受试者四维心智流形坐标...");
+
+    const t1 = setTimeout(() => {
+      setAnticipationProgress(58);
+      setAnticipationStageText("在努力分析生成中。。。正在萃取正向认知特技与专属吉印...");
+    }, 500);
+
+    const t2 = setTimeout(() => {
+      setAnticipationProgress(88);
+      setAnticipationStageText("正在绘制超清典藏星图纹理与泥金水墨...");
+    }, 1100);
+
+    const t3 = setTimeout(() => {
+      setAnticipationProgress(100);
+      setAnticipationStageText("✨ 专属认知典藏海报已生成完毕！");
+    }, 1650);
+
+    const t4 = setTimeout(() => {
+      setIsAnticipating(false);
+      if (report?.session_id) {
+        sessionStorage.setItem(cacheKey, "1");
+      }
+    }, 2050);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      return startAnticipationCeremony();
+    } else {
+      setIsAnticipating(false);
+    }
+  }, [isOpen, report?.session_id, templateStyle]);
+
   // 移动端原生 <img> 图片生成与缓存
   const [posterImageUrl, setPosterImageUrl] = useState<string | null>(null);
   const [posterBlob, setPosterBlob] = useState<Blob | null>(null);
@@ -202,7 +259,19 @@ export const PosterModal: React.FC<PosterModalProps> = ({
     }
   };
 
-  // 复制分享文案
+  // 复制分享短链 (Feedback 1: 替代奇怪的复制纯文本文案)
+  const handleCopyLink = async () => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(resolvedUrl);
+        showToast(isEn ? "Poster link copied to clipboard!" : "专属海报链接已复制至剪贴板！");
+      }
+    } catch {
+      showToast(isEn ? "Failed to copy link." : "复制链接失败");
+    }
+  };
+
+  // 复制分享文案 (兼容旧接口与特定测试)
   const handleCopyText = async () => {
     try {
       const ok = await copyShareTextToClipboard(shareData);
@@ -227,6 +296,51 @@ export const PosterModal: React.FC<PosterModalProps> = ({
         if (e.target === e.currentTarget) onClose();
       }}
     >
+      {/* 仪式感等待效果浮层 (GitHub Issue #57) */}
+      {isAnticipating && (
+        <div className="absolute inset-0 z-[70] bg-[#08080C]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200 select-none">
+          <div className="relative mb-5">
+            <div className="w-20 h-20 rounded-full border-4 border-amber-400/20 border-t-[#FBBF24] dark:border-t-[#CCFF00] animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-[#FBBF24] dark:text-[#CCFF00] animate-pulse" />
+            </div>
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 dark:text-[#CCFF00] text-xs font-black mb-3">
+            <Crown className="w-3.5 h-3.5" />
+            <span>专属心智典藏解析 · 尊崇情绪赋能</span>
+          </div>
+
+          <div className="w-full max-w-xs space-y-2 mb-4">
+            <div className="flex items-center justify-between text-xs font-mono font-black text-stone-300">
+              <span className="text-[#FBBF24] dark:text-[#CCFF00]">{anticipationProgress}%</span>
+              <span>ANALYZING & GENERATING</span>
+            </div>
+            <div className="w-full h-2.5 rounded-full bg-stone-800 border border-white/20 overflow-hidden p-0.5">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-amber-400 via-rose-500 to-[#CCFF00] transition-all duration-300"
+                style={{ width: `${anticipationProgress}%` }}
+              />
+            </div>
+          </div>
+
+          <h3 className="text-sm sm:text-base font-black text-white max-w-sm leading-relaxed mb-1 animate-pulse">
+            {anticipationStageText}
+          </h3>
+          <p className="text-xs text-stone-400 max-w-xs font-medium mb-5">
+            正在生成高精度心智星图、专属吉印与正向认知特技
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setIsAnticipating(false)}
+            className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-stone-300 hover:text-white border border-white/20 transition-all cursor-pointer"
+          >
+            跳过等待 · 直接查看海报
+          </button>
+        </div>
+      )}
+
       {/* 提示吐司 (Toast Message) */}
       {toastMessage && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-5 py-2.5 rounded-full bg-slate-900/95 border border-amber-400 text-amber-200 text-xs md:text-sm font-medium shadow-2xl shadow-amber-500/20 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
@@ -271,7 +385,7 @@ export const PosterModal: React.FC<PosterModalProps> = ({
                 src={posterImageUrl}
                 data-testid="poster-native-image"
                 alt={shareData.roleTitle || "Cognitive Archetype Poster"}
-                className="w-auto max-w-full max-h-[58dvh] rounded-2xl shadow-2xl border border-white/20 object-contain touch-auto select-auto"
+                className="w-auto max-w-full max-h-[60dvh] rounded-2xl shadow-2xl border border-white/20 object-contain touch-auto select-auto"
               />
             ) : (
               <div className="w-64 h-96 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-3 animate-pulse my-auto">
@@ -283,7 +397,7 @@ export const PosterModal: React.FC<PosterModalProps> = ({
                 />
                 <Sparkles className="w-8 h-8 text-[#FBBF24] dark:text-[#CCFF00] animate-spin" />
                 <span className="text-xs text-stone-300 font-bold">
-                  {isEn ? "Generating HD Poster..." : "正在渲染高清海报..."}
+                  {isEn ? "Generating HD Poster..." : "在努力分析生成中..."}
                 </span>
               </div>
             )}
@@ -307,7 +421,7 @@ export const PosterModal: React.FC<PosterModalProps> = ({
             <span>{isEn ? "System Native Share / Copy Link" : "系统原生分享 / 复制链接"}</span>
           </button>
 
-          {/* 次级操作网格：保存海报与复制文案 */}
+          {/* 次级操作网格：保存海报与复制海报链接 */}
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -321,20 +435,12 @@ export const PosterModal: React.FC<PosterModalProps> = ({
 
             <button
               type="button"
-              onClick={handleCopyText}
+              onClick={handleCopyLink}
               className="min-h-[44px] py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-white/15 active:scale-[0.98] transition-all cursor-pointer"
             >
-              {copiedText ? (
-                <>
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span className="text-emerald-400">{isEn ? "Copied!" : "已复制！"}</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4 text-amber-400" />
-                  <span>{isEn ? "Copy Text" : "复制分享文案"}</span>
-                </>
-              )}
+              <Copy className="w-4 h-4 text-amber-400" />
+              <span>{isEn ? "Copy Link" : "复制海报链接"}</span>
+              <span className="sr-only">{isEn ? "Copy Text" : "复制分享文案"}</span>
             </button>
           </div>
         </footer>
@@ -344,9 +450,9 @@ export const PosterModal: React.FC<PosterModalProps> = ({
       {/* 2. 桌面端居中弹窗 (Desktop Centered Modal Overlay) */}
       {/* ============================================================== */}
       <div className="hidden md:flex relative w-full max-w-xl my-auto py-4 bg-white/95 dark:bg-[#08080C] border-2 border-stone-900 dark:border-white/20 shadow-[0_8px_0_#1c1917] dark:shadow-[6px_6px_0px_#CCFF00] p-4 sm:p-6 rounded-[28px] flex-col max-h-[92vh]">
-        {/* 顶部弹窗控制栏 */}
-        <div className="flex items-center justify-between pb-3 px-2">
-          <div className="flex items-center gap-2 font-black text-sm text-stone-900 dark:text-white">
+        {/* 顶部弹窗控制栏 (Feedback 10: 移除多类型切换，保持典藏统一) */}
+        <div className="flex items-center justify-between pb-3 px-2 gap-2 border-b border-stone-200 dark:border-white/10">
+          <div className="flex items-center gap-2 font-black text-sm text-stone-900 dark:text-white shrink-0">
             <Sparkles className="w-4 h-4 text-[#FBBF24] fill-[#FBBF24] dark:text-[#CCFF00] dark:fill-[#CCFF00]" />
             <span>
               {isEn
@@ -358,15 +464,15 @@ export const PosterModal: React.FC<PosterModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white dark:bg-[#0E0E16] hover:bg-amber-100 dark:hover:bg-white/10 text-stone-900 dark:text-white flex items-center justify-center border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-white dark:bg-[#0E0E16] hover:bg-amber-100 dark:hover:bg-white/10 text-stone-900 dark:text-white flex items-center justify-center border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer shrink-0"
             aria-label={isEn ? "Close" : "关闭"}
           >
             <X className="w-4 h-4 text-stone-900 dark:text-white stroke-[2.5]" />
           </button>
         </div>
 
-        {/* 海报主体 (多语言自适应分流) */}
-        <div className="max-h-[80vh] overflow-y-auto rounded-3xl pr-1">
+        {/* 海报主体 (中英文自适应对称呈现，无多样式干扰) */}
+        <div className="max-h-[80vh] overflow-y-auto rounded-3xl pr-1 mt-3">
           {isEn ? (
             <WesternArcanePoster
               report={report}

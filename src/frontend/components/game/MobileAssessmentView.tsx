@@ -324,9 +324,18 @@ export const MobileAssessmentView: React.FC<MobileAssessmentViewProps> = ({
                 type="button"
                 role="radio"
                 aria-checked={isSelected}
+                aria-disabled={loading}
+                disabled={loading}
                 data-testid={`mobile-option-${key}`}
-                onClick={() => onSelectOption(key)}
-                className={`min-h-[50px] p-2 rounded-xl border-2 text-left transition-all flex items-center gap-2 cursor-pointer relative select-none touch-manipulation active:scale-[0.98] ${
+                onClick={() => {
+                  if (loading) return;
+                  onSelectOption(key);
+                }}
+                className={`min-h-[50px] p-2 rounded-xl border-2 text-left transition-all flex items-center gap-2 relative select-none touch-manipulation ${
+                  loading
+                    ? "opacity-60 cursor-not-allowed pointer-events-none"
+                    : "cursor-pointer active:scale-[0.98]"
+                } ${
                   isSelected
                     ? "bg-[#D1FAE5] dark:bg-[#0E0E16] border-stone-900 dark:border-[#CCFF00] ring-2 ring-emerald-600 dark:ring-0 shadow-[0_3px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
                     : "bg-white dark:bg-[#12121C] border-stone-900/30 dark:border-white/20 text-stone-950 dark:text-white shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
@@ -358,10 +367,18 @@ export const MobileAssessmentView: React.FC<MobileAssessmentViewProps> = ({
           <button
             type="button"
             role="radio"
+            disabled={loading}
             aria-checked={selectedAction === "HIGH_BET"}
             data-testid="mobile-wager-high"
-            onClick={() => onSelectAction("HIGH_BET")}
-            className={`min-h-[44px] px-2.5 py-1.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between gap-1 select-none touch-manipulation active:scale-[0.98] ${
+            onClick={() => {
+              if (loading) return;
+              onSelectAction("HIGH_BET");
+            }}
+            className={`min-h-[44px] px-2.5 py-1.5 rounded-xl border-2 transition-all flex items-center justify-between gap-1 select-none touch-manipulation ${
+              loading
+                ? "opacity-60 cursor-not-allowed pointer-events-none"
+                : "cursor-pointer active:scale-[0.98]"
+            } ${
               selectedAction === "HIGH_BET"
                 ? "bg-[#FFE4E6] dark:bg-[#FF3366] text-stone-950 dark:text-white border-stone-900 dark:border-[#FF3366] shadow-[0_2.5px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
                 : "bg-white dark:bg-[#12121C] text-stone-800 dark:text-white border-stone-900/30 dark:border-white/20 shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
@@ -388,7 +405,7 @@ export const MobileAssessmentView: React.FC<MobileAssessmentViewProps> = ({
               className={`text-[10px] px-1 py-0.2 rounded font-mono font-bold shrink-0 ${
                 selectedAction === "HIGH_BET"
                   ? "bg-white/90 dark:bg-black/40 text-stone-950 dark:text-white"
-                  : "bg-stone-100 dark:bg-black/60 text-stone-600 dark:text-slate-400"
+                  : "bg-stone-100 dark:bg-black/60 text-stone-800 dark:text-slate-300"
               }`}
             >
               1
@@ -398,10 +415,18 @@ export const MobileAssessmentView: React.FC<MobileAssessmentViewProps> = ({
           <button
             type="button"
             role="radio"
+            disabled={loading}
             aria-checked={selectedAction === "SAFE_BET"}
             data-testid="mobile-wager-safe"
-            onClick={() => onSelectAction("SAFE_BET")}
-            className={`min-h-[44px] px-2.5 py-1.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between gap-1 select-none touch-manipulation active:scale-[0.98] ${
+            onClick={() => {
+              if (loading) return;
+              onSelectAction("SAFE_BET");
+            }}
+            className={`min-h-[44px] px-2.5 py-1.5 rounded-xl border-2 transition-all flex items-center justify-between gap-1 select-none touch-manipulation ${
+              loading
+                ? "opacity-60 cursor-not-allowed pointer-events-none"
+                : "cursor-pointer active:scale-[0.98]"
+            } ${
               selectedAction === "SAFE_BET"
                 ? "bg-[#E0F2FE] dark:bg-[#38BDF8] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-[#38BDF8] shadow-[0_2.5px_0_#1c1917] dark:shadow-[2px_2px_0px_#CCFF00]"
                 : "bg-white dark:bg-[#12121C] text-stone-800 dark:text-white border-stone-900/30 dark:border-white/20 shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
@@ -521,10 +546,13 @@ export const MobileAssessmentView: React.FC<MobileAssessmentViewProps> = ({
                   type="button"
                   data-testid="buy-hint-tier1-btn"
                   onClick={async () => {
+                    if (loading) return;
                     await onBuyHint();
                   }}
                   disabled={loading}
-                  className="w-full min-h-[48px] py-2.5 px-3 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs border border-stone-900 dark:border-black flex items-center justify-center gap-1.5 shadow-[0_2px_0_#1c1917] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+                  className={`w-full min-h-[48px] py-2.5 px-3 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs border border-stone-900 dark:border-black flex items-center justify-center gap-1.5 shadow-[0_2px_0_#1c1917] active:translate-y-0.5 active:shadow-none transition-all ${
+                    loading ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+                  }`}
                 >
                   <HelpCircle className="w-4 h-4" />
                   <span>{t.app.buyClue1Btn}</span>
@@ -552,16 +580,19 @@ export const MobileAssessmentView: React.FC<MobileAssessmentViewProps> = ({
                   type="button"
                   data-testid="buy-hint-tier2-btn"
                   onClick={async () => {
+                    if (loading) return;
                     await onBuyHint();
                   }}
                   disabled={loading}
-                  className="w-full min-h-[48px] py-2.5 px-3 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs border border-stone-900 dark:border-black flex items-center justify-center gap-1.5 shadow-[0_2px_0_#1c1917] active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
+                  className={`w-full min-h-[48px] py-2.5 px-3 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 text-stone-950 dark:text-[#08080C] font-black text-xs border border-stone-900 dark:border-black flex items-center justify-center gap-1.5 shadow-[0_2px_0_#1c1917] active:translate-y-0.5 active:shadow-none transition-all ${
+                    loading ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer"
+                  }`}
                 >
                   <HelpCircle className="w-4 h-4" />
                   <span>{t.app.buyClue2Btn}</span>
                 </button>
               ) : (
-                <div className="text-[11px] text-stone-500 dark:text-slate-400 font-medium flex items-center justify-center gap-1 py-2.5 bg-stone-100 dark:bg-white/5 rounded-xl border border-dashed border-stone-300 dark:border-white/15">
+                <div className="text-[11px] text-stone-700 dark:text-slate-200 font-bold flex items-center justify-center gap-1 py-2.5 bg-stone-100 dark:bg-white/5 rounded-xl border border-dashed border-stone-300 dark:border-white/15">
                   <Lock className="w-3.5 h-3.5" />
                   <span>需先解锁第 1 级宏观线索</span>
                 </div>

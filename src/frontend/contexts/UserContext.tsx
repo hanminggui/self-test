@@ -14,6 +14,7 @@ export interface UserContextType {
   enabledProviders: EnabledProviders;
   hasAnyProvider: boolean;
   login: (provider: "github" | "linuxdo" | "google") => void;
+  devLogin: () => Promise<void>;
   logout: () => Promise<void>;
   openAuthModal: () => void;
   closeAuthModal: () => void;
@@ -120,6 +121,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = `/api/auth/${provider}`;
   }, []);
 
+  const devLogin = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/dev-login", { method: "POST" });
+      if (res.ok) {
+        await refreshUser();
+      }
+    } catch {}
+  }, [refreshUser]);
+
   const logout = useCallback(async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -142,6 +152,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         enabledProviders,
         hasAnyProvider,
         login,
+        devLogin,
         logout,
         openAuthModal,
         closeAuthModal,
