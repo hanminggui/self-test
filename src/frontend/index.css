@@ -3,6 +3,7 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
+  color-scheme: light;
   interpolate-size: allow-keywords;
   --bg-cream: #fffdf8;
   --bg-warm: #fffbeb;
@@ -14,11 +15,24 @@
   --color-peach: #fb7185;
   --color-soda: #38bdf8;
 
+  /* Custom Scrollbar Tokens & Standard Properties */
+  --scrollbar-thumb: #fbbf24;
+  --scrollbar-track: #fef3c7;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+
   /* iPhone / Mobile Safe Area Inset Variables */
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
+}
+
+.dark,
+:root.dark {
+  color-scheme: dark;
+  --scrollbar-thumb: #262633;
+  --scrollbar-track: #08080C;
 }
 
 html, body, #root {
@@ -300,34 +314,36 @@ html, body, #root {
   animation: jelly-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Custom Scrollbar - Adaptive */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #fef3c7;
-  border-radius: 4px;
-}
-.dark ::-webkit-scrollbar-track {
-  background: #08080C;
-}
+/* Custom Scrollbar - Legacy Fallback for older WebKit/Blink browsers */
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #fef3c7;
+    border-radius: 4px;
+  }
+  .dark ::-webkit-scrollbar-track {
+    background: #08080C;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: #fbbf24;
-  border: 2px solid #1c1917;
-  border-radius: 6px;
-}
-.dark ::-webkit-scrollbar-thumb {
-  background: #262633;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
+  ::-webkit-scrollbar-thumb {
+    background: #fbbf24;
+    border: 2px solid #1c1917;
+    border-radius: 6px;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #262633;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #f59e0b;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #CCFF00;
+  ::-webkit-scrollbar-thumb:hover {
+    background: #f59e0b;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: #CCFF00;
+  }
 }
 
 /* Mobile Safe-Area & Viewport Utilities */

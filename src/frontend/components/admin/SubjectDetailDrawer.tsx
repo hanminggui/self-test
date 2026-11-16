@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { X, Brain, Sparkles, Trash2, Cpu, Clock, Coins, Layers, Activity, ChevronDown, ChevronUp, Share2 } from "lucide-react";
 import { useLocale } from "../../contexts/LocaleContext";
 import { PosterModal } from "../share/PosterModal";
@@ -44,6 +44,16 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
   const activeMetrics = report?.metrics || report?.metacognitive_metrics || {};
   const agentMetadata = report?.agent_metadata || (report?.subject_type !== "HUMAN" ? report?.metadata : undefined);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   const activeProfile = useMemo(() => {
     if (!archetypeDef) return null;
     return {
@@ -63,11 +73,16 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
   if (!report || !activeProfile) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="subject-detail-drawer-title"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    >
       <div className="glass-panel rounded-3xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-6 md:p-8 border border-white/10 space-y-6 animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <h3 id="subject-detail-drawer-title" className="text-base font-bold text-white flex items-center gap-2">
               {isEn ? "Two-Tier Metacognitive Diagnostic Report" : "受测者双层诊断报告"}
               <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono">
                 {activeProfile.quadrant_code}
