@@ -28,7 +28,11 @@ export default function AdminLoginModal({
 
         <form onSubmit={onSubmit} className="space-y-4">
           <input
+            id="admin-password"
+            name="password"
             type="password"
+            autoComplete="current-password"
+            required
             placeholder="请输入管理员密码..."
             value={inputPassword}
             onChange={(e) => setInputPassword(e.target.value)}

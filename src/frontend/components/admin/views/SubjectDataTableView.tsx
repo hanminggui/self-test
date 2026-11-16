@@ -235,21 +235,26 @@ export default function SubjectDataTableView({
           )}
 
           {/* TOPSIS 主数据表格 */}
-          <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label={isEn ? "TOPSIS Leaderboard Table" : "TOPSIS 综合天梯榜表格"}
+            className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+          >
             <table className="w-full text-left text-xs border-collapse">
               <thead className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
                 <tr className="text-slate-400 font-medium">
-                  <th className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "天梯名次"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Archetype" : "画像流派"}</th>
-                  <th className="py-2.5 px-3 font-mono text-amber-400">{isEn ? "TOPSIS C_i" : "综合贴近度"}</th>
-                  <th className="py-2.5 px-3 font-mono text-cyan-300">{isEn ? "D* (Reasoning)" : "推理 D*"}</th>
-                  <th className="py-2.5 px-3 font-mono text-purple-300">M_ratio</th>
-                  <th className="py-2.5 px-3 font-mono text-emerald-400">{isEn ? "1-Brier" : "校准精度"}</th>
-                  <th className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "Formal Score" : "正式战绩"}</th>
-                  <th className="py-2.5 px-3 font-mono text-indigo-300">{isEn ? "CCS" : "认知综合分"}</th>
-                  <th className="py-2.5 px-3 font-mono text-rose-300">{isEn ? "EIR" : "能效比"}</th>
-                  <th className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</th>
+                  <th scope="col" className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "天梯名次"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Archetype" : "画像流派"}</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-amber-400">{isEn ? "TOPSIS C_i" : "综合贴近度"}</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-cyan-300">{isEn ? "D* (Reasoning)" : "推理 D*"}</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-purple-300">M_ratio</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-emerald-400">{isEn ? "1-Brier" : "校准精度"}</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "Formal Score" : "正式战绩"}</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-indigo-300">{isEn ? "CCS" : "认知综合分"}</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-rose-300">{isEn ? "EIR" : "能效比"}</th>
+                  <th scope="col" className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -379,25 +384,30 @@ export default function SubjectDataTableView({
           </div>
 
           {/* 子榜数据表格 */}
-          <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label={isEn ? "Sub-board Dimension Table" : "正交子榜维度表格"}
+            className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+          >
             <table className="w-full text-left text-xs border-collapse">
               <thead className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
                 <tr className="text-slate-400 font-medium">
-                  <th className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "排名"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Archetype" : "画像称号"}</th>
-                  <th className="py-2.5 px-3 font-mono font-bold text-amber-300">
+                  <th scope="col" className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "排名"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Archetype" : "画像称号"}</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono font-bold text-amber-300">
                     {subDimension === "reasoning" && (isEn ? "D* Capacity" : "突破度 D*")}
                     {subDimension === "metacognition" && "M_ratio"}
                     {subDimension === "calibration" && (isEn ? "Calibration Accuracy (1-Brier)" : "校准精度 (1-Brier)")}
                     {subDimension === "game_utility" && (isEn ? "Formal Score" : "纯净正式战绩")}
                     {subDimension === "efficiency" && (isEn ? "EIR (Payoff/Cost)" : "能效比 EIR")}
                   </th>
-                  <th className="py-2.5 px-3 font-mono text-cyan-300">D*</th>
-                  <th className="py-2.5 px-3 font-mono text-purple-300">M_ratio</th>
-                  <th className="py-2.5 px-3 font-mono text-emerald-400">1-Brier</th>
-                  <th className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "CCS" : "综合分 CCS"}</th>
-                  <th className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-cyan-300">D*</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-purple-300">M_ratio</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-emerald-400">1-Brier</th>
+                  <th scope="col" className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "CCS" : "综合分 CCS"}</th>
+                  <th scope="col" className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -461,20 +471,25 @@ export default function SubjectDataTableView({
       {/* 视图三：数据明细清单 (原有分页表格增强版) */}
       {tabMode === "TABLE" && (
         <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label={isEn ? "Detailed Records Table" : "数据明细清单表格"}
+            className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+          >
             <table className="w-full text-left text-xs border-collapse">
               <thead className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
                 <tr className="text-slate-400 font-medium">
-                  <th className="py-2.5 px-3">{isEn ? "Subject" : "受测者"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Archetype Order" : "画像称号"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Discrim D*" : "突破度 D*"}</th>
-                  <th className="py-2.5 px-3">M_ratio</th>
-                  <th className="py-2.5 px-3">{isEn ? "Bias" : "偏向 Bias"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Foraging IVE" : "杠杆 IVE"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Formal Score" : "正式战绩"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "CCS" : "综合分 CCS"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Clinical Truth" : "诊断归因"}</th>
-                  <th className="py-2.5 px-3 text-right">{isEn ? "Actions" : "操作"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Subject" : "受测者"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Archetype Order" : "画像称号"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Discrim D*" : "突破度 D*"}</th>
+                  <th scope="col" className="py-2.5 px-3">M_ratio</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Bias" : "偏向 Bias"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Foraging IVE" : "杠杆 IVE"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Formal Score" : "正式战绩"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "CCS" : "综合分 CCS"}</th>
+                  <th scope="col" className="py-2.5 px-3">{isEn ? "Clinical Truth" : "诊断归因"}</th>
+                  <th scope="col" className="py-2.5 px-3 text-right">{isEn ? "Actions" : "操作"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
