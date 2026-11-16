@@ -1,3 +1,5 @@
+@import '@astryxdesign/core/reset.css';
+@import '@astryxdesign/core/astryx.css';
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
