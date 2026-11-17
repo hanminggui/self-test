@@ -16,6 +16,8 @@ import { GameEffectsProvider } from "./contexts/GameEffectsContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { resolveRouteView } from "./utils/sessionRoute";
 import { AuthModal } from "./components/auth/AuthModal";
+import { Theme as AstryxTheme } from "@astryxdesign/core/theme";
+import { themes, defaultThemeSlug } from "../astryx-themes";
 import "./index.css";
 
 const rootElement = document.getElementById("root");
@@ -138,15 +140,17 @@ const AppRouter: React.FC = () => {
 
 const Root: React.FC = () => {
   return (
-    <ThemeProvider>
-      <LocaleProvider>
-        <UserProvider>
-          <GameEffectsProvider>
-            <AppRouter />
-          </GameEffectsProvider>
-        </UserProvider>
-      </LocaleProvider>
-    </ThemeProvider>
+    <AstryxTheme theme={themes[defaultThemeSlug]}>
+      <ThemeProvider>
+        <LocaleProvider>
+          <UserProvider>
+            <GameEffectsProvider>
+              <AppRouter />
+            </GameEffectsProvider>
+          </UserProvider>
+        </LocaleProvider>
+      </ThemeProvider>
+    </AstryxTheme>
   );
 };
 

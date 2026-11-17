@@ -1,5 +1,9 @@
 import React from "react";
 import { Lock } from "lucide-react";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { Layout, LayoutContent, LayoutFooter, VStack } from "@astryxdesign/core/Layout";
+import { Button } from "@astryxdesign/core/Button";
+import { TextInput } from "@astryxdesign/core/TextInput";
 
 interface AdminLoginModalProps {
   inputPassword: string;
@@ -16,39 +20,59 @@ export default function AdminLoginModal({
 }: AdminLoginModalProps) {
   return (
     <div className="h-screen w-screen overflow-hidden flex items-center justify-center p-4 bg-[#090a0f]">
-      <div className="glass-panel rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl text-center space-y-6">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
-          <Lock className="w-6 h-6" />
-        </div>
-
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">管理控制台</h2>
-          <p className="text-xs text-slate-400 mt-1">请输入管理员密码调阅群体数据</p>
-        </div>
-
-        <form onSubmit={onSubmit} className="space-y-4">
-          <input
-            id="admin-password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            placeholder="请输入管理员密码..."
-            value={inputPassword}
-            onChange={(e) => setInputPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm transition-colors"
+      <Dialog
+        isOpen={true}
+        onOpenChange={() => {}}
+        purpose="required"
+        width={420}
+        role="dialog"
+        aria-label="管理控制台"
+      >
+        <form onSubmit={onSubmit} className="w-full">
+          <Layout
+            header={
+              <DialogHeader
+                title="管理控制台"
+                subtitle="请输入管理员密码调阅群体数据"
+                startContent={
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                }
+              />
+            }
+            content={
+              <LayoutContent>
+                <VStack gap={4}>
+                  <TextInput
+                    type="password"
+                    label="管理员密码"
+                    placeholder="请输入管理员密码..."
+                    value={inputPassword}
+                    onChange={(val) => setInputPassword(val)}
+                    status={authError ? { type: "error", message: authError } : undefined}
+                    hasAutoFocus
+                    width="100%"
+                    autoComplete="current-password"
+                    isRequired={true}
+                    htmlName="password"
+                  />
+                </VStack>
+              </LayoutContent>
+            }
+            footer={
+              <LayoutFooter>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  label="解锁进入控制台 →"
+                  width="100%"
+                />
+              </LayoutFooter>
+            }
           />
-
-          {authError && <div className="text-xs text-rose-400">{authError}</div>}
-
-          <button
-            type="submit"
-            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors cursor-pointer"
-          >
-            解锁进入控制台 →
-          </button>
         </form>
-      </div>
+      </Dialog>
     </div>
   );
 }
