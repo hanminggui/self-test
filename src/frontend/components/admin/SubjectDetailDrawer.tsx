@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Brain, Sparkles, Trash2, Cpu, Clock, Coins, Layers, Activity, ChevronDown, ChevronUp } from "lucide-react";
 import { Drawer, DrawerHeader } from "@astryxdesign/core/Drawer";
 import { Layout, LayoutContent, LayoutFooter } from "@astryxdesign/core/Layout";
@@ -54,6 +54,16 @@ export default function SubjectDetailDrawer({ report, onClose, onDelete }: Subje
 
   const activeMetrics = activeReport?.metrics || activeReport?.metacognitive_metrics || {};
   const agentMetadata = activeReport?.agent_metadata || (activeReport?.subject_type !== "HUMAN" ? activeReport?.metadata : undefined);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const activeProfile = useMemo(() => {
     if (!archetypeDef) return null;

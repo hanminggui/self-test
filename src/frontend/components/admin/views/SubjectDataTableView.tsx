@@ -252,21 +252,26 @@ export default function SubjectDataTableView({
           )}
 
           {/* TOPSIS 主数据表格 */}
-          <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label={isEn ? "TOPSIS Leaderboard Table" : "TOPSIS 综合天梯榜表格"}
+            className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+          >
             <Table density="compact" dividers="rows" hasHover className="w-full text-left text-xs">
               <TableHeader className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
                 <TableRow isHeaderRow className="text-slate-400 font-medium">
-                  <TableHeaderCell className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "天梯名次"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Archetype" : "画像流派"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-amber-400">{isEn ? "TOPSIS C_i" : "综合贴近度"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-cyan-300">{isEn ? "D* (Reasoning)" : "推理 D*"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-purple-300">M_ratio</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-emerald-400">{isEn ? "1-Brier" : "校准精度"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "Formal Score" : "正式战绩"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-indigo-300">{isEn ? "CCS" : "认知综合分"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-rose-300">{isEn ? "EIR" : "能效比"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "天梯名次"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Archetype" : "画像流派"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-amber-400">{isEn ? "TOPSIS C_i" : "综合贴近度"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-cyan-300">{isEn ? "D* (Reasoning)" : "推理 D*"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-purple-300">M_ratio</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-emerald-400">{isEn ? "1-Brier" : "校准精度"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "Formal Score" : "正式战绩"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-indigo-300">{isEn ? "CCS" : "认知综合分"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-rose-300">{isEn ? "EIR" : "能效比"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-white/5">
@@ -399,25 +404,31 @@ export default function SubjectDataTableView({
           </div>
 
           {/* 子榜数据表格 */}
-          <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40">
+          {/* 子榜数据表格 */}
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label={isEn ? "Sub-board Dimension Table" : "正交子榜维度表格"}
+            className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+          >
             <Table density="compact" dividers="rows" hasHover className="w-full text-left text-xs">
               <TableHeader className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
                 <TableRow isHeaderRow className="text-slate-400 font-medium">
-                  <TableHeaderCell className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "排名"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Archetype" : "画像称号"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono font-bold text-amber-300">
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "排名"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Archetype" : "画像称号"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono font-bold text-amber-300">
                     {subDimension === "reasoning" && (isEn ? "D* Capacity" : "突破度 D*")}
                     {subDimension === "metacognition" && "M_ratio"}
                     {subDimension === "calibration" && (isEn ? "Calibration Accuracy (1-Brier)" : "校准精度 (1-Brier)")}
                     {subDimension === "game_utility" && (isEn ? "Formal Score" : "纯净正式战绩")}
                     {subDimension === "efficiency" && (isEn ? "EIR (Payoff/Cost)" : "能效比 EIR")}
                   </TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-cyan-300">D*</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-purple-300">M_ratio</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-emerald-400">1-Brier</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "CCS" : "综合分 CCS"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-cyan-300">D*</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-purple-300">M_ratio</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-emerald-400">1-Brier</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "CCS" : "综合分 CCS"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-white/5">
@@ -484,20 +495,25 @@ export default function SubjectDataTableView({
       {/* 视图三：数据明细清单 (原有分页表格增强版) */}
       {tabMode === "TABLE" && (
         <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label={isEn ? "Detailed Records Table" : "数据明细清单表格"}
+            className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+          >
             <Table density="compact" dividers="rows" hasHover className="w-full text-left text-xs">
               <TableHeader className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
                 <TableRow isHeaderRow className="text-slate-400 font-medium">
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Subject" : "受测者"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Archetype Order" : "画像称号"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Discrim D*" : "突破度 D*"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">M_ratio</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Bias" : "偏向 Bias"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Foraging IVE" : "杠杆 IVE"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Formal Score" : "正式战绩"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "CCS" : "综合分 CCS"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3">{isEn ? "Clinical Truth" : "诊断归因"}</TableHeaderCell>
-                  <TableHeaderCell className="py-2.5 px-3 text-right">{isEn ? "Actions" : "操作"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Subject" : "受测者"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Archetype Order" : "画像称号"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Discrim D*" : "突破度 D*"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">M_ratio</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Bias" : "偏向 Bias"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Foraging IVE" : "杠杆 IVE"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Formal Score" : "正式战绩"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "CCS" : "综合分 CCS"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Clinical Truth" : "诊断归因"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 text-right">{isEn ? "Actions" : "操作"}</TableHeaderCell>
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y divide-white/5">

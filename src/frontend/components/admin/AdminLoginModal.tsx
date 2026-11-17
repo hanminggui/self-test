@@ -53,6 +53,9 @@ export default function AdminLoginModal({
                     status={authError ? { type: "error", message: authError } : undefined}
                     hasAutoFocus
                     width="100%"
+                    autoComplete="current-password"
+                    isRequired={true}
+                    htmlName="password"
                   />
                 </VStack>
               </LayoutContent>
