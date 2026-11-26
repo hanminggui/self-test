@@ -81,7 +81,7 @@ export const GuestTrajectoryShowcase: React.FC<GuestTrajectoryShowcaseProps> = (
   return (
     <section
       id="manifold"
-      className="py-20 lg:py-28 border-t-2 border-stone-900/10 dark:border-white/15 bg-[#FFFDF8] dark:bg-[#08080C]"
+      className="relative z-10 py-20 lg:py-28 border-t-2 border-stone-900/10 dark:border-white/15 bg-transparent"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-12">
         {/* 顶部标题区 */}

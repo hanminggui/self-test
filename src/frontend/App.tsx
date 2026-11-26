@@ -56,6 +56,8 @@ import {
 } from "./utils/sessionRoute";
 import { triggerNativeShare } from "./utils/shareUtils";
 import { UserNav } from "./components/auth/UserNav";
+import { AmbientManifoldBackdrop } from "./components/aesthetic/AmbientManifoldBackdrop";
+import { CognitiveManifoldSigil } from "./components/aesthetic/CognitiveManifoldSigil";
 
 interface TrialPayload {
   stimulus_id: string;
@@ -994,10 +996,14 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
   }
 
   return (
-    <div className="min-h-screen min-h-dvh flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] text-stone-900 dark:text-white font-sans pb-[env(safe-area-inset-bottom)]">
+    <div className="relative min-h-screen min-h-dvh flex flex-col justify-between p-4 md:p-8 max-w-4xl mx-auto selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] text-stone-900 dark:text-white font-sans pb-[env(safe-area-inset-bottom)]">
+      <AmbientManifoldBackdrop
+        report={stage === "REPORT" ? (localizedReport || report) : undefined}
+        intensity={stage === "REPORT" ? "rich" : "subtle"}
+      />
       {/* 仅在未进入 App Layout 时展示顶部萌趣导航栏 */}
       {!inAppLayout && (
-        <header className="flex items-center justify-between py-4 border-b-2 border-stone-900/10 dark:border-white/15 mb-6">
+        <header className="relative z-20 flex items-center justify-between py-4 border-b-2 border-stone-900/10 dark:border-white/15 mb-6">
           <div className="flex items-center gap-3 min-w-0">
             <a
               href="/"
@@ -1071,7 +1077,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
       />
 
       {/* 主体区域 */}
-      <main className="flex-1 flex flex-col justify-center">
+      <main className="relative z-10 flex-1 flex flex-col justify-center">
         {/* 专属报告游戏化聚能加载态 */}
         {reportLoading && (
           <GamifiedTransition
@@ -1634,6 +1640,9 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
                 locale={locale}
               />
 
+              {/* 1-of-1 计算美学专属认知流形印记 */}
+              <CognitiveManifoldSigil report={displayReport} isEn={isEn} />
+
               {/* 专属特技谱系 */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -1941,7 +1950,7 @@ export default function App({ inAppLayout = false, onNavigate }: AppProps = {}) 
 
       {/* 仅在未进入 App Layout 时展示底部极简脚注 */}
       {!inAppLayout && (
-        <footer className="py-4 text-center text-xs text-stone-500 dark:text-slate-400 border-t-2 border-stone-900/10 dark:border-white/10 mt-8 space-y-1.5 font-medium">
+        <footer className="relative z-10 py-4 text-center text-xs text-stone-500 dark:text-slate-400 border-t-2 border-stone-900/10 dark:border-white/10 mt-8 space-y-1.5 font-medium">
           <div>{t.app.footerText}</div>
           <div className="flex items-center justify-center gap-3 text-[11px] text-stone-600 dark:text-slate-400">
             <a

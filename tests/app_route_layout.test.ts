@@ -86,6 +86,34 @@ describe("App Layout Boundary & Dual-Mode Route Resolution", () => {
         view: "admin",
         inAppLayout: false,
       });
+      expect(resolveRouteView("/noise", isAuthenticated)).toEqual({
+        view: "noise",
+        inAppLayout: false,
+      });
+      expect(resolveRouteView("/abstract", isAuthenticated)).toEqual({
+        view: "abstract",
+        inAppLayout: false,
+      });
+      expect(resolveRouteView("/aaabstract", isAuthenticated)).toEqual({
+        view: "abstract",
+        inAppLayout: false,
+      });
+      expect(resolveRouteView("/doodle", isAuthenticated)).toEqual({
+        view: "doodle",
+        inAppLayout: false,
+      });
+      expect(resolveRouteView("/dddoodle", isAuthenticated)).toEqual({
+        view: "doodle",
+        inAppLayout: false,
+      });
+      expect(resolveRouteView("/aesthetic-audit", isAuthenticated)).toEqual({
+        view: "aesthetic-audit",
+        inAppLayout: false,
+      });
+      expect(resolveRouteView("/audit-gallery", isAuthenticated)).toEqual({
+        view: "aesthetic-audit",
+        inAppLayout: false,
+      });
     }
   });
 
