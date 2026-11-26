@@ -24,6 +24,7 @@ import { getLastCompletedSession, canGuestStartNewSession } from "../utils/sessi
 import { GuestGalaxyHero } from "../components/landing/GuestGalaxyHero";
 import { ArchetypeStickyScrollBand } from "../components/landing/ArchetypeStickyScrollBand";
 import { GuestTrajectoryShowcase } from "../components/landing/GuestTrajectoryShowcase";
+import { AmbientManifoldBackdrop } from "../components/aesthetic/AmbientManifoldBackdrop";
 
 interface GuestLandingPageProps {
   onNavigate: (path: string) => void;
@@ -71,7 +72,8 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
   };
 
   return (
-    <div className="min-h-screen min-h-dvh bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex flex-col selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] overflow-x-clip font-sans pb-[env(safe-area-inset-bottom)]">
+    <div className="relative min-h-screen min-h-dvh bg-[#FFFDF8] dark:bg-[#08080C] text-stone-900 dark:text-white flex flex-col selection:bg-[#FBBF24] dark:selection:bg-[#CCFF00] selection:text-stone-950 dark:selection:text-[#08080C] overflow-x-clip font-sans pb-[env(safe-area-inset-bottom)]">
+      <AmbientManifoldBackdrop intensity="rich" />
       {/* Floating Official Website Navigation Header */}
       <header className="sticky top-0 z-40 backdrop-blur-md bg-[#FFFDF8]/90 dark:bg-[#08080C]/95 border-b-2 border-stone-900/10 dark:border-white/15 px-4 sm:px-8 py-3.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -192,7 +194,7 @@ export const GuestLandingPage: React.FC<GuestLandingPageProps> = ({ onNavigate }
         {/* ================================================================= */}
         {/* 第 1 屏：HERO 首屏 (星盘作为全景动态背景全屏铺满，双主题自适应实体舱体) */}
         {/* ================================================================= */}
-        <section className="relative min-h-[calc(100vh-65px)] min-h-[calc(100dvh-60px)] flex items-center overflow-hidden bg-[#FFFDF8] dark:bg-[#08080C]">
+        <section className="relative min-h-[calc(100vh-65px)] min-h-[calc(100dvh-60px)] flex items-center overflow-hidden bg-transparent">
           {/* 1. 星盘全景动态背景：移动端彻底隐藏避免消耗大量 GPU/CPU 性能，仅在桌面端 (>=md) 显示 */}
           <div className="hidden md:flex absolute inset-0 w-full h-full pointer-events-auto z-0 overflow-hidden items-center justify-center opacity-85 dark:opacity-100">
             <div className="w-full h-full">

@@ -38,6 +38,8 @@ import {
 import { buildSessionReportUrl, buildSessionShareUrl } from "../../utils/sessionRoute";
 import { triggerNativeShare } from "../../utils/shareUtils";
 import { getArchetypeDefinition } from "../../../backend/archetype_matrix";
+import { useTheme } from "../../contexts/ThemeContext";
+import { resolvePosterSurfacePalette } from "./posterTheme";
 
 export interface ChineseMythicPosterProps {
   report: {
@@ -69,6 +71,7 @@ export interface ChineseMythicPosterProps {
   entryUrl?: string;
   onClose?: () => void;
   className?: string;
+  surfaceTheme?: "auto" | "light" | "dark";
 }
 
 export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
@@ -77,7 +80,11 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   entryUrl,
   onClose,
   className = "",
+  surfaceTheme = "auto",
 }) => {
+  const { isDark } = useTheme();
+  const useLightSurface =
+    surfaceTheme === "light" ? true : surfaceTheme === "dark" ? false : !isDark;
   const profile = report.diagnostic_profile || {};
   const quadrantCode = report.quadrant_code || profile.quadrant_code || profile.archetype || "Q1-CAL";
   const def = useMemo(() => getArchetypeDefinition(quadrantCode, "zh-CN"), [quadrantCode]);
@@ -226,10 +233,21 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
   };
 
   const colors = archetypeConfig.colorScheme;
+  const surface = useMemo(
+    () =>
+      resolvePosterSurfacePalette(
+        archetypeConfig.archetype,
+        colors,
+        useLightSurface,
+        "mythic"
+      ),
+    [archetypeConfig.archetype, colors, useLightSurface]
+  );
 
   return (
     <div
       data-share-poster="chinese-mythic"
+      data-poster-surface={surface.isLight ? "light" : "dark"}
       className={`relative flex flex-col items-center max-w-xl mx-auto w-full select-none ${className}`}
     >
       {/* 提示吐司 (Toast Message) */}
@@ -243,47 +261,64 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
       {/* 核心海报视觉卡片容器 (DOM 实时高清预览) */}
       <div
         ref={posterCardRef}
-        className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border transition-all duration-300"
+        className="relative w-full rounded-2xl overflow-hidden border transition-all duration-300"
         style={{
-          borderColor: colors.cardBorder,
-          boxShadow: `0 25px 60px -15px ${colors.glowColor}, 0 0 40px -10px ${colors.primaryGold}33`,
-          background: `radial-gradient(circle at 50% 25%, ${colors.bgRadialInner} 0%, ${colors.bgRadialOuter} 65%, #050608 100%)`,
+          borderColor: surface.cardBorder,
+          boxShadow: surface.cardShadow,
+          background: surface.cardBg,
         }}
       >
         {/* 背景金尘装饰 */}
-        <div className="absolute inset-0 pointer-events-none opacity-40 bg-[radial-gradient(#fef08a_1px,transparent_1px)] [background-size:24px_24px]" />
+        <div
+          className={`absolute inset-0 pointer-events-none ${surface.dustOpacity} [background-size:24px_24px]`}
+          style={{
+            backgroundImage: `radial-gradient(${surface.dustDotColor} 1px, transparent 1px)`,
+          }}
+        />
 
         {/* 顶部殿阁横批 */}
-        <div className="pt-5 sm:pt-6 pb-2.5 sm:pb-3 text-center border-b border-white/10 relative z-10 bg-black/20">
+        <div
+          className="pt-5 sm:pt-6 pb-2.5 sm:pb-3 text-center border-b relative z-10"
+          style={{
+            backgroundColor: surface.headerBg,
+            borderColor: surface.headerBorder,
+          }}
+        >
           <div
             className="text-[12px] sm:text-[13px] font-bold tracking-[0.25em] font-serif"
-            style={{ color: colors.secondaryGold }}
+            style={{ color: surface.titleColor }}
           >
             认知流形 · 心智图谱
           </div>
-          <div className="text-[9px] tracking-[0.15em] text-slate-400 uppercase mt-0.5 font-mono">
+          <div
+            className="text-[9px] tracking-[0.15em] uppercase mt-0.5 font-mono"
+            style={{ color: surface.subtitleColor }}
+          >
             COGNITIVE MANIFOLD ARCHETYPE SPECTRUM
           </div>
         </div>
 
         {/* 主体卡片区域 */}
-        <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 relative z-10">
+        <div className="p-4 sm:p-6 md:p-7 space-y-4 sm:space-y-5 relative z-10">
           {/* 1. 图腾罗盘徽章 (去卦象化，展现专属原创神兽/心智图腾) */}
-          <div className="relative flex flex-col items-center justify-center pt-2">
+          <div className="relative flex flex-col items-center justify-center pt-1">
             {/* 背部外发光 */}
             <div
               className="absolute w-36 h-36 rounded-full blur-2xl pointer-events-none -top-2"
-              style={{ backgroundColor: colors.glowColor }}
+              style={{
+                backgroundColor: colors.glowColor,
+                opacity: surface.isLight ? 0.28 : 1,
+              }}
             />
 
             {/* 图腾/头像外环 (带圆形裁切与边框光效) */}
             <div
               data-avatar-badge="true"
-              className="w-24 h-24 rounded-full border-2 flex items-center justify-center relative shadow-inner overflow-hidden"
+              className="w-24 h-24 rounded-full border-2 flex items-center justify-center relative overflow-hidden"
               style={{
-                borderColor: colors.primaryGold,
-                backgroundColor: "rgba(0, 0, 0, 0.55)",
-                boxShadow: `0 0 24px ${colors.glowColor}, inset 0 0 12px rgba(0, 0, 0, 0.6)`,
+                borderColor: surface.avatarRingColor,
+                backgroundColor: surface.avatarBg,
+                boxShadow: surface.avatarShadow,
               }}
             >
               {avatarUrl && !imageError ? (
@@ -296,21 +331,21 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
                 />
               ) : (
                 <div
-                  className="text-4xl font-black font-serif leading-none select-none drop-shadow-md"
-                  style={{ color: colors.secondaryGold }}
+                  className="text-4xl font-black font-serif leading-none select-none"
+                  style={{ color: surface.titleColor }}
                 >
                   {skills[0]?.icon || (subjectName ? subjectName.charAt(0).toUpperCase() : "✦")}
                 </div>
               )}
             </div>
 
-            {/* 头像框下方长条徽带 (展示用户真实昵称，已彻底移除硬编码“探索者 · ”前缀) */}
+            {/* 头像框下方长条徽带 (展示用户真实昵称) */}
             <div
-              className="mt-3 px-5 py-1 rounded-full border text-xs font-semibold tracking-wider font-serif shadow-md"
+              className="mt-3 px-5 py-1 rounded-full border text-xs font-semibold tracking-wider font-serif shadow-sm"
               style={{
-                borderColor: colors.primaryGold,
-                backgroundColor: "rgba(0,0,0,0.75)",
-                color: colors.secondaryGold,
+                borderColor: surface.avatarRingColor,
+                backgroundColor: surface.ribbonBg,
+                color: surface.ribbonText,
               }}
             >
               {subjectName}
@@ -320,16 +355,19 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
           {/* 2. 核心大标题与金句 */}
           <div className="text-center space-y-1">
             <h2
-              className="text-3xl md:text-5xl font-black tracking-wider font-serif drop-shadow-lg"
+              className="text-3xl md:text-5xl font-black tracking-wider font-serif"
               style={{
-                color: colors.secondaryGold,
-                textShadow: `0 0 20px ${colors.glowColor}`,
+                color: surface.titleColor,
+                textShadow: surface.titleShadow,
               }}
             >
               {profile.role_title || archetypeConfig.roleTitle}
             </h2>
 
-            <p className="text-sm md:text-base text-amber-100 font-serif font-medium pt-1">
+            <p
+              className="text-sm md:text-base font-serif font-medium pt-1"
+              style={{ color: surface.taglineColor }}
+            >
               “{profile.praise_tagline || archetypeConfig.praiseTagline}”
             </p>
           </div>
@@ -344,11 +382,11 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
             ]).slice(0, 4).map((tag, idx) => (
               <span
                 key={idx}
-                className="px-3 py-1 rounded-full text-[11px] font-semibold border shadow-sm"
+                className="px-3 py-1 rounded-full text-[11px] font-semibold border"
                 style={{
-                  backgroundColor: colors.badgeBg,
-                  borderColor: `${colors.primaryGold}66`,
-                  color: colors.secondaryGold,
+                  backgroundColor: surface.tagBg,
+                  borderColor: surface.tagBorder,
+                  color: surface.tagText,
                 }}
               >
                 {`#${tag}`}
@@ -357,42 +395,55 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
           </div>
 
           {/* 4. 4 项原创专属认知特技 (2x2 Grid) - 彻底置换原 4D 敏感指标 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             {skills.slice(0, 4).map((skill, idx) => (
               <div
                 key={idx}
-                className="p-3.5 rounded-2xl bg-black/60 border border-white/10 space-y-1.5 transition-all hover:border-amber-400/40"
+                className="p-3.5 rounded-xl border space-y-1.5 transition-all"
+                style={{
+                  backgroundColor: surface.skillCardBg,
+                  borderColor: surface.skillCardBorder,
+                }}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{skill.icon || "✦"}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-lg shrink-0">{skill.icon || "✦"}</span>
                     <span
-                      className="text-xs font-bold font-serif"
-                      style={{ color: colors.secondaryGold }}
+                      className="text-xs font-bold font-serif truncate"
+                      style={{ color: surface.skillTitleColor }}
                     >
                       {skill.name}
                     </span>
                   </div>
                   <span
-                    className="px-2 py-0.5 rounded text-[10px] font-semibold border"
+                    className="px-2 py-0.5 rounded text-[10px] font-semibold border shrink-0"
                     style={{
-                      backgroundColor: colors.badgeBg,
-                      borderColor: `${colors.primaryGold}44`,
-                      color: colors.secondaryGold,
+                      backgroundColor: surface.skillBadgeBg,
+                      borderColor: surface.skillBadgeBorder,
+                      color: surface.skillBadgeText,
                     }}
                   >
                     {skill.type}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed font-sans line-clamp-2">
+                <p
+                  className="text-[11px] leading-relaxed font-sans line-clamp-2"
+                  style={{ color: surface.skillDescColor }}
+                >
                   {skill.desc}
                 </p>
               </div>
             ))}
           </div>
 
-          {/* 5. 认知赋能启示与朱砂红印 (去卦象化，展现原创赋能解读) */}
-          <div className="p-4 rounded-2xl bg-black/40 border border-white/10 relative overflow-hidden">
+          {/* 5. 认知赋能启示与朱砂红印 */}
+          <div
+            className="p-4 rounded-xl border relative overflow-hidden"
+            style={{
+              backgroundColor: surface.insightBg,
+              borderColor: surface.insightBorder,
+            }}
+          >
             {/* 右下角朱砂方印 */}
             <div className="absolute right-3.5 bottom-3.5 w-14 h-14 rounded-lg bg-red-700 border border-yellow-200/80 shadow-md flex items-center justify-center p-1 select-none pointer-events-none transform rotate-3">
               <div className="text-[10px] font-bold font-serif text-yellow-100 text-center leading-tight">
@@ -405,30 +456,45 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
             <div className="pr-16 space-y-1">
               <div
                 className="text-[11px] font-bold font-serif tracking-widest"
-                style={{ color: colors.secondaryGold }}
+                style={{ color: surface.insightLabelColor }}
               >
                 【 认知心智 · 赋能启示 】
               </div>
-              <p className="text-xs text-slate-300 font-serif leading-relaxed italic line-clamp-3">
+              <p
+                className="text-xs font-serif leading-relaxed italic line-clamp-3"
+                style={{ color: surface.insightTextColor }}
+              >
                 “{empoweringFeedback}”
               </p>
             </div>
           </div>
 
           {/* 6. 动态二维码扫码区域 */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-black/60 border border-white/10">
+          <div
+            className="flex items-center justify-between p-3.5 rounded-xl border"
+            style={{
+              backgroundColor: surface.qrPanelBg,
+              borderColor: surface.qrPanelBorder,
+            }}
+          >
             <div className="space-y-1 text-left">
-              <div className="text-xs font-bold text-white font-serif flex items-center gap-1.5">
-                <QrCode className="w-3.5 h-3.5 text-amber-400" />
+              <div
+                className="text-xs font-bold font-serif flex items-center gap-1.5"
+                style={{ color: surface.qrTitleColor }}
+              >
+                <QrCode className="w-3.5 h-3.5" style={{ color: surface.actionIconColor }} />
                 长按扫码 · 探索你的心智本命
               </div>
-              <p className="text-[10px] text-slate-400 font-mono">
+              <p className="text-[10px] font-mono" style={{ color: surface.qrSubColor }}>
                 Two-Tier Metacognitive Manifold Test
               </p>
             </div>
 
             {/* 二维码视窗 */}
-            <div className="w-16 h-16 rounded-xl bg-white p-1 border border-amber-400/40 shrink-0 flex items-center justify-center overflow-hidden shadow-md">
+            <div
+              className="w-16 h-16 rounded-xl bg-white p-1 border shrink-0 flex items-center justify-center overflow-hidden shadow-sm"
+              style={{ borderColor: surface.qrFrameBorder }}
+            >
               {qrSvg ? (
                 <div
                   className="w-full h-full [&>svg]:w-full [&>svg]:h-full"
@@ -442,22 +508,29 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
         </div>
 
         {/* 底部脚注 */}
-        <div className="py-2.5 bg-black/40 border-t border-white/5 text-center text-[10px] text-slate-500 font-mono tracking-wider">
+        <div
+          className="py-2.5 border-t text-center text-[10px] font-mono tracking-wider"
+          style={{
+            backgroundColor: surface.footerBg,
+            borderColor: surface.footerBorder,
+            color: surface.footerTextColor,
+          }}
+        >
           VERIFIED BY METACOGNITIVE TESTING LAB · SYSTEM V2.0
         </div>
       </div>
 
       {/* 底部功能按钮操作栏 (One-Click Actions) */}
-      <div className="w-full flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mt-5 sm:mt-6">
+      <div className="w-full grid grid-cols-2 gap-2.5 mt-4 sm:mt-5">
         {/* 0. 优先唤起系统原生分享 (Web Share API) */}
         <button
           type="button"
           onClick={handleNativeShare}
-          className="min-h-[44px] px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg active:scale-95"
+          className="min-h-[42px] px-4 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
           style={{
-            backgroundColor: colors.primaryGold,
-            color: "#080709",
-            boxShadow: `0 4px 14px ${colors.glowColor}`,
+            backgroundColor: surface.actionPrimaryBg,
+            color: surface.actionPrimaryText,
+            boxShadow: surface.actionPrimaryShadow,
           }}
         >
           <Share2 className="w-4 h-4" />
@@ -469,9 +542,9 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
           type="button"
           onClick={handleDownload}
           disabled={downloading}
-          className="min-h-[44px] px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95 disabled:opacity-50"
+          className={`min-h-[42px] px-4 py-2 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50 ${surface.actionSecondaryClass}`}
         >
-          <Download className="w-4 h-4 text-amber-400" />
+          <Download className="w-4 h-4" style={{ color: surface.actionIconColor }} />
           <span>{downloading ? "正在渲染海报..." : "下载高清海报 (PNG)"}</span>
         </button>
 
@@ -480,9 +553,9 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
           type="button"
           onClick={handleCopyImage}
           disabled={copyingImage}
-          className="min-h-[44px] px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95 disabled:opacity-50"
+          className={`min-h-[42px] px-4 py-2 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50 ${surface.actionSecondaryClass}`}
         >
-          <Copy className="w-4 h-4 text-amber-400" />
+          <Copy className="w-4 h-4" style={{ color: surface.actionIconColor }} />
           <span>{copyingImage ? "正在复制图片..." : "复制海报到剪贴板"}</span>
         </button>
 
@@ -490,16 +563,16 @@ export const ChineseMythicPoster: React.FC<ChineseMythicPosterProps> = ({
         <button
           type="button"
           onClick={handleCopyText}
-          className="min-h-[44px] px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all border border-white/10 shadow-md active:scale-95"
+          className={`min-h-[42px] px-4 py-2 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 ${surface.actionSecondaryClass}`}
         >
           {copiedText ? (
             <>
-              <Check className="w-4 h-4 text-emerald-400" />
-              <span className="text-emerald-300">文案已复制！</span>
+              <Check className="w-4 h-4 text-emerald-500" />
+              <span className={surface.isLight ? "text-emerald-700" : "text-emerald-300"}>文案已复制！</span>
             </>
           ) : (
             <>
-              <Copy className="w-4 h-4 text-amber-400" />
+              <Copy className="w-4 h-4" style={{ color: surface.actionIconColor }} />
               <span>复制分享文案</span>
             </>
           )}

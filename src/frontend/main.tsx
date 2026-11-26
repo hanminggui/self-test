@@ -9,6 +9,10 @@ import { DuelPage } from "./pages/DuelPage";
 import { GuestLandingPage } from "./pages/GuestLandingPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AssetsPage } from "./pages/AssetsPage";
+import { NoiseBackgroundTestPage } from "./pages/NoiseBackgroundTestPage";
+import { AaabstractPage } from "./pages/AaabstractPage";
+import { DoodleBackgroundPage } from "./pages/DoodleBackgroundPage";
+import { AestheticAuditPage } from "./pages/AestheticAuditPage";
 import { AppLayout } from "./components/layout/AppLayout";
 import { LocaleProvider } from "./contexts/LocaleContext";
 import { UserProvider, useUser } from "./contexts/UserContext";
@@ -103,6 +107,14 @@ const AppRouter: React.FC = () => {
     content = <SharePage />;
   } else if (resolved.view === "duel") {
     content = <DuelPage />;
+  } else if (resolved.view === "noise") {
+    content = <NoiseBackgroundTestPage onNavigate={navigate} />;
+  } else if (resolved.view === "abstract") {
+    content = <AaabstractPage onNavigate={navigate} />;
+  } else if (resolved.view === "doodle") {
+    content = <DoodleBackgroundPage onNavigate={navigate} />;
+  } else if (resolved.view === "aesthetic-audit") {
+    content = <AestheticAuditPage onNavigate={navigate} />;
   } else if (loading && locationState.pathname === "/") {
     // Avoid flashing Guest Landing Page while checking initial auth cookie on "/"
     content = (

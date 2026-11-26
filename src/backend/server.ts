@@ -548,6 +548,95 @@ app.get("/api/leaderboard/overview", async (c) => {
   return c.json(overview);
 });
 
+// 8.2 Computational Aesthetics Data Endpoint for Historical Auditing
+app.get("/api/aesthetic/sessions", async (c) => {
+  const sm = getSessionManagerForContext(c);
+  try {
+    const sessionRows = await sm["storage"].query<any>(
+      "SELECT * FROM completed_sessions ORDER BY created_at DESC"
+    );
+    const recordRows = await sm["storage"].query<any>(
+      "SELECT session_id, trial_index, difficulty_level, is_correct_first_order, is_correct_final, action, confidence_level, hints_unlocked, score_delta, duration_ms FROM session_records ORDER BY session_id, trial_index ASC"
+    );
+
+    const trialsBySession: Record<string, any[]> = {};
+    for (const r of recordRows || []) {
+      if (!trialsBySession[r.session_id]) trialsBySession[r.session_id] = [];
+      trialsBySession[r.session_id].push({
+        trial_index: r.trial_index,
+        difficulty_level: r.difficulty_level ?? 0.5,
+        is_correct_first_order: Boolean(r.is_correct_first_order),
+        is_correct_final: Boolean(r.is_correct_final),
+        action: r.action,
+        confidence_level: r.confidence_level ?? 0.5,
+        hints_unlocked: r.hints_unlocked ?? 0,
+        score_delta: r.score_delta ?? 0,
+        duration_ms: r.duration_ms ?? 1000,
+      });
+    }
+
+    const sessions = (sessionRows || []).map((s: any) => {
+      const trials = trialsBySession[s.id] || [];
+      let sumConf = 0;
+      let sumDuration = 0;
+      let hintsCount = 0;
+      let correctFirstCount = 0;
+      let correctFinalCount = 0;
+
+      trials.forEach((t) => {
+        sumConf += t.confidence_level;
+        sumDuration += t.duration_ms;
+        if (t.hints_unlocked > 0) hintsCount++;
+        if (t.is_correct_first_order) correctFirstCount++;
+        if (t.is_correct_final) correctFinalCount++;
+      });
+
+      const avgConf = trials.length ? sumConf / trials.length : 0.5;
+      let varianceConf = 0;
+      trials.forEach((t) => {
+        varianceConf += Math.pow(t.confidence_level - avgConf, 2);
+      });
+      const stdConf = trials.length ? Math.sqrt(varianceConf / trials.length) : 0;
+      const avgDuration = trials.length ? sumDuration / trials.length : 0;
+
+      return {
+        id: s.id,
+        subject_name: s.subject_name || "Unknown Explorer",
+        subject_type: s.subject_type || "HUMAN",
+        created_at: s.created_at,
+        quadrant_code: s.quadrant_code,
+        metrics: {
+          d_prime: s.d_prime ?? 0,
+          meta_d_prime: s.meta_d_prime ?? 0,
+          m_ratio: s.m_ratio ?? 0,
+          calibration_bias: s.calibration_bias ?? 0,
+          brier_score: s.brier_score ?? 0,
+          first_order_accuracy: s.first_order_accuracy ?? (trials.length ? correctFirstCount / trials.length : 0),
+          second_order_accuracy: s.second_order_accuracy ?? (trials.length ? correctFinalCount / trials.length : 0),
+          reversals_count: s.reversals_count ?? 0,
+          ive: s.ive ?? 0,
+          coachability_index: s.coachability_index ?? 0,
+          total_duration_ms: s.total_duration_ms ?? sumDuration,
+          final_score: s.final_score ?? 0,
+          total_trials: s.total_trials ?? trials.length,
+        },
+        micro_metrics: {
+          avg_confidence: avgConf,
+          std_confidence: stdConf,
+          avg_duration_ms: avgDuration,
+          hint_trial_ratio: trials.length ? hintsCount / trials.length : 0,
+          trial_count: trials.length,
+        },
+        trials,
+      };
+    });
+
+    return c.json({ total: sessions.length, sessions });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 // --- Auth & OAuth Matrix Routes ---
 
 // Current User Profile
@@ -1572,6 +1661,20 @@ app.get("/test", serveAsset({ path: "./dist/index.html" }));
 app.get("/test/*", serveAsset({ path: "./dist/index.html" }));
 app.get("/me", serveAsset({ path: "./dist/index.html" }));
 app.get("/me/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/noise", serveAsset({ path: "./dist/index.html" }));
+app.get("/noise/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/abstract", serveAsset({ path: "./dist/index.html" }));
+app.get("/abstract/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/aaabstract", serveAsset({ path: "./dist/index.html" }));
+app.get("/aaabstract/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/doodle", serveAsset({ path: "./dist/index.html" }));
+app.get("/doodle/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/dddoodle", serveAsset({ path: "./dist/index.html" }));
+app.get("/dddoodle/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/aesthetic-audit", serveAsset({ path: "./dist/index.html" }));
+app.get("/aesthetic-audit/*", serveAsset({ path: "./dist/index.html" }));
+app.get("/audit-gallery", serveAsset({ path: "./dist/index.html" }));
+app.get("/audit-gallery/*", serveAsset({ path: "./dist/index.html" }));
 app.get("/*", async (c, next) => {
   if (c.req.path.startsWith("/api")) {
     return next();

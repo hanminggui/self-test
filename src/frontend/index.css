@@ -28,14 +28,15 @@ html, body, #root {
 
 @layer base {
   body {
-    /* 默认亮色模式：Scheme C 多巴胺轻萌解压 (Playful Dopamine) */
+    /* 默认亮色模式：Scheme C 精装纸感与多巴胺微光 (Warm Editorial Paper) */
     background-color: #fffdf8;
-    background-image: 
-      radial-gradient(#e7e5e4 1px, transparent 1px),
-      radial-gradient(circle at 10% 20%, rgba(251, 191, 36, 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(251, 113, 133, 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.06) 0%, transparent 60%);
-    background-size: 24px 24px, 100% 100%, 100% 100%, 100% 100%;
+    background-image:
+      radial-gradient(rgba(28, 25, 23, 0.085) 1px, transparent 1px),
+      radial-gradient(ellipse 70% 55% at 12% 14%, rgba(251, 191, 36, 0.14) 0%, transparent 62%),
+      radial-gradient(ellipse 65% 50% at 88% 82%, rgba(251, 113, 133, 0.10) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 48% at 78% 18%, rgba(16, 185, 129, 0.08) 0%, transparent 58%),
+      radial-gradient(ellipse 55% 45% at 24% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 55%);
+    background-size: 26px 26px, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
     background-attachment: fixed;
     color: #1c1917;
     transition: background-color 0.25s ease, color 0.25s ease;
@@ -43,15 +44,18 @@ html, body, #root {
 
   .dark body,
   :root.dark body {
-    /* 暗色模式：Scheme B 赛博先锋酸性 (Acid Cyber Editorial) */
-    background-color: #08080C;
-    background-image: 
-      radial-gradient(#1a1a24 1px, transparent 1px),
-      radial-gradient(#12121c 1px, #08080C 1px);
-    background-size: 32px 32px;
-    background-position: 0 0, 16px 16px;
+    /* 暗色模式：Scheme B 深空星图与赛博先锋酸性 (Obsidian Observatory) */
+    background-color: #08080c;
+    background-image:
+      radial-gradient(rgba(204, 255, 0, 0.12) 1px, transparent 1px),
+      radial-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+      radial-gradient(ellipse 65% 50% at 82% 12%, rgba(56, 189, 248, 0.11) 0%, transparent 60%),
+      radial-gradient(ellipse 58% 48% at 16% 86%, rgba(204, 255, 0, 0.065) 0%, transparent 58%),
+      radial-gradient(ellipse 50% 40% at 50% 45%, rgba(99, 102, 241, 0.06) 0%, transparent 65%);
+    background-size: 40px 40px, 20px 20px, 100% 100%, 100% 100%, 100% 100%;
+    background-position: 0 0, 10px 10px, 0 0, 0 0, 0 0;
     background-attachment: fixed;
-    color: #FFFFFF;
+    color: #ffffff;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }

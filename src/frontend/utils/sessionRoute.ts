@@ -336,7 +336,11 @@ export type AppViewType =
   | "duel"
   | "privacy"
   | "terms"
-  | "admin";
+  | "admin"
+  | "noise"
+  | "abstract"
+  | "doodle"
+  | "aesthetic-audit";
 
 export interface ResolvedRouteView {
   view: AppViewType;
@@ -375,6 +379,33 @@ export function resolveRouteView(
     Boolean(extractDuelSessionIdsFromUrl(cleanPath, search, hash))
   ) {
     return { view: "duel", inAppLayout: false };
+  }
+  if (cleanPath === "/noise" || cleanPath.startsWith("/noise/")) {
+    return { view: "noise", inAppLayout: false };
+  }
+  if (
+    cleanPath === "/abstract" ||
+    cleanPath.startsWith("/abstract/") ||
+    cleanPath === "/aaabstract" ||
+    cleanPath.startsWith("/aaabstract/")
+  ) {
+    return { view: "abstract", inAppLayout: false };
+  }
+  if (
+    cleanPath === "/doodle" ||
+    cleanPath.startsWith("/doodle/") ||
+    cleanPath === "/dddoodle" ||
+    cleanPath.startsWith("/dddoodle/")
+  ) {
+    return { view: "doodle", inAppLayout: false };
+  }
+  if (
+    cleanPath === "/aesthetic-audit" ||
+    cleanPath.startsWith("/aesthetic-audit/") ||
+    cleanPath === "/audit-gallery" ||
+    cleanPath.startsWith("/audit-gallery/")
+  ) {
+    return { view: "aesthetic-audit", inAppLayout: false };
   }
 
   // 2. 独立路由：历史记录 (/history) 与 个人偏好 (/settings) 与 认知资产 (/assets)
