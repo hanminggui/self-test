@@ -498,4 +498,26 @@ describe("User Core Schema, JWT & Multi-Provider OAuth Matrix", () => {
       expect((await fetchApp("/api/auth/google")).status).toBe(403);
     });
   });
+
+  describe("7. Local Development Default User & Quick Dev-Login", () => {
+    test("POST /api/auth/dev-login issues auth token and returns Dev Explorer user", async () => {
+      const res = await fetchApp("/api/auth/dev-login", { method: "POST" });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.user.id).toBe("usr_dev_explorer");
+      expect(data.user.display_name).toBe("Dev Explorer");
+      expect(data.token).toBeDefined();
+
+      const cookieHeader = res.headers.get("set-cookie");
+      expect(cookieHeader).toContain("auth_token=");
+    });
+
+    test("GET /api/auth/dev-login with redirect query param redirects to target", async () => {
+      const res = await fetchApp("/api/auth/dev-login?redirect=/history", { method: "GET" });
+      expect(res.status).toBe(302);
+      expect(res.headers.get("location")).toBe("/history");
+      expect(res.headers.get("set-cookie")).toContain("auth_token=");
+    });
+  });
 });

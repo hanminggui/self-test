@@ -11,8 +11,17 @@ import {
   Zap,
   ListOrdered,
   Table as TableIcon,
-  Medal,
 } from "lucide-react";
+import {
+  Table,
+  TableHeader,
+  TableHeader as TableHead,
+  TableBody,
+  TableRow,
+  TableHeaderCell,
+  TableCell,
+} from "@astryxdesign/core/Table";
+import { Badge } from "@astryxdesign/core/Badge";
 import { SubjectPoint } from "../../../types/admin";
 import { computeMultivariateColor } from "../../../utils/manifoldUtils";
 import { useLocale } from "../../../contexts/LocaleContext";
@@ -44,6 +53,8 @@ interface SubjectDataTableViewProps {
 
 type TableTabMode = "TOPSIS" | "SUB_BOARDS" | "TABLE";
 type SubBoardDimension = "reasoning" | "metacognition" | "calibration" | "game_utility" | "efficiency";
+
+export { TableHead };
 
 export default function SubjectDataTableView({
   allSubjects,
@@ -107,10 +118,10 @@ export default function SubjectDataTableView({
   const top3Topsis = leaderboardOverview.topsis_leaderboard.slice(0, 3);
 
   const getRankBadge = (rank: number) => {
-    if (rank === 1) return <span className="text-amber-400 font-bold flex items-center gap-1">🥇 1</span>;
-    if (rank === 2) return <span className="text-slate-300 font-bold flex items-center gap-1">🥈 2</span>;
-    if (rank === 3) return <span className="text-amber-600 font-bold flex items-center gap-1">🥉 3</span>;
-    return <span className="text-slate-500 font-mono text-[11px] font-semibold">{rank}</span>;
+    if (rank === 1) return <Badge variant="warning" label="🥇 1" />;
+    if (rank === 2) return <Badge variant="neutral" label="🥈 2" />;
+    if (rank === 3) return <Badge variant="orange" label="🥉 3" />;
+    return <span className="text-slate-400 font-mono text-[11px] font-semibold">{rank}</span>;
   };
 
   return (
@@ -160,12 +171,17 @@ export default function SubjectDataTableView({
             <span className="text-slate-400 text-[11px]">
               {isEn ? "Current Archetype Filter: " : "当前画像筛选："}
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold text-[11px] flex items-center gap-1.5">
-              <span>{quadrantTitles[selectedTag] || selectedTag}</span>
-              <span className="text-[10px] font-mono text-amber-400/80">
-                ({totalItems} {isEn ? "items" : "条"})
-              </span>
-            </span>
+            <Badge
+              variant="warning"
+              label={
+                <span className="flex items-center gap-1.5 font-semibold">
+                  <span>{quadrantTitles[selectedTag] || selectedTag}</span>
+                  <span className="text-[10px] font-mono opacity-80">
+                    ({totalItems} {isEn ? "items" : "条"})
+                  </span>
+                </span>
+              }
+            />
             <button
               onClick={() => setSelectedTag("ALL")}
               className="text-[11px] text-slate-400 hover:text-white transition-colors cursor-pointer underline underline-offset-2 ml-1"
@@ -194,8 +210,13 @@ export default function SubjectDataTableView({
                   "border-slate-300/30 bg-gradient-to-b from-slate-800/20 to-slate-950/80",
                   "border-amber-700/30 bg-gradient-to-b from-amber-950/10 to-slate-950/80",
                 ][idx];
-                const badgeTitle = [isEn ? "Gold Champion" : "天梯冠军", isEn ? "Silver Runner-Up" : "天梯亚军", isEn ? "Bronze Third" : "天梯季军"][idx];
+                const badgeTitle = [
+                  isEn ? "Gold Champion" : "天梯冠军",
+                  isEn ? "Silver Runner-Up" : "天梯亚军",
+                  isEn ? "Bronze Third" : "天梯季军",
+                ][idx];
                 const medalIcon = ["🥇", "🥈", "🥉"][idx];
+                const badgeVariant = idx === 0 ? "warning" : idx === 1 ? "neutral" : "orange";
 
                 return (
                   <div
@@ -206,15 +227,11 @@ export default function SubjectDataTableView({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="text-xl shrink-0">{medalIcon}</div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-amber-300 font-medium px-1.5 py-0.2 rounded bg-amber-500/10 border border-amber-500/20">
-                            {badgeTitle}
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {item.quadrant_code}
-                          </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant={badgeVariant} label={badgeTitle} />
+                          <Badge variant="neutral" label={item.quadrant_code} />
                         </div>
-                        <div className="text-xs font-bold text-white truncate max-w-[140px] mt-0.5">
+                        <div className="text-xs font-bold text-white truncate max-w-[140px] mt-1">
                           {item.name}
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">
@@ -235,83 +252,91 @@ export default function SubjectDataTableView({
           )}
 
           {/* TOPSIS 主数据表格 */}
-          <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
-                <tr className="text-slate-400 font-medium">
-                  <th className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "天梯名次"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Archetype" : "画像流派"}</th>
-                  <th className="py-2.5 px-3 font-mono text-amber-400">{isEn ? "TOPSIS C_i" : "综合贴近度"}</th>
-                  <th className="py-2.5 px-3 font-mono text-cyan-300">{isEn ? "D* (Reasoning)" : "推理 D*"}</th>
-                  <th className="py-2.5 px-3 font-mono text-purple-300">M_ratio</th>
-                  <th className="py-2.5 px-3 font-mono text-emerald-400">{isEn ? "1-Brier" : "校准精度"}</th>
-                  <th className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "Formal Score" : "正式战绩"}</th>
-                  <th className="py-2.5 px-3 font-mono text-indigo-300">{isEn ? "CCS" : "认知综合分"}</th>
-                  <th className="py-2.5 px-3 font-mono text-rose-300">{isEn ? "EIR" : "能效比"}</th>
-                  <th className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label={isEn ? "TOPSIS Leaderboard Table" : "TOPSIS 综合天梯榜表格"}
+            className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+          >
+            <Table density="compact" dividers="rows" hasHover className="w-full text-left text-xs">
+              <TableHeader className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
+                <TableRow isHeaderRow className="text-slate-400 font-medium">
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "天梯名次"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Archetype" : "画像流派"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-amber-400">{isEn ? "TOPSIS C_i" : "综合贴近度"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-cyan-300">{isEn ? "D* (Reasoning)" : "推理 D*"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-purple-300">M_ratio</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-emerald-400">{isEn ? "1-Brier" : "校准精度"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "Formal Score" : "正式战绩"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-indigo-300">{isEn ? "CCS" : "认知综合分"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-rose-300">{isEn ? "EIR" : "能效比"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-white/5">
                 {leaderboardOverview.topsis_leaderboard.map((item) => {
                   const colorToken = computeMultivariateColor(item.metrics.calibration_bias, item.metrics.ive);
                   return (
-                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="py-2 px-3 text-center">{getRankBadge(item.rank)}</td>
-                      <td className="py-2 px-3 font-medium text-white flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
-                          style={{
-                            backgroundColor: colorToken.backgroundColor,
-                            border: `1px solid ${colorToken.borderColor}`,
-                            boxShadow: colorToken.boxShadow,
-                          }}
-                        />
-                        <span className="truncate max-w-[140px]">{item.name}</span>
-                        <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold border border-white/10 bg-slate-800/80 text-slate-300 shrink-0">
-                          {item.subject_type === "HUMAN" ? "HUMAN" : "AGENT"}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3">
-                        <span className="text-amber-300 font-semibold">{item.role_title}</span>
-                        <span className="text-[10px] text-slate-500 font-mono ml-1.5">
-                          {item.quadrant_code}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 font-mono font-black text-amber-300 text-sm">
+                    <TableRow key={item.id} className="hover:bg-white/[0.02] transition-colors group">
+                      <TableCell className="py-2 px-3 text-center">{getRankBadge(item.rank)}</TableCell>
+                      <TableCell className="py-2 px-3 font-medium text-white">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                            style={{
+                              backgroundColor: colorToken.backgroundColor,
+                              border: `1px solid ${colorToken.borderColor}`,
+                              boxShadow: colorToken.boxShadow,
+                            }}
+                          />
+                          <span className="truncate max-w-[140px]">{item.name}</span>
+                          <Badge
+                            variant={item.subject_type === "HUMAN" ? "purple" : "blue"}
+                            label={item.subject_type === "HUMAN" ? "HUMAN" : "AGENT"}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-amber-300 font-semibold">{item.role_title}</span>
+                          <Badge variant="neutral" label={item.quadrant_code} />
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono font-black text-amber-300 text-sm">
                         {item.topsis_score.toFixed(1)}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-cyan-300 font-semibold">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-cyan-300 font-semibold">
                         {item.metrics.d_star.toFixed(3)}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-purple-300 font-semibold">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-purple-300 font-semibold">
                         {item.metrics.m_ratio.toFixed(2)}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-emerald-400 font-semibold">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-emerald-400 font-semibold">
                         {item.metrics.calibration_accuracy.toFixed(3)}
-                      </td>
-                      <td className="py-2 px-3 font-mono font-bold text-yellow-400">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono font-bold text-yellow-400">
                         {item.metrics.formal_score}
-                      </td>
-                      <td className="py-2 px-3 font-mono font-semibold text-indigo-300">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono font-semibold text-indigo-300">
                         {item.metrics.ccs.toFixed(1)}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-rose-300">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-rose-300">
                         {item.metrics.eir.toFixed(2)}
-                      </td>
-                      <td className="py-2 px-3 text-right">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 text-right">
                         <button
                           onClick={() => onOpenReport(item.id)}
                           className="px-2.5 py-1 rounded-md bg-indigo-600/15 hover:bg-indigo-600/30 text-indigo-300 font-medium text-[11px] transition-colors cursor-pointer"
                         >
                           {isEn ? "Details" : "详情"}
                         </button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}
@@ -379,81 +404,90 @@ export default function SubjectDataTableView({
           </div>
 
           {/* 子榜数据表格 */}
-          <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
-                <tr className="text-slate-400 font-medium">
-                  <th className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "排名"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Archetype" : "画像称号"}</th>
-                  <th className="py-2.5 px-3 font-mono font-bold text-amber-300">
+          {/* 子榜数据表格 */}
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label={isEn ? "Sub-board Dimension Table" : "正交子榜维度表格"}
+            className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+          >
+            <Table density="compact" dividers="rows" hasHover className="w-full text-left text-xs">
+              <TableHeader className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
+                <TableRow isHeaderRow className="text-slate-400 font-medium">
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 w-14 text-center">{isEn ? "Rank" : "排名"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Subject" : "受测对象"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Archetype" : "画像称号"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono font-bold text-amber-300">
                     {subDimension === "reasoning" && (isEn ? "D* Capacity" : "突破度 D*")}
                     {subDimension === "metacognition" && "M_ratio"}
                     {subDimension === "calibration" && (isEn ? "Calibration Accuracy (1-Brier)" : "校准精度 (1-Brier)")}
                     {subDimension === "game_utility" && (isEn ? "Formal Score" : "纯净正式战绩")}
                     {subDimension === "efficiency" && (isEn ? "EIR (Payoff/Cost)" : "能效比 EIR")}
-                  </th>
-                  <th className="py-2.5 px-3 font-mono text-cyan-300">D*</th>
-                  <th className="py-2.5 px-3 font-mono text-purple-300">M_ratio</th>
-                  <th className="py-2.5 px-3 font-mono text-emerald-400">1-Brier</th>
-                  <th className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "CCS" : "综合分 CCS"}</th>
-                  <th className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
+                  </TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-cyan-300">D*</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-purple-300">M_ratio</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-emerald-400">1-Brier</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 font-mono text-yellow-300">{isEn ? "CCS" : "综合分 CCS"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 text-right">{isEn ? "Action" : "操作"}</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-white/5">
                 {leaderboardOverview.sub_leaderboards[subDimension].map((item) => {
                   const colorToken = computeMultivariateColor(item.metrics.calibration_bias, item.metrics.ive);
                   return (
-                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="py-2 px-3 text-center">{getRankBadge(item.rank)}</td>
-                      <td className="py-2 px-3 font-medium text-white flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
-                          style={{
-                            backgroundColor: colorToken.backgroundColor,
-                            border: `1px solid ${colorToken.borderColor}`,
-                            boxShadow: colorToken.boxShadow,
-                          }}
-                        />
-                        <span className="truncate max-w-[140px]">{item.name}</span>
-                        <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold border border-white/10 bg-slate-800/80 text-slate-300 shrink-0">
-                          {item.subject_type === "HUMAN" ? "HUMAN" : "AGENT"}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3">
-                        <span className="text-amber-300 font-semibold">{item.role_title}</span>
-                        <span className="text-[10px] text-slate-500 font-mono ml-1.5">
-                          {item.quadrant_code}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 font-mono font-black text-amber-300 text-sm">
+                    <TableRow key={item.id} className="hover:bg-white/[0.02] transition-colors group">
+                      <TableCell className="py-2 px-3 text-center">{getRankBadge(item.rank)}</TableCell>
+                      <TableCell className="py-2 px-3 font-medium text-white">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                            style={{
+                              backgroundColor: colorToken.backgroundColor,
+                              border: `1px solid ${colorToken.borderColor}`,
+                              boxShadow: colorToken.boxShadow,
+                            }}
+                          />
+                          <span className="truncate max-w-[140px]">{item.name}</span>
+                          <Badge
+                            variant={item.subject_type === "HUMAN" ? "purple" : "blue"}
+                            label={item.subject_type === "HUMAN" ? "HUMAN" : "AGENT"}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-amber-300 font-semibold">{item.role_title}</span>
+                          <Badge variant="neutral" label={item.quadrant_code} />
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono font-black text-amber-300 text-sm">
                         {item.score}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-cyan-300 font-semibold">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-cyan-300 font-semibold">
                         {item.metrics.d_star.toFixed(3)}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-purple-300 font-semibold">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-purple-300 font-semibold">
                         {item.metrics.m_ratio.toFixed(2)}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-emerald-400 font-semibold">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-emerald-400 font-semibold">
                         {item.metrics.calibration_accuracy.toFixed(3)}
-                      </td>
-                      <td className="py-2 px-3 font-mono font-semibold text-yellow-300">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono font-semibold text-yellow-300">
                         {item.metrics.ccs.toFixed(1)}
-                      </td>
-                      <td className="py-2 px-3 text-right">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 text-right">
                         <button
                           onClick={() => onOpenReport(item.id)}
                           className="px-2.5 py-1 rounded-md bg-indigo-600/15 hover:bg-indigo-600/30 text-indigo-300 font-medium text-[11px] transition-colors cursor-pointer"
                         >
                           {isEn ? "Details" : "详情"}
                         </button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}
@@ -461,23 +495,28 @@ export default function SubjectDataTableView({
       {/* 视图三：数据明细清单 (原有分页表格增强版) */}
       {tabMode === "TABLE" && (
         <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
-                <tr className="text-slate-400 font-medium">
-                  <th className="py-2.5 px-3">{isEn ? "Subject" : "受测者"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Archetype Order" : "画像称号"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Discrim D*" : "突破度 D*"}</th>
-                  <th className="py-2.5 px-3">M_ratio</th>
-                  <th className="py-2.5 px-3">{isEn ? "Bias" : "偏向 Bias"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Foraging IVE" : "杠杆 IVE"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Formal Score" : "正式战绩"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "CCS" : "综合分 CCS"}</th>
-                  <th className="py-2.5 px-3">{isEn ? "Clinical Truth" : "诊断归因"}</th>
-                  <th className="py-2.5 px-3 text-right">{isEn ? "Actions" : "操作"}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label={isEn ? "Detailed Records Table" : "数据明细清单表格"}
+            className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-white/5 bg-slate-950/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+          >
+            <Table density="compact" dividers="rows" hasHover className="w-full text-left text-xs">
+              <TableHeader className="sticky top-0 bg-slate-900/95 backdrop-blur z-10 border-b border-white/10 select-none">
+                <TableRow isHeaderRow className="text-slate-400 font-medium">
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Subject" : "受测者"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Archetype Order" : "画像称号"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Discrim D*" : "突破度 D*"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">M_ratio</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Bias" : "偏向 Bias"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Foraging IVE" : "杠杆 IVE"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Formal Score" : "正式战绩"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "CCS" : "综合分 CCS"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3">{isEn ? "Clinical Truth" : "诊断归因"}</TableHeaderCell>
+                  <TableHeaderCell scope="col" className="py-2.5 px-3 text-right">{isEn ? "Actions" : "操作"}</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-white/5">
                 {paginatedSubjects.map((sub) => {
                   const colorToken = computeMultivariateColor(sub.calibration_bias, sub.ive ?? 0.5);
                   const isSubEn = sub.locale === "en-US" || sub.metadata?.locale === "en-US";
@@ -488,82 +527,72 @@ export default function SubjectDataTableView({
                   const ccs = sub.composite_cognitive_score ?? sub.ccs ?? Math.round((sub.d_star ?? 0.5) * formalScore * 10) / 10;
 
                   return (
-                    <tr key={sub.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="py-2 px-3 font-medium text-white flex items-center gap-2">
-                        {sub.avatar_url ? (
-                          <img
-                            src={sub.avatar_url}
-                            alt={sub.name}
-                            className="w-5 h-5 rounded-full object-cover border border-emerald-400/60 shrink-0"
+                    <TableRow key={sub.id} className="hover:bg-white/[0.02] transition-colors group">
+                      <TableCell className="py-2 px-3 font-medium text-white">
+                        <div className="flex items-center gap-2">
+                          {sub.avatar_url ? (
+                            <img
+                              src={sub.avatar_url}
+                              alt={sub.name}
+                              className="w-5 h-5 rounded-full object-cover border border-emerald-400/60 shrink-0"
+                            />
+                          ) : (
+                            <span
+                              className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                              style={{
+                                backgroundColor: colorToken.backgroundColor,
+                                border: `1px solid ${colorToken.borderColor}`,
+                                boxShadow: colorToken.boxShadow,
+                              }}
+                            />
+                          )}
+                          <span className="truncate max-w-[120px]">{sub.nickname || sub.name}</span>
+                          {sub.is_friend && (
+                            <Badge variant="success" label={isEn ? "Friend" : "好友"} />
+                          )}
+                          {sub.is_self && (
+                            <Badge variant="warning" label={isEn ? "Self" : "本体"} />
+                          )}
+                          {typeof sub.similarity === "number" && (
+                            <Badge variant="cyan" label={`${sub.similarity}%`} />
+                          )}
+                          <Badge
+                            variant={isSubEn ? "blue" : "neutral"}
+                            label={isSubEn ? "EN" : "ZH"}
                           />
-                        ) : (
-                          <span
-                            className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
-                            style={{
-                              backgroundColor: colorToken.backgroundColor,
-                              border: `1px solid ${colorToken.borderColor}`,
-                              boxShadow: colorToken.boxShadow,
-                            }}
-                          />
-                        )}
-                        <span className="truncate max-w-[120px]">{sub.nickname || sub.name}</span>
-                        {sub.is_friend && (
-                          <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 shrink-0">
-                            {isEn ? "Friend" : "好友"}
-                          </span>
-                        )}
-                        {sub.is_self && (
-                          <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-950/80 border border-amber-500/50 text-amber-300 shrink-0">
-                            {isEn ? "Self" : "本体"}
-                          </span>
-                        )}
-                        {typeof sub.similarity === "number" && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-black bg-cyan-950/80 border border-cyan-400/50 text-cyan-300 shrink-0">
-                            {sub.similarity}%
-                          </span>
-                        )}
-                        <span
-                          className={`px-1 py-0.2 rounded text-[9px] font-mono font-bold border shrink-0 ${
-                            isSubEn
-                              ? "bg-indigo-950/70 border-indigo-400/40 text-indigo-300"
-                              : "bg-slate-800/80 border-white/10 text-slate-300"
-                          }`}
-                          title={isSubEn ? "Evaluated in English" : "中文环境评测"}
-                        >
-                          {isSubEn ? "EN" : "ZH"}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3">
-                        <span className="text-amber-300 font-semibold">{roleTitle}</span>
-                        <span className="text-[10px] text-slate-500 font-mono ml-1.5">
-                          {sub.quadrant_code || "Q1-CAL"}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 font-mono text-cyan-300 font-semibold">
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-amber-300 font-semibold">{roleTitle}</span>
+                          <Badge variant="neutral" label={sub.quadrant_code || "Q1-CAL"} />
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-cyan-300 font-semibold">
                         {(sub.d_star ?? 0.5).toFixed(3)}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-purple-300 font-semibold">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-purple-300 font-semibold">
                         {sub.m_ratio}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-slate-300">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-slate-300">
                         {sub.calibration_bias > 0 ? `+${sub.calibration_bias}` : sub.calibration_bias}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-amber-300">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono text-amber-300">
                         {(sub.ive ?? 0.5).toFixed(3)}
-                      </td>
-                      <td className="py-2 px-3 font-mono font-bold text-yellow-400">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono font-bold text-yellow-400">
                         {formalScore}
-                      </td>
-                      <td className="py-2 px-3 font-mono font-bold text-indigo-300">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 font-mono font-bold text-indigo-300">
                         {ccs.toFixed(1)}
-                      </td>
-                      <td
+                      </TableCell>
+                      <TableCell
                         className="py-2 px-3 text-slate-400 text-[11px] max-w-xs truncate"
                         title={clinicalSummary}
                       >
                         {clinicalSummary}
-                      </td>
-                      <td className="py-2 px-3 text-right">
+                      </TableCell>
+                      <TableCell className="py-2 px-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => onOpenReport(sub.id)}
@@ -582,19 +611,19 @@ export default function SubjectDataTableView({
                             </button>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
                 {paginatedSubjects.length === 0 && (
-                  <tr>
-                    <td colSpan={10} className="py-8 text-center text-slate-500">
+                  <TableRow>
+                    <TableCell colSpan={10} className="py-8 text-center text-slate-500">
                       {isEn ? "No matching subject records found" : "未检索到符合条件的受试者记录"}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {/* 底部固定分页控制栏 */}

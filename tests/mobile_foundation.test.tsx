@@ -3,6 +3,7 @@ import { describe, test, expect, mock } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { BottomSheet } from "../src/frontend/components/common/BottomSheet";
 import { AuthModal } from "../src/frontend/components/auth/AuthModal";
+import AdminLoginModal from "../src/frontend/components/admin/AdminLoginModal";
 import { MobileNavDrawer } from "../src/frontend/components/layout/MobileNavDrawer";
 import { LocaleProvider } from "../src/frontend/contexts/LocaleContext";
 import { UserProvider } from "../src/frontend/contexts/UserContext";
@@ -77,8 +78,8 @@ describe("Mobile Foundation & Universal BottomSheet Suite", () => {
     });
   });
 
-  describe("3. AuthModal BottomSheet Transformation", () => {
-    test("AuthModal renders inside BottomSheet with OAuth providers and legal agreements", () => {
+  describe("3. Astryx Dialog Presentation (AuthModal & AdminLoginModal)", () => {
+    test("AuthModal renders inside Astryx Dialog with OAuth providers and legal agreements", () => {
       const markup = renderToStaticMarkup(
         <LocaleProvider>
           <UserProvider>
@@ -91,9 +92,9 @@ describe("Mobile Foundation & Universal BottomSheet Suite", () => {
         </LocaleProvider>
       );
 
-      // Semantics & BottomSheet container
+      // Semantics & Dialog container
       expect(markup).toContain('role="dialog"');
-      expect(markup).toContain("cursor-grab");
+      expect(markup).toContain("astryx-dialog");
 
       // Providers
       expect(markup).toContain("GitHub");
@@ -103,6 +104,22 @@ describe("Mobile Foundation & Universal BottomSheet Suite", () => {
       // Legal links
       expect(markup).toContain("/terms");
       expect(markup).toContain("/privacy");
+    });
+
+    test("AdminLoginModal renders inside Astryx Dialog with password input and submit action", () => {
+      const markup = renderToStaticMarkup(
+        <AdminLoginModal
+          inputPassword=""
+          setInputPassword={() => {}}
+          authError=""
+          onSubmit={() => {}}
+        />
+      );
+
+      expect(markup).toContain('role="alertdialog"');
+      expect(markup).toContain("astryx-dialog");
+      expect(markup).toContain("管理控制台");
+      expect(markup).toContain("解锁进入控制台");
     });
   });
 

@@ -69,17 +69,18 @@ const GoogleIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" })
 
 // Sleek preset avatar identifiers
 const PRESET_AVATARS = [
-  { id: "totem-sovereign", name: "应龙 (Sovereign)", gradient: "from-amber-500 to-yellow-600", symbol: "🐉" },
-  { id: "totem-wanderer", name: "鲲鹏 (Wanderer)", gradient: "from-blue-600 to-cyan-400", symbol: "🐋" },
-  { id: "totem-sage", name: "白泽 (Sage)", gradient: "from-emerald-500 to-teal-600", symbol: "🦌" },
-  { id: "totem-oracle", name: "天机 (Oracle)", gradient: "from-sky-500 to-teal-500", symbol: "🔮" },
-  { id: "totem-sentinel", name: "玄武 (Sentinel)", gradient: "from-slate-600 to-stone-500", symbol: "🐢" },
-  { id: "totem-vanguard", name: "麒麟 (Vanguard)", gradient: "from-rose-500 to-orange-500", symbol: "🔥" },
+  { id: "totem-sovereign", name: "应龙", gradient: "from-amber-500 to-yellow-600", symbol: "🐉" },
+  { id: "totem-wanderer", name: "鲲鹏", gradient: "from-blue-600 to-cyan-400", symbol: "🐋" },
+  { id: "totem-sage", name: "白泽", gradient: "from-emerald-500 to-teal-600", symbol: "🦌" },
+  { id: "totem-oracle", name: "天机", gradient: "from-sky-500 to-teal-500", symbol: "🔮" },
+  { id: "totem-sentinel", name: "玄武", gradient: "from-slate-600 to-stone-500", symbol: "🐢" },
+  { id: "totem-vanguard", name: "麒麟", gradient: "from-rose-500 to-orange-500", symbol: "🔥" },
 ];
 
 export const ProfileSettings: React.FC = () => {
   const { user, refreshUser, enabledProviders } = useUser();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const isEn = String(locale).toLowerCase().startsWith("en");
   const {
     motionMode,
     setMotionMode,
@@ -453,14 +454,14 @@ export const ProfileSettings: React.FC = () => {
                   )}
                 </div>
                 <h3 className="text-sm font-black text-stone-900 dark:text-white">
-                  {t.profile?.visibilityL1Title || "私密保护 (L1: Private)"}
+                  {t.profile?.visibilityL1Title || (isEn ? "Private" : "隐私")}
                 </h3>
                 <p className="text-xs text-stone-600 dark:text-slate-300 leading-relaxed font-medium">
-                  {t.profile?.visibilityL1Desc || "仅您本人在个人面板中可见，绝不投影至公开群体散点"}
+                  {t.profile?.visibilityL1Desc || (isEn ? "Visible solely on personal dashboard" : "仅您本人在个人面板中可见，绝不投影至公开大盘或群体散点")}
                 </p>
               </div>
               <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-stone-200 dark:bg-white/10 text-stone-800 dark:text-slate-200 w-max">
-                L1 · PRIVATE
+                {isEn ? "L1 · PRIVATE" : "隐私"}
               </span>
             </div>
 
@@ -483,14 +484,14 @@ export const ProfileSettings: React.FC = () => {
                   )}
                 </div>
                 <h3 className="text-sm font-black text-stone-900 dark:text-white">
-                  {t.profile?.visibilityL2Title || "匿名代号 (L2: Anonymous)"}
+                  {t.profile?.visibilityL2Title || (isEn ? "Anonymous" : "匿名")}
                 </h3>
                 <p className="text-xs text-stone-600 dark:text-slate-300 leading-relaxed font-medium">
-                  {t.profile?.visibilityL2Desc || "推荐。以神话匿名星象代号投影至群体散点空间，抹除身份"}
+                  {t.profile?.visibilityL2Desc || (isEn ? "Projected onto cohort space with an arcane codename" : "推荐默认。以匿名星象代号投影至群体散点空间，抹除一切真实身份")}
                 </p>
               </div>
               <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-[#CCFF00]/20 text-amber-900 dark:text-[#CCFF00] w-max">
-                L2 · ANONYMOUS
+                {isEn ? "L2 · ANONYMOUS" : "匿名"}
               </span>
             </div>
 
@@ -513,14 +514,14 @@ export const ProfileSettings: React.FC = () => {
                   )}
                 </div>
                 <h3 className="text-sm font-black text-stone-900 dark:text-white">
-                  {t.profile?.visibilityL3Title || "公开名片 (L3: Public)"}
+                  {t.profile?.visibilityL3Title || (isEn ? "Public" : "公开")}
                 </h3>
                 <p className="text-xs text-stone-600 dark:text-slate-300 leading-relaxed font-medium">
-                  {t.profile?.visibilityL3Desc || "完全公开。在认知大盘展示您的头像、昵称与主页链接"}
+                  {t.profile?.visibilityL3Desc || (isEn ? "Fully public on global cohort space" : "完全公开。在认知大盘展示您的头像、昵称与主页链接")}
                 </p>
               </div>
               <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-sky-100 dark:bg-[#38BDF8]/20 text-sky-900 dark:text-[#38BDF8] w-max">
-                L3 · PUBLIC
+                {isEn ? "L3 · PUBLIC" : "公开"}
               </span>
             </div>
           </div>
@@ -705,7 +706,7 @@ export const ProfileSettings: React.FC = () => {
             {/* Motion Mode */}
             <div className="space-y-2 p-4 rounded-2xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-900/15 dark:border-white/20">
               <div className="text-xs font-black text-stone-900 dark:text-white">
-                {t.gameEffects?.motionModeLabel || "过渡动效强度"}
+                {t.gameEffects?.motionModeLabel || (isEn ? "Motion & Transition Level" : "过渡动效强度")}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -714,13 +715,13 @@ export const ProfileSettings: React.FC = () => {
                     setMotionMode("full");
                     playSound("tap");
                   }}
-                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center whitespace-nowrap truncate ${
                     motionMode === "full"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
                   }`}
                 >
-                  {t.gameEffects?.motionModeFull || "全量流光"}
+                  {t.gameEffects?.motionModeFull || (isEn ? "Full Motion" : "全量流光")}
                 </button>
                 <button
                   type="button"
@@ -728,26 +729,26 @@ export const ProfileSettings: React.FC = () => {
                     setMotionMode("reduced");
                     playSound("tap");
                   }}
-                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center whitespace-nowrap truncate ${
                     motionMode === "reduced"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
                   }`}
                 >
-                  {t.gameEffects?.motionModeReduced || "极简减弱"}
+                  {t.gameEffects?.motionModeReduced || (isEn ? "Reduced Motion" : "极简减弱")}
                 </button>
               </div>
               <p className="text-[11px] text-stone-600 dark:text-slate-400 leading-relaxed font-medium">
                 {motionMode === "full"
-                  ? t.gameEffects?.motionModeFullDesc || "启用星门穿梭、光幕流转、粒子消散与流形过渡"
-                  : t.gameEffects?.motionModeReducedDesc || "遵循减弱动效偏好，消除剧烈位移与旋转，平滑淡入"}
+                  ? t.gameEffects?.motionModeFullDesc || (isEn ? "Enable cosmic portals, light trails, particle bursts, and fluid state warps" : "启用星门穿梭、光幕流转、粒子消散与流形过渡")
+                  : t.gameEffects?.motionModeReducedDesc || (isEn ? "Respects accessibility reduced motion preferences with gentle static fades" : "遵循减弱动效偏好，消除剧烈位移与旋转，平滑淡入")}
               </p>
             </div>
 
             {/* Sound Mode */}
             <div className="space-y-2 p-4 rounded-2xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-900/15 dark:border-white/20">
               <div className="text-xs font-black text-stone-900 dark:text-white">
-                {t.gameEffects?.soundModeLabel || "交互音效 (Web Audio)"}
+                {t.gameEffects?.soundModeLabel || (isEn ? "Acoustic Feedback" : "交互音效")}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -756,39 +757,39 @@ export const ProfileSettings: React.FC = () => {
                     setSoundMode("enabled");
                     playSound("tap");
                   }}
-                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center whitespace-nowrap truncate ${
                     soundMode === "enabled"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
                   }`}
                 >
-                  {t.gameEffects?.soundModeEnabled || "开启音效"}
+                  {t.gameEffects?.soundModeEnabled || (isEn ? "Sound On" : "开启音效")}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setSoundMode("muted");
                   }}
-                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center whitespace-nowrap truncate ${
                     soundMode === "muted"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
                   }`}
                 >
-                  {t.gameEffects?.soundModeMuted || "静音模式"}
+                  {t.gameEffects?.soundModeMuted || (isEn ? "Muted" : "静音模式")}
                 </button>
               </div>
               <p className="text-[11px] text-stone-600 dark:text-slate-400 leading-relaxed font-medium">
                 {soundMode === "enabled"
-                  ? "程序化合成晶体敲击与秘法和弦，零音频文件下载"
-                  : "所有作答选择、押注模式切换与推演过程静音进行"}
+                  ? (isEn ? "Procedural synthesis of crystalline tap audio, zero network downloads" : "程序化合成晶体敲击与秘法和弦，零音频文件下载")
+                  : (isEn ? "All interaction choices, wagering modes, and simulations run completely silent" : "所有作答选择、押注模式切换与推演过程静音进行")}
               </p>
             </div>
 
             {/* Performance Mode */}
             <div className="space-y-2 p-4 rounded-2xl bg-stone-50 dark:bg-[#12121C] border-2 border-stone-900/15 dark:border-white/20">
               <div className="text-xs font-black text-stone-900 dark:text-white">
-                {t.gameEffects?.perfModeLabel || "渲染性能偏好"}
+                {t.gameEffects?.perfModeLabel || (isEn ? "Rendering Performance" : "渲染性能偏好")}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -797,13 +798,13 @@ export const ProfileSettings: React.FC = () => {
                     setPerformanceMode("high");
                     playSound("tap");
                   }}
-                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center whitespace-nowrap truncate ${
                     performanceMode === "high"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
                   }`}
                 >
-                  {t.gameEffects?.perfModeHigh || "高清全效"}
+                  {t.gameEffects?.perfModeHigh || (isEn ? "High Fidelity" : "高清全效")}
                 </button>
                 <button
                   type="button"
@@ -811,19 +812,19 @@ export const ProfileSettings: React.FC = () => {
                     setPerformanceMode("eco");
                     playSound("tap");
                   }}
-                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center ${
+                  className={`min-h-[44px] px-3 py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer flex items-center justify-center whitespace-nowrap truncate ${
                     performanceMode === "eco"
                       ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF]"
                       : "bg-white dark:bg-[#0E0E16] border-stone-300 dark:border-white/15 text-stone-700 dark:text-slate-300 hover:text-stone-900 dark:hover:text-white"
                   }`}
                 >
-                  {t.gameEffects?.perfModeEco || "节能降级"}
+                  {t.gameEffects?.perfModeEco || (isEn ? "Eco Mode" : "节能降级")}
                 </button>
               </div>
               <p className="text-[11px] text-stone-600 dark:text-slate-400 leading-relaxed font-medium">
                 {performanceMode === "high"
-                  ? t.gameEffects?.perfModeHighDesc || "完整启用粒子光晕与星云混合滤镜"
-                  : t.gameEffects?.perfModeEcoDesc || "关闭高算力粒子动画与复杂滤镜，保障移动端超高帧率"}
+                  ? t.gameEffects?.perfModeHighDesc || (isEn ? "Full particle halos and multi-layered backdrop filtration" : "完整启用粒子光晕与星云混合滤镜")
+                  : t.gameEffects?.perfModeEcoDesc || (isEn ? "Disables intensive canvas particle meshes to preserve mobile battery & framerate" : "关闭高算力粒子动画与复杂滤镜，保障移动端超高帧率")}
               </p>
             </div>
           </div>

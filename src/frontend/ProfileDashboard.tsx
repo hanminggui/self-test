@@ -372,55 +372,55 @@ export const ProfileDashboard: React.FC = () => {
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                      <div className="text-[10px] text-stone-700 dark:text-slate-200 font-black flex items-center justify-between">
                         <span>{t.profile?.statTotalSessions || "评测总场次"}</span>
                         <Calendar className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
                       </div>
                       <div className="text-xl font-black font-mono text-stone-900 dark:text-white">
                         {summaryStats.total}
                       </div>
-                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                      <div className="text-[10px] text-stone-700 dark:text-slate-300 font-bold">
                         人: {summaryStats.humanCount} · 智能体: {summaryStats.agentCount}
                       </div>
                     </div>
 
                     <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                      <div className="text-[10px] text-stone-700 dark:text-slate-200 font-black flex items-center justify-between">
                         <span>{t.profile?.statMeanAccuracy || "平均准确率"}</span>
                         <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-[#10B981]" />
                       </div>
                       <div className="text-xl font-black font-mono text-emerald-700 dark:text-[#10B981]">
                         {summaryStats.avgAccuracy}
                       </div>
-                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">阶梯收敛 ~70%</div>
+                      <div className="text-[10px] text-stone-700 dark:text-slate-300 font-bold">阶梯收敛 ~70%</div>
                     </div>
 
                     <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                      <div className="text-[10px] text-stone-700 dark:text-slate-200 font-black flex items-center justify-between">
                         <span>{t.profile?.statMeanDPrime || "平均敏感度 d'"}</span>
                         <Zap className="w-3.5 h-3.5 text-sky-600 dark:text-[#38BDF8]" />
                       </div>
                       <div className="text-xl font-black font-mono text-sky-700 dark:text-[#38BDF8]">
                         {summaryStats.avgDPrime}
                       </div>
-                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">一阶感知辨别力</div>
+                      <div className="text-[10px] text-stone-700 dark:text-slate-300 font-bold">一阶感知辨别力</div>
                     </div>
 
                     <div className="p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1">
-                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                      <div className="text-[10px] text-stone-700 dark:text-slate-200 font-black flex items-center justify-between">
                         <span>{t.profile?.statMeanMRatio || "元认知 M_ratio"}</span>
                         <TrendingUp className="w-3.5 h-3.5 text-purple-600 dark:text-[#CCFF00]" />
                       </div>
                       <div className="text-xl font-black font-mono text-purple-700 dark:text-[#CCFF00]">
                         {summaryStats.avgMRatio}
                       </div>
-                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">基准值 0.80</div>
+                      <div className="text-[10px] text-stone-700 dark:text-slate-300 font-bold">基准值 0.80</div>
                     </div>
 
                     <div className={`p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1 ${
                       overviewExpanded ? "block" : "hidden sm:block"
                     }`}>
-                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                      <div className="text-[10px] text-stone-700 dark:text-slate-200 font-black flex items-center justify-between">
                         <span>{t.profile?.statLatestBias || "最新偏向 Bias"}</span>
                         <Activity className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                       </div>
@@ -435,7 +435,7 @@ export const ProfileDashboard: React.FC = () => {
                       >
                         {summaryStats.latestBias}
                       </div>
-                      <div className="text-[10px] text-stone-500 dark:text-slate-400 font-medium">
+                      <div className="text-[10px] text-stone-700 dark:text-slate-300 font-bold">
                         {summaryStats.latestBiasNum > 0.12
                           ? "自信高估"
                           : summaryStats.latestBiasNum < -0.12
@@ -447,14 +447,14 @@ export const ProfileDashboard: React.FC = () => {
                     <div className={`p-4 rounded-2xl bg-white dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-white/20 shadow-[0_2px_0_#1c1917] dark:shadow-[3px_3px_0px_rgba(0,0,0,0.8)] space-y-1 ${
                       overviewExpanded ? "block" : "hidden sm:block"
                     }`}>
-                      <div className="text-[10px] text-stone-500 dark:text-slate-300 font-bold flex items-center justify-between">
+                      <div className="text-[10px] text-stone-700 dark:text-slate-200 font-black flex items-center justify-between">
                         <span>{t.profile?.statDominantArchetype || "主导认知流派"}</span>
                         <Award className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                       </div>
                       <div className="text-sm font-black text-amber-800 dark:text-amber-300 truncate" title={summaryStats.dominantRole}>
                         {summaryStats.dominantRole}
                       </div>
-                      <div className="text-[10px] font-mono text-stone-500 dark:text-[#CCFF00] font-bold">
+                      <div className="text-[10px] font-mono text-stone-700 dark:text-[#CCFF00] font-black">
                         {summaryStats.dominantCode}
                       </div>
                     </div>
@@ -494,18 +494,22 @@ export const ProfileDashboard: React.FC = () => {
                       />
                     </div>
 
-                    {/* Visual Channel Legend Bar */}
-                    <div className="pt-2 border-t-2 border-stone-900/10 dark:border-white/10 flex flex-wrap items-center justify-between gap-4 text-[10px] text-stone-600 dark:text-slate-300 font-mono">
-                      <div className="flex items-center gap-2">
-                        <span className="text-stone-900 dark:text-white font-sans font-black">色相 Hue (Bias 偏向):</span>
-                        <div className="w-20 h-2 rounded-full bg-gradient-to-r from-sky-400 via-emerald-400 to-rose-400" />
-                        <span>谨慎 (-1.0) → 自洽 (0) → 自负 (+1.0)</span>
+                    {/* Visual Channel Legend Bar (Feedback 3: 两行结构与样式完全一致) */}
+                    <div className="pt-2.5 border-t-2 border-stone-900/10 dark:border-white/10 grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-stone-700 dark:text-slate-200 font-mono">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-stone-900 dark:text-white font-sans font-black min-w-[130px] shrink-0">
+                          色相 (Bias 偏向):
+                        </span>
+                        <div className="w-20 h-2.5 rounded-full bg-gradient-to-r from-sky-400 via-emerald-400 to-rose-400 border border-stone-900/20 dark:border-white/20 shrink-0" />
+                        <span className="truncate">谨慎(-1.0) → 自洽(0) → 自负(+1.0)</span>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-stone-900 dark:text-white font-sans font-black">饱和度/光晕 (IVE 杠杆):</span>
-                        <div className="w-14 h-2 rounded-full bg-gradient-to-r from-slate-600 via-amber-500/70 to-[#CCFF00]" />
-                        <span>内生 (0) → 高杠杆 (≥0.7)</span>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-stone-900 dark:text-white font-sans font-black min-w-[130px] shrink-0">
+                          饱和度 (IVE 杠杆):
+                        </span>
+                        <div className="w-20 h-2.5 rounded-full bg-gradient-to-r from-slate-600 via-amber-500/70 to-[#CCFF00] border border-stone-900/20 dark:border-white/20 shrink-0" />
+                        <span className="truncate">内生(0) → 均衡(0.5) → 高杠杆(≥0.7)</span>
                       </div>
                     </div>
                   </div>
@@ -528,17 +532,17 @@ export const ProfileDashboard: React.FC = () => {
                     <div className="flex items-center gap-1 p-1 rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 overflow-x-auto">
                       {(
                         [
-                          { key: "ALL", label: t.profile?.tabAll || "全景" },
-                          { key: "ACCURACY", label: t.profile?.tabAccuracy || "准确率" },
-                          { key: "DISCRIMINATION", label: t.profile?.tabDiscrimination || "辨别力 d'" },
-                          { key: "M_RATIO", label: t.profile?.tabMRatio || "元认知 M_ratio" },
-                          { key: "BIAS", label: t.profile?.tabBias || "偏向 Bias" },
+                          { key: "ALL", label: t.profile?.tabAll || (isEn ? "Overview" : "全景") },
+                          { key: "ACCURACY", label: t.profile?.tabAccuracy || (isEn ? "Accuracy" : "准确率") },
+                          { key: "DISCRIMINATION", label: t.profile?.tabDiscrimination || (isEn ? "Discrimination" : "辨别力") },
+                          { key: "M_RATIO", label: t.profile?.tabMRatio || (isEn ? "Metacognition" : "元认知") },
+                          { key: "BIAS", label: t.profile?.tabBias || (isEn ? "Decision Bias" : "决策偏向") },
                         ] as const
                       ).map((tab) => (
                         <button
                           key={tab.key}
                           onClick={() => setMetricTab(tab.key)}
-                          className={`flex-1 min-w-[60px] py-1.5 px-2 rounded-xl text-[11px] font-black transition-all text-center cursor-pointer ${
+                          className={`flex-1 min-w-[60px] py-1.5 px-2 rounded-xl text-[11px] font-black transition-all text-center cursor-pointer whitespace-nowrap shrink-0 ${
                             metricTab === tab.key
                               ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border border-stone-900 dark:border-black shadow-sm dark:shadow-[2px_2px_0px_#FFFFFF]"
                               : "text-stone-600 dark:text-slate-300 hover:text-stone-950 dark:hover:text-white"
@@ -568,32 +572,32 @@ export const ProfileDashboard: React.FC = () => {
                       <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-white flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-stone-900 dark:text-[#FBBF24]" />
                         <span>{t.profile?.historyTitle || "历次评测时间轴"}</span>
-                        <span className="text-xs font-mono text-stone-500 dark:text-slate-400 font-bold">
-                          ({timelineSessions.length})
-                        </span>
                       </h3>
-                      <p className="text-xs text-stone-600 dark:text-slate-400 font-medium">
+                      <p className="text-xs text-stone-700 dark:text-slate-300 font-medium">
                         {t.profile?.timelineSubtitle || "按时间倒序排列的完整测评档案与四维认知指标"}
                       </p>
                     </div>
 
-                    {/* Filter & Sort Controls */}
-                    <div className="flex items-center gap-2 flex-wrap">
+                    {/* Filter & Sort Controls (横向不换行滚动，杜绝单行/多行切换高度跳跃) */}
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-1 shrink-0 max-w-full">
                       <button
                         onClick={fetchSessions}
                         disabled={loading}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-900 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-50 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-900 dark:text-white shadow-[0_2px_0_#1c1917] dark:shadow-none transition-all cursor-pointer shrink-0 disabled:opacity-60"
                         title="刷新数据"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-amber-500 dark:text-[#CCFF00]" : ""}`} />
-                        <span className="hidden sm:inline">刷新</span>
+                        <span>{loading ? "同步中..." : "刷新"}</span>
                       </button>
+
                       {/* Filter by Type */}
-                      <div className="flex items-center p-0.5 rounded-xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-xs">
+                      <div className="flex items-center p-0.5 rounded-xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-xs shadow-[0_1.5px_0_#1c1917] dark:shadow-none shrink-0">
                         <button
                           onClick={() => setTypeFilter("ALL")}
                           className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                            typeFilter === "ALL" ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black" : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
+                            typeFilter === "ALL"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              : "text-stone-700 dark:text-slate-200 font-bold hover:text-stone-950 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-white/10"
                           }`}
                         >
                           {t.profile?.filterAll || "全部"}
@@ -601,7 +605,9 @@ export const ProfileDashboard: React.FC = () => {
                         <button
                           onClick={() => setTypeFilter("HUMAN")}
                           className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                            typeFilter === "HUMAN" ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black" : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
+                            typeFilter === "HUMAN"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              : "text-stone-700 dark:text-slate-200 font-bold hover:text-stone-950 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-white/10"
                           }`}
                         >
                           {t.profile?.filterHuman || "人类"}
@@ -609,7 +615,9 @@ export const ProfileDashboard: React.FC = () => {
                         <button
                           onClick={() => setTypeFilter("AGENT")}
                           className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                            typeFilter === "AGENT" ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black" : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
+                            typeFilter === "AGENT"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              : "text-stone-700 dark:text-slate-200 font-bold hover:text-stone-950 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-white/10"
                           }`}
                         >
                           {t.profile?.filterAgent || "智能体"}
@@ -617,12 +625,14 @@ export const ProfileDashboard: React.FC = () => {
                       </div>
 
                       {/* Sort Order */}
-                      <div className="flex items-center p-0.5 rounded-xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-xs">
+                      <div className="flex items-center p-0.5 rounded-xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-xs shadow-[0_1.5px_0_#1c1917] dark:shadow-none shrink-0">
                         <button
                           type="button"
                           onClick={() => setSortOrder("NEWEST")}
                           className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                            sortOrder === "NEWEST" ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black" : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
+                            sortOrder === "NEWEST"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              : "text-stone-700 dark:text-slate-200 font-bold hover:text-stone-950 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-white/10"
                           }`}
                         >
                           {t.profile?.sortNewest || "最新优先"}
@@ -631,7 +641,9 @@ export const ProfileDashboard: React.FC = () => {
                           type="button"
                           onClick={() => setSortOrder("OLDEST")}
                           className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                            sortOrder === "OLDEST" ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black" : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
+                            sortOrder === "OLDEST"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              : "text-stone-700 dark:text-slate-200 font-bold hover:text-stone-950 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-white/10"
                           }`}
                         >
                           {t.profile?.sortOldest || "最早优先"}
@@ -639,14 +651,14 @@ export const ProfileDashboard: React.FC = () => {
                       </div>
 
                       {/* Layout Mode (单列 / 双列折叠排布) */}
-                      <div className="flex items-center p-0.5 rounded-xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-xs">
+                      <div className="flex items-center p-0.5 rounded-xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-stone-900 dark:border-white/20 text-xs shadow-[0_1.5px_0_#1c1917] dark:shadow-none shrink-0">
                         <button
                           type="button"
                           onClick={() => setTimelineLayout("single")}
                           className={`min-h-[30px] px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
                             timelineLayout === "single"
-                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black"
-                              : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              : "text-stone-700 dark:text-slate-200 font-bold hover:text-stone-950 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-white/10"
                           }`}
                           title="单列视图"
                           aria-label="单列视图"
@@ -659,8 +671,8 @@ export const ProfileDashboard: React.FC = () => {
                           onClick={() => setTimelineLayout("double")}
                           className={`min-h-[30px] px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
                             timelineLayout === "double"
-                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black"
-                              : "text-stone-600 dark:text-slate-400 font-bold hover:text-stone-950 dark:hover:text-white"
+                              ? "bg-[#FBBF24] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] font-black shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
+                              : "text-stone-700 dark:text-slate-200 font-bold hover:text-stone-950 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-white/10"
                           }`}
                           title="双列折叠视图"
                           aria-label="双列折叠视图"
@@ -672,12 +684,58 @@ export const ProfileDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Timeline Cards Grid (Single / Double Column Adaptive) */}
-                  <div className={timelineLayout === "double" ? "grid grid-cols-1 md:grid-cols-2 gap-3.5" : "grid grid-cols-1 gap-3"}>
-                    {timelineSessions.map((session, idx) => {
-                      const quadrantCode = session.quadrant_code || "Q1-CAL";
-                      const archetypeDef = getArchetypeDefinition(quadrantCode, locale);
-                      const isHuman = session.subject_type === "HUMAN" && !session.agent_metadata;
+                  {/* 刷新或重载时的优雅非阻塞交互提示 */}
+                  {loading && sessions.length > 0 && (
+                    <div className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-50 dark:bg-white/5 border border-amber-300 dark:border-[#CCFF00]/30 text-xs font-bold text-stone-800 dark:text-[#CCFF00] animate-pulse">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 dark:text-[#CCFF00]" />
+                      <span>正在同步云端历次评测档案与心智流形...</span>
+                    </div>
+                  )}
+
+                  {/* Timeline Cards Grid or Dedicated Empty State */}
+                  {timelineSessions.length === 0 ? (
+                    <div className="p-8 sm:p-12 text-center rounded-2xl bg-[#FFFBEB] dark:bg-[#12121C] border-2 border-dashed border-stone-900/30 dark:border-white/20 flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-200">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-white/5 border-2 border-stone-900 dark:border-white/20 flex items-center justify-center text-stone-900 dark:text-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-none">
+                        <Clock className="w-7 h-7" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm sm:text-base font-black text-stone-900 dark:text-white">
+                          {typeFilter === "ALL"
+                            ? (t.profile?.noSessions || "暂无评测时间轴记录")
+                            : typeFilter === "HUMAN"
+                            ? "暂无人类探索者评测记录"
+                            : "暂无智能体模型评测记录"}
+                        </h4>
+                        <p className="text-xs text-stone-700 dark:text-slate-300 max-w-sm font-medium">
+                          {typeFilter !== "ALL"
+                            ? "当前类型筛选下未检索到匹配的评测档案，可尝试重置为全部数据。"
+                            : "完成评测后，每次测试的四维心智轨迹与专属指标将自动汇聚在此。"}
+                        </p>
+                      </div>
+                      {typeFilter !== "ALL" ? (
+                        <button
+                          type="button"
+                          onClick={() => setTypeFilter("ALL")}
+                          className="px-4 py-2 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] text-xs font-black border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-pointer active:translate-y-0.5"
+                        >
+                          重置筛选 (显示全部)
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleReturnToAssessment}
+                          className="px-4 py-2 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] text-xs font-black border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917] dark:shadow-none cursor-pointer active:translate-y-0.5"
+                        >
+                          开启全新评测
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={timelineLayout === "double" ? "grid grid-cols-1 md:grid-cols-2 gap-3.5" : "grid grid-cols-1 gap-3"}>
+                      {timelineSessions.map((session, idx) => {
+                        const quadrantCode = session.quadrant_code || "Q1-CAL";
+                        const archetypeDef = getArchetypeDefinition(quadrantCode, locale);
+                        const isHuman = session.subject_type === "HUMAN" && !session.agent_metadata;
                       const dateStr = session.created_at
                         ? new Date(session.created_at).toLocaleString(locale, {
                             year: "numeric",
@@ -705,7 +763,7 @@ export const ProfileDashboard: React.FC = () => {
                           onMouseEnter={() => setHoveredPointId(session.id)}
                           onMouseLeave={() => setHoveredPointId(null)}
                           className={`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col ${
-                            timelineLayout === "single" ? "lg:flex-row lg:items-center" : ""
+                            timelineLayout === "single" ? "lg:flex-row lg:items-center lg:justify-between" : ""
                           } justify-between gap-3.5 ${
                             isHovered
                               ? "bg-amber-100/60 dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[4px_4px_0px_#CCFF00]"
@@ -713,38 +771,36 @@ export const ProfileDashboard: React.FC = () => {
                           }`}
                         >
                           {/* Top / Left Header: Index, Role Title, Date, Subject Type + Mobile fold toggle */}
-                          <div className="flex items-center justify-between gap-2 w-full min-w-0">
+                          <div className={`flex items-center justify-between gap-2.5 ${
+                            timelineLayout === "single" ? "w-full lg:w-auto lg:min-w-[210px] lg:max-w-[260px]" : "w-full"
+                          } min-w-0 shrink-0`}>
                             <div className="flex items-center gap-3 min-w-0 flex-1">
                               <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#12121C] border-2 border-stone-900/30 dark:border-white/20 flex items-center justify-center font-mono text-xs font-black text-stone-900 dark:text-[#CCFF00] shrink-0">
                                 #{sortOrder === "NEWEST" ? timelineSessions.length - idx : idx + 1}
                               </div>
 
                               <div className="space-y-0.5 min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-black text-sm text-stone-900 dark:text-white truncate">
+                                <div className="flex items-center gap-2 flex-nowrap min-w-0">
+                                  <span className="font-black text-sm text-stone-900 dark:text-white truncate min-w-0">
                                     {session.role_title || archetypeDef.role_title}
                                   </span>
                                   <span
-                                    className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-stone-900/30 dark:border-white/20 shrink-0"
-                                    style={{
-                                      backgroundColor: visualToken.backgroundColor,
-                                      borderColor: visualToken.borderColor,
-                                    }}
+                                    className="text-[10px] font-mono font-black px-2 py-0.5 rounded-full border-2 border-stone-900 dark:border-[#CCFF00] shrink-0 text-stone-950 dark:text-[#08080C] bg-[#FBBF24] dark:bg-[#CCFF00] shadow-[0_1.5px_0_#1c1917] dark:shadow-none"
                                   >
                                     {quadrantCode}
                                   </span>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-[11px] text-stone-500 dark:text-slate-300 font-medium truncate">
+                                <div className="flex items-center gap-2 text-[11px] text-stone-700 dark:text-slate-200 font-bold truncate">
                                   <span>{dateStr}</span>
                                   <span>·</span>
                                   {isHuman ? (
-                                    <span className="flex items-center gap-1 text-stone-600 dark:text-slate-300 shrink-0">
-                                      <UserIcon className="w-3 h-3 text-stone-500 dark:text-slate-400" />
+                                    <span className="flex items-center gap-1 text-stone-800 dark:text-emerald-300 shrink-0 font-bold">
+                                      <UserIcon className="w-3 h-3 text-stone-700 dark:text-emerald-400" />
                                       <span>人类</span>
                                     </span>
                                   ) : (
-                                    <span className="flex items-center gap-1 text-sky-700 dark:text-cyan-400 font-mono font-bold shrink-0">
+                                    <span className="flex items-center gap-1 text-sky-800 dark:text-cyan-300 font-mono font-black shrink-0">
                                       <Cpu className="w-3 h-3" />
                                       <span className="truncate max-w-[100px]">
                                         {session.agent_metadata?.model_name || "Agent"}
@@ -767,32 +823,44 @@ export const ProfileDashboard: React.FC = () => {
                             </button>
                           </div>
 
-                          {/* Middle: 4D Metrics Badges (Collapsible on mobile or expanded on desktop) */}
-                          <div className={`w-full ${timelineLayout === "single" ? "lg:w-auto" : ""} ${
+                          {/* Middle: 4D Metrics Badges (Spacious grid layout with concise labels, never stacked in single-column) */}
+                          <div className={`w-full ${timelineLayout === "single" ? "lg:flex-1 lg:min-w-[340px] lg:max-w-xl lg:px-2" : ""} ${
                             isCardExpanded ? "block" : "hidden md:block"
                           }`}>
-                            <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-2 font-mono text-xs">
-                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
-                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">准确率</div>
-                                <div className="font-black text-emerald-700 dark:text-[#10B981]">
+                            <div className="grid grid-cols-5 gap-1.5 sm:gap-2 font-mono text-xs">
+                              <div className="px-2 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center shadow-sm">
+                                <div className="text-[9px] text-stone-600 dark:text-slate-300 font-sans font-bold truncate">
+                                  {isEn ? "Accuracy" : "准确率"}
+                                </div>
+                                <div className="font-black text-emerald-700 dark:text-[#10B981] text-xs sm:text-sm">
                                   {(firstAcc * 100).toFixed(1)}%
                                 </div>
                               </div>
 
-                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
-                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">辨别力 d'</div>
-                                <div className="font-black text-sky-700 dark:text-[#38BDF8]">{dPrime.toFixed(2)}</div>
+                              <div className="px-2 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center shadow-sm">
+                                <div className="text-[9px] text-stone-600 dark:text-slate-300 font-sans font-bold truncate">
+                                  {isEn ? "d'" : "辨别力"}
+                                </div>
+                                <div className="font-black text-sky-700 dark:text-[#38BDF8] text-xs sm:text-sm">
+                                  {dPrime.toFixed(2)}
+                                </div>
                               </div>
 
-                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
-                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">M_ratio</div>
-                                <div className="font-black text-purple-700 dark:text-[#CCFF00]">{mRatio.toFixed(2)}</div>
+                              <div className="px-2 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center shadow-sm">
+                                <div className="text-[9px] text-stone-600 dark:text-slate-300 font-sans font-bold truncate">
+                                  {isEn ? "Meta" : "元认知"}
+                                </div>
+                                <div className="font-black text-purple-700 dark:text-[#CCFF00] text-xs sm:text-sm">
+                                  {mRatio.toFixed(2)}
+                                </div>
                               </div>
 
-                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center">
-                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">Bias</div>
+                              <div className="px-2 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center shadow-sm">
+                                <div className="text-[9px] text-stone-600 dark:text-slate-300 font-sans font-bold truncate">
+                                  {isEn ? "Bias" : "偏向"}
+                                </div>
                                 <div
-                                  className={`font-black ${
+                                  className={`font-black text-xs sm:text-sm ${
                                     bias > 0.12 ? "text-rose-600 dark:text-rose-400" : bias < -0.12 ? "text-sky-600 dark:text-[#38BDF8]" : "text-emerald-600 dark:text-[#CCFF00]"
                                   }`}
                                 >
@@ -800,9 +868,13 @@ export const ProfileDashboard: React.FC = () => {
                                 </div>
                               </div>
 
-                              <div className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center col-span-2 xs:col-span-1 sm:col-span-1">
-                                <div className="text-[9px] text-stone-500 dark:text-slate-300 font-sans font-bold">IVE 杠杆</div>
-                                <div className="font-black text-amber-700 dark:text-amber-300">{ive.toFixed(2)}</div>
+                              <div className="px-2 py-1.5 rounded-xl bg-white dark:bg-[#12121C] border border-stone-900/15 dark:border-white/20 text-center shadow-sm">
+                                <div className="text-[9px] text-stone-600 dark:text-slate-300 font-sans font-bold truncate">
+                                  {isEn ? "IVE" : "杠杆"}
+                                </div>
+                                <div className="font-black text-amber-700 dark:text-amber-300 text-xs sm:text-sm">
+                                  {ive.toFixed(2)}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -823,7 +895,7 @@ export const ProfileDashboard: React.FC = () => {
                                   e.stopPropagation();
                                   handleUpdateSessionVisibility(session.id, "private");
                                 }}
-                                title={isEn ? "Private (L1): Visible only to you" : "私密保护 (L1)：仅自己可见"}
+                                title={isEn ? "Private: Visible only to you" : "隐私：仅自己可见"}
                                 className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 transition-all cursor-pointer ${
                                   session.visibility === "private"
                                     ? "bg-[#FEF3C7] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border border-stone-900 dark:border-black shadow-[0_1px_0_#1c1917] dark:shadow-none"
@@ -831,7 +903,7 @@ export const ProfileDashboard: React.FC = () => {
                                 }`}
                               >
                                 <Lock className="w-3 h-3" />
-                                <span className="text-[10px] sm:text-xs">{isEn ? "L1" : "私密"}</span>
+                                <span className="text-[10px] sm:text-xs">{isEn ? "Private" : "隐私"}</span>
                               </button>
 
                               <button
@@ -841,7 +913,7 @@ export const ProfileDashboard: React.FC = () => {
                                   e.stopPropagation();
                                   handleUpdateSessionVisibility(session.id, "anonymous");
                                 }}
-                                title={isEn ? "Anonymous (L2): Projected onto scatter with masked codename" : "匿名代号 (L2)：以匿名代号投影至大盘"}
+                                title={isEn ? "Anonymous: Projected onto scatter with masked codename" : "匿名：以匿名代号投影至大盘"}
                                 className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 transition-all cursor-pointer ${
                                   (session.visibility || "anonymous") === "anonymous"
                                     ? "bg-[#FEF3C7] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border border-stone-900 dark:border-black shadow-[0_1px_0_#1c1917] dark:shadow-none"
@@ -849,7 +921,7 @@ export const ProfileDashboard: React.FC = () => {
                                 }`}
                               >
                                 <EyeOff className="w-3 h-3" />
-                                <span className="text-[10px] sm:text-xs">{isEn ? "L2" : "匿名"}</span>
+                                <span className="text-[10px] sm:text-xs">{isEn ? "Anonymous" : "匿名"}</span>
                               </button>
 
                               <button
@@ -859,7 +931,7 @@ export const ProfileDashboard: React.FC = () => {
                                   e.stopPropagation();
                                   handleUpdateSessionVisibility(session.id, "public");
                                 }}
-                                title={isEn ? "Public (L3): Shows verified avatar, name & profile" : "公开名片 (L3)：在大盘展示头像与主页"}
+                                title={isEn ? "Public: Shows verified avatar, name & profile" : "公开：在大盘展示头像与主页"}
                                 className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 transition-all cursor-pointer ${
                                   session.visibility === "public"
                                     ? "bg-[#FEF3C7] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border border-stone-900 dark:border-black shadow-[0_1px_0_#1c1917] dark:shadow-none"
@@ -867,7 +939,7 @@ export const ProfileDashboard: React.FC = () => {
                                 }`}
                               >
                                 <Globe className="w-3 h-3" />
-                                <span className="text-[10px] sm:text-xs">{isEn ? "L3" : "公开"}</span>
+                                <span className="text-[10px] sm:text-xs">{isEn ? "Public" : "公开"}</span>
                               </button>
                             </div>
 
@@ -876,26 +948,27 @@ export const ProfileDashboard: React.FC = () => {
                               onClick={() => handleOpenPoster(session)}
                               disabled={loadingReportId === session.id}
                               className="min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-[#12121C] hover:bg-amber-100 dark:hover:bg-white/10 border-2 border-stone-900 dark:border-white/20 text-xs font-bold text-stone-900 dark:text-white dark:hover:border-[#CCFF00] dark:hover:text-[#CCFF00] transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-none active:translate-y-0.5"
-                              title={t.profile?.shareCard || "生成分享名片"}
+                              title={t.profile?.shareCard || (isEn ? "Share" : "分享")}
                             >
                               <Share2 className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
-                              <span>{t.profile?.shareCard || "名片"}</span>
+                              <span>{t.profile?.shareCard || (isEn ? "Share" : "分享")}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleViewReport(session.id)}
                               className="min-h-[44px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FBBF24] hover:bg-[#F59E0B] dark:bg-[#CCFF00] dark:hover:brightness-110 border-2 border-stone-900 dark:border-black text-xs font-black text-stone-950 dark:text-[#08080C] transition-all cursor-pointer shadow-[0_1.5px_0_#1c1917] dark:shadow-[2px_2px_0px_#FFFFFF] active:translate-y-0.5"
-                              title={t.profile?.viewReport || "查看完整画像报告"}
+                              title={t.profile?.viewReport || (isEn ? "Report" : "报告")}
                             >
                               <FileText className="w-3.5 h-3.5" />
-                              <span>{t.profile?.viewReport || "报告"}</span>
+                              <span>{t.profile?.viewReport || (isEn ? "Report" : "报告")}</span>
                             </button>
                           </div>
                         </div>
                       );
                     })}
                   </div>
+                  )}
                 </div>
               </>
             )}

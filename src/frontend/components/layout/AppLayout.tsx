@@ -153,24 +153,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       accent: "text-indigo-400",
       badge: recentSessions.length > 0 ? String(recentSessions.length) : null,
     },
-    {
-      key: "assets",
-      path: "/assets",
-      active: isAssetsActive,
-      icon: Crown,
-      label: isEn ? "Cognitive Assets" : "认知资产与图鉴",
-      accent: "text-purple-400",
-      badge: `${unlockedCount}/8`,
-    },
-    {
-      key: "settings",
-      path: "/settings",
-      active: isSettingsActive,
-      icon: Settings,
-      label: t.profile?.tabSettings || (isEn ? "Preferences" : "个人偏好设置"),
-      accent: "text-cyan-400",
-      badge: null,
-    },
   ];
 
   const trustLevel = user?.metadata?.trust_level;
@@ -372,36 +354,63 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                   </div>
                 )}
               </div>
-
-              {/* Expandable Cognitive Assets & Future Realms Slot */}
-              <div className="px-1">
-                <div
-                  onClick={() => handleNavClick("/assets")}
-                  className="p-3.5 rounded-2xl bg-[#D1FAE5] dark:bg-[#0E0E16] border-2 border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer space-y-1.5 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-stone-900 dark:text-[#CCFF00] flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-stone-900 dark:text-[#CCFF00]" />
-                      <span>{isEn ? "Archetype Codex" : "八大认知图鉴资产"}</span>
-                    </span>
-                    <span className="text-[10px] font-mono font-bold text-stone-900 dark:text-[#08080C] bg-white dark:bg-[#CCFF00] px-2 py-0.5 rounded-full border border-stone-900 dark:border-black">
-                      {unlockedCount} / 8
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-white dark:bg-[#12121C] rounded-full overflow-hidden border border-stone-900 dark:border-white/20">
-                    <div
-                      className="h-full bg-[#10B981] dark:bg-[#CCFF00] rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, (unlockedCount / 8) * 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] font-bold text-stone-700 dark:text-slate-300">
-                    {isEn
-                      ? "Collect all 8 cognitive archetypes & innate skill matrices"
-                      : "点亮八大认知流派化身，解锁专属心智特技矩阵"}
-                  </p>
-                </div>
-              </div>
             </div>
+          )}
+        </div>
+
+        {/* Pinned Bottom Archetype Codex Entry (Feedback 8: 紧贴底部展示永远不消失 作为图鉴路由唯一菜单入口) */}
+        <div className="shrink-0 px-2 pb-2">
+          {!isCollapsed || mobileMenuOpen ? (
+            <div
+              onClick={() => handleNavClick("/assets")}
+              role="button"
+              tabIndex={0}
+              aria-label={isEn ? "Archetype Codex" : "八大认知图鉴资产"}
+              className={`p-3 rounded-2xl border-2 transition-all cursor-pointer space-y-1.5 group select-none ${
+                isAssetsActive
+                  ? "bg-[#D1FAE5] dark:bg-[#12121C] border-stone-900 dark:border-[#CCFF00] shadow-[0_3px_0_#1c1917] dark:shadow-[3px_3px_0px_#CCFF00]"
+                  : "bg-[#ECFDF5] dark:bg-[#0E0E16] border-stone-900 dark:border-white/20 hover:border-stone-900 dark:hover:border-[#CCFF00] shadow-[0_2px_0_#1c1917] dark:shadow-none hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black text-stone-900 dark:text-[#CCFF00] flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-emerald-700 dark:text-[#CCFF00]" />
+                  <span>{isEn ? "Archetype Codex" : "八大认知图鉴资产"}</span>
+                </span>
+                <span className="text-[10px] font-mono font-bold text-stone-900 dark:text-[#08080C] bg-white dark:bg-[#CCFF00] px-2 py-0.5 rounded-full border border-stone-900 dark:border-black">
+                  {unlockedCount} / 8
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-white dark:bg-[#12121C] rounded-full overflow-hidden border border-stone-900/30 dark:border-white/20">
+                <div
+                  className="h-full bg-[#10B981] dark:bg-[#CCFF00] rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, (unlockedCount / 8) * 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] font-bold text-stone-700 dark:text-slate-300 truncate">
+                {isEn
+                  ? "Collect all 8 archetypes & skill matrices"
+                  : "点亮八大认知流派化身，解锁专属心智特技矩阵"}
+              </p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleNavClick("/assets")}
+              title={isEn ? `Archetype Codex (${unlockedCount}/8)` : `八大认知图鉴资产 (${unlockedCount}/8)`}
+              className={`w-full flex items-center justify-center p-2 rounded-xl transition-all cursor-pointer ${
+                isAssetsActive
+                  ? "bg-[#D1FAE5] dark:bg-[#CCFF00] text-stone-950 dark:text-[#08080C] border-2 border-stone-900 dark:border-black shadow-[0_2px_0_#1c1917]"
+                  : "hover:bg-emerald-100/60 dark:hover:bg-white/10 text-stone-700 dark:text-slate-300 border border-transparent"
+              }`}
+            >
+              <div className="relative">
+                <Layers className="w-5 h-5 text-emerald-700 dark:text-[#CCFF00]" />
+                <span className="absolute -top-1.5 -right-2.5 text-[8px] font-mono font-black px-1 rounded-full bg-stone-900 text-white dark:bg-[#CCFF00] dark:text-[#08080C] border border-white dark:border-black">
+                  {unlockedCount}
+                </span>
+              </div>
+            </button>
           )}
         </div>
 
@@ -536,18 +545,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                   >
                     <Settings className="w-3.5 h-3.5 text-stone-800 dark:text-slate-400" />
                     <span>{t.profile?.tabSettings || (isEn ? "Preferences" : "个人偏好设置")}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      handleNavClick("/assets");
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-stone-800 dark:text-slate-200 hover:bg-[#FEF3C7] dark:hover:bg-white/10 rounded-xl font-bold transition-colors text-left cursor-pointer"
-                  >
-                    <Crown className="w-3.5 h-3.5 text-stone-800 dark:text-slate-400" />
-                    <span>{isEn ? "Cognitive Assets" : "认知资产与图鉴"}</span>
                   </button>
 
                   <div className="border-t-2 border-stone-900/10 dark:border-white/10 my-1 pt-1 flex items-center justify-between px-3 py-1 text-[11px] text-stone-500 dark:text-slate-400 font-bold">
