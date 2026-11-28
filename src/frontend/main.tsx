@@ -1,3 +1,4 @@
+import "./index.css";
 import React, { useState, useEffect, useCallback } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
@@ -20,9 +21,7 @@ import { GameEffectsProvider } from "./contexts/GameEffectsContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { resolveRouteView } from "./utils/sessionRoute";
 import { AuthModal } from "./components/auth/AuthModal";
-import { Theme as AstryxTheme } from "@astryxdesign/core/theme";
-import { themes, defaultThemeSlug } from "../astryx-themes";
-import "./index.css";
+import { AstryxThemeBridge } from "./components/common/AstryxThemeBridge";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Root element not found");
@@ -152,8 +151,8 @@ const AppRouter: React.FC = () => {
 
 const Root: React.FC = () => {
   return (
-    <AstryxTheme theme={themes[defaultThemeSlug]}>
-      <ThemeProvider>
+    <ThemeProvider>
+      <AstryxThemeBridge>
         <LocaleProvider>
           <UserProvider>
             <GameEffectsProvider>
@@ -161,8 +160,8 @@ const Root: React.FC = () => {
             </GameEffectsProvider>
           </UserProvider>
         </LocaleProvider>
-      </ThemeProvider>
-    </AstryxTheme>
+      </AstryxThemeBridge>
+    </ThemeProvider>
   );
 };
 

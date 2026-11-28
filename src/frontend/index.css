@@ -1,6 +1,8 @@
+@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
+
+@import "tailwindcss";
 @import '@astryxdesign/core/reset.css';
 @import '@astryxdesign/core/astryx.css';
-@import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
 
